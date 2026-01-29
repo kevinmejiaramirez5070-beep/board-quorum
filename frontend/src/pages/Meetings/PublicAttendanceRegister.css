@@ -1,0 +1,167 @@
+.public-attendance-page {
+  min-height: 100vh;
+  background: var(--gradient-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.public-attendance-container {
+  background: var(--surface);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.public-attendance-container h1 {
+  font-size: 28px;
+  margin: 20px 0;
+  color: var(--text-primary);
+}
+
+.meeting-info-card {
+  background: var(--background);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  text-align: left;
+  border: 2px solid var(--border);
+}
+
+.meeting-info-card h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.meeting-info-card p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.public-attendance-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+}
+
+.public-attendance-form .form-group {
+  margin-bottom: 0;
+}
+
+.public-attendance-form .label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.public-attendance-form .input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--background);
+  color: var(--text-primary);
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.public-attendance-form .input.select-member {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23999' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 42px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.public-attendance-form .input.select-member:hover {
+  border-color: var(--primary-light);
+}
+
+.public-attendance-form .input.select-member:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 198, 255, 0.15);
+}
+
+.public-attendance-form .input.select-member option {
+  background: var(--background);
+  color: var(--text-primary);
+  padding: 10px;
+  font-size: 14px;
+}
+
+[data-theme="dark"] .public-attendance-form .input.select-member {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23ccc' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+}
+
+.public-attendance-form .form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.success-message {
+  padding: 40px 20px;
+}
+
+.success-message h2 {
+  color: var(--success);
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.success-message p {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.meet-link-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-white);
+  font-size: 18px;
+}
+
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .public-attendance-container {
+    padding: 24px;
+  }
+}
+
+
+

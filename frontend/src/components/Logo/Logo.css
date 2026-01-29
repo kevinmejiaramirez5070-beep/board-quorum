@@ -1,0 +1,85 @@
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.logo-icon img {
+  display: block;
+  object-fit: contain;
+}
+
+.logo-icon svg {
+  display: block;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.logo-main {
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--gradient-cyan);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+.logo-short {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-medium);
+  letter-spacing: 1px;
+}
+
+/* Variants */
+.logo-small .logo-main {
+  font-size: 16px;
+}
+
+.logo-small .logo-short {
+  font-size: 10px;
+}
+
+.logo-large .logo-main {
+  font-size: 32px;
+}
+
+.logo-large .logo-short {
+  font-size: 16px;
+}
+
+/* Color variants */
+.logo-gold .logo-icon svg circle,
+.logo-gold .logo-icon svg text,
+.logo-gold .logo-icon svg path {
+  fill: #D4AF37;
+  stroke: #D4AF37;
+}
+
+.logo-white .logo-icon svg circle,
+.logo-white .logo-icon svg text,
+.logo-white .logo-icon svg path {
+  fill: #FFFFFF;
+  stroke: #FFFFFF;
+}
+
+.logo-black .logo-icon svg circle,
+.logo-black .logo-icon svg text,
+.logo-black .logo-icon svg path {
+  fill: #0A0A0A;
+  stroke: #0A0A0A;
+}
+

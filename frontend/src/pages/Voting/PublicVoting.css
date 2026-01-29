@@ -1,0 +1,121 @@
+.public-voting-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--background);
+}
+
+.voting-card {
+  background: var(--surface);
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.voting-card h1 {
+  margin: 20px 0 16px;
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
+.voting-description {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.voting-form {
+  text-align: left;
+  margin-top: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group .label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.option-radio {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.option-radio:hover {
+  border-color: var(--primary);
+  background: var(--surface-alt);
+}
+
+.option-radio input[type="radio"] {
+  margin-right: 12px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.option-radio input[type="radio"]:checked + .radio-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.radio-label {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.voting-card.success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.voting-card.success h1 {
+  color: #059669;
+}
+
+.status-message {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+.error-message {
+  color: var(--danger);
+  font-size: 18px;
+  text-align: center;
+  padding: 40px;
+}
+
+@media (max-width: 768px) {
+  .voting-card {
+    padding: 24px;
+  }
+  
+  .voting-card h1 {
+    font-size: 24px;
+  }
+}
+

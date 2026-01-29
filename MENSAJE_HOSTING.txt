@@ -1,0 +1,28 @@
+Estimados equipo de soporte de Latinoamericana de Hosting,
+
+Solicito la habilitación de Node.js en mi cuenta de hosting para desplegar una aplicación web.
+
+INFORMACIÓN DE LA CUENTA:
+- Dominio: datacastilla.com
+- Usuario cPanel: datacast
+- URL cPanel: https://datacastilla.com/cpanel
+
+REQUISITOS TÉCNICOS:
+- Node.js versión 16.x o superior (preferiblemente la más reciente LTS)
+- Acceso a npm (Node Package Manager) para instalar dependencias
+- Preferiblemente acceso a "Setup Node.js App" en cPanel, o en su defecto, acceso SSH para ejecutar Node.js manualmente
+
+DETALLES DE LA APLICACIÓN:
+- Tipo: API REST desarrollada con Node.js y Express
+- Base de datos: MySQL (ya configurada en el hosting)
+- Archivo principal: src/server.js
+- La aplicación necesita ejecutarse de forma continua
+
+PREGUNTAS:
+1. ¿El hosting soporta aplicaciones Node.js?
+2. ¿Hay algún proceso especial para desplegar aplicaciones Node.js?
+3. ¿Cómo se manejan los reinicios del servidor? ¿La aplicación se reinicia automáticamente?
+
+Quedo atento a sus indicaciones y agradezco su pronta respuesta.
+
+Saludos cordiales.
