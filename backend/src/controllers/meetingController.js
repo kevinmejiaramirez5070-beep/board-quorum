@@ -51,7 +51,23 @@ exports.createMeeting = async (req, res) => {
       ...req.body,
       client_id: req.user.client_id
     };
+    
+    console.log('Creating meeting with data:', {
+      ...data,
+      password: '[HIDDEN]'
+    });
+    
     const meetingId = await Meeting.create(data);
+    
+    console.log('Meeting created successfully with ID:', meetingId);
+    
+    if (!meetingId) {
+      console.error('❌ Meeting ID is null or undefined');
+      return res.status(500).json({ 
+        message: 'Error: No se pudo obtener el ID de la reunión creada',
+        details: 'El backend creó la reunión pero no pudo obtener el ID'
+      });
+    }
     
     // Generar el link público de asistencia
     const attendanceLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/public/meeting/${meetingId}/attendance`;
@@ -62,7 +78,12 @@ exports.createMeeting = async (req, res) => {
       attendanceLink: attendanceLink
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ Error creating meeting:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: error.message || 'Error al crear la reunión',
+      details: error.stack
+    });
   }
 };
 
