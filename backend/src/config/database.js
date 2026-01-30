@@ -1,7 +1,7 @@
 require('dotenv').config();
 
-// Detectar si usamos PostgreSQL (Render) o MySQL (local)
-const usePostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+// Detectar si usamos PostgreSQL (Supabase, Render) o MySQL (local)
+const usePostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql' || process.env.SUPABASE_DB_URL;
 
 let pool;
 
@@ -9,7 +9,7 @@ if (usePostgreSQL) {
   // PostgreSQL para Render
   const { Pool } = require('pg');
   
-  const connectionString = process.env.DATABASE_URL || 
+  const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL ||
     `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME}`;
   
   pool = new Pool({
