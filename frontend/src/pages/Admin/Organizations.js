@@ -94,13 +94,14 @@ const Organizations = () => {
         return;
       }
 
-      // Comprimir y convertir a base64
+      // Comprimir y convertir a base64 (más agresivo para reducir tamaño)
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxSize = 800;
+          // Reducir tamaño máximo a 500px para reducir el tamaño del base64
+          const maxSize = 500;
           let width = img.width;
           let height = img.height;
 
@@ -121,7 +122,18 @@ const Organizations = () => {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          // Reducir calidad a 0.6 para reducir aún más el tamaño
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          
+          // Verificar tamaño del base64 (debe ser menor a 3MB para dejar margen)
+          const base64Size = (compressedBase64.length * 3) / 4 / 1024 / 1024; // Tamaño en MB
+          if (base64Size > 3) {
+            setError(language === 'es' 
+              ? 'La imagen es demasiado grande incluso después de comprimir. Por favor, elige una imagen más pequeña.' 
+              : 'Image is too large even after compression. Please choose a smaller image.');
+            return;
+          }
+          
           setFormData({ ...formData, logo: compressedBase64 });
           setLogoPreview(compressedBase64);
         };
