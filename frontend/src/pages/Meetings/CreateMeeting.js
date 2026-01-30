@@ -38,12 +38,27 @@ const CreateMeeting = () => {
 
     try {
       const response = await meetingService.create(formData);
-      const meetingId = response.data?.id || response.data;
+      console.log('Meeting creation response:', response);
+      console.log('Response data:', response.data);
+      
+      // Extraer el ID correctamente
+      let meetingId = null;
+      if (response.data) {
+        if (typeof response.data === 'object' && response.data.id) {
+          meetingId = response.data.id;
+        } else if (typeof response.data === 'number') {
+          meetingId = response.data;
+        } else if (response.data.id !== undefined) {
+          meetingId = response.data.id;
+        }
+      }
       
       if (!meetingId) {
+        console.error('No se pudo extraer el ID de la reunión:', response);
         throw new Error('No se recibió el ID de la reunión creada');
       }
       
+      console.log('Navegando a reunión con ID:', meetingId);
       navigate(`/meetings/${meetingId}`);
     } catch (error) {
       console.error('Error creating meeting:', error);

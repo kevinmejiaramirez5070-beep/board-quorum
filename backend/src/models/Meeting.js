@@ -27,11 +27,17 @@ class Meeting {
 
   static async create(data) {
     const { client_id, title, description, date, location, type, status, google_meet_link = null } = data;
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const returningClause = isPostgreSQL ? ' RETURNING id' : '';
     const [result] = await db.execute(
       `INSERT INTO meetings (client_id, title, description, date, location, type, status, google_meet_link, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
       [client_id, title, description, date, location, type, status || 'scheduled', google_meet_link]
     );
+    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
+    if (isPostgreSQL) {
+      return result.rows?.[0]?.id;
+    }
     return result.insertId;
   }
 
@@ -120,16 +126,20 @@ class Meeting {
    * @param {number} clientId - ID del cliente
    */
   static async installSession(id, clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const sessionInstalledValue = isPostgreSQL ? 'true' : '1';
     const [result] = await db.execute(
       `UPDATE meetings 
-       SET session_installed = 1, 
+       SET session_installed = ${sessionInstalledValue}, 
            session_installed_at = NOW(), 
            updated_at = NOW() 
        WHERE id = ? AND client_id = ?`,
       [id, clientId]
     );
     
-    if (result.affectedRows === 0) {
+    // PostgreSQL usa result.rowCount, MySQL usa result.affectedRows
+    const affectedRows = isPostgreSQL ? result.rowCount : result.affectedRows;
+    if (affectedRows === 0) {
       throw new Error('Meeting not found or you do not have permission');
     }
     
