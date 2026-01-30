@@ -34,7 +34,7 @@ class Member {
     const cuentaQuorumValue = isPostgreSQL ? (cuenta_quorum ? 'true' : 'false') : cuenta_quorum;
     const puedeVotarValue = isPostgreSQL ? (puede_votar ? 'true' : 'false') : puede_votar;
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [result] = await db.execute(
+    const [rows, fields] = await db.execute(
       `INSERT INTO members (
         client_id, name, email, role, position, 
         member_type, principal_id, user_id,
@@ -51,11 +51,12 @@ class Member {
         tipo_participante, rol_en_votacion
       ]
     );
-    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
+    // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
+    // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
     if (isPostgreSQL) {
-      return result.rows?.[0]?.id;
+      return rows?.[0]?.id;
     }
-    return result.insertId;
+    return rows?.insertId;
   }
 
   static async update(id, data) {

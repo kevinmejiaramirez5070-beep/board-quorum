@@ -29,16 +29,18 @@ class Meeting {
     const { client_id, title, description, date, location, type, status, google_meet_link = null } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [result] = await db.execute(
+    const [rows, fields] = await db.execute(
       `INSERT INTO meetings (client_id, title, description, date, location, type, status, google_meet_link, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
       [client_id, title, description, date, location, type, status || 'scheduled', google_meet_link]
     );
-    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
+    // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
+    // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
     if (isPostgreSQL) {
-      return result.rows?.[0]?.id;
+      return rows?.[0]?.id;
     }
-    return result.insertId;
+    // Para MySQL, rows es el resultado completo, no solo las filas
+    return rows?.insertId;
   }
 
   static async update(id, data) {

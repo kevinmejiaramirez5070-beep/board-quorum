@@ -28,16 +28,17 @@ class User {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [result] = await db.execute(
+    const [rows, fields] = await db.execute(
       `INSERT INTO users (email, password, name, role, client_id, active, created_at)
        VALUES (?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,
       [email, hashedPassword, name, role || 'user', client_id]
     );
-    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
+    // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
+    // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
     if (isPostgreSQL) {
-      return result.rows?.[0]?.id;
+      return rows?.[0]?.id;
     }
-    return result.insertId;
+    return rows?.insertId;
   }
 
   static async comparePassword(plainPassword, hashedPassword) {
