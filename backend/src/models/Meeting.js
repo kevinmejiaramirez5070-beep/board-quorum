@@ -130,7 +130,15 @@ class Meeting {
   static async installSession(id, clientId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const sessionInstalledValue = isPostgreSQL ? 'true' : '1';
-    const [result] = await db.execute(
+    
+    // Primero verificar que la reunión existe y pertenece al cliente
+    const meeting = await this.findById(id, clientId);
+    if (!meeting) {
+      throw new Error('Meeting not found or you do not have permission');
+    }
+    
+    // Luego actualizar
+    await db.execute(
       `UPDATE meetings 
        SET session_installed = ${sessionInstalledValue}, 
            session_installed_at = NOW(), 
@@ -139,13 +147,7 @@ class Meeting {
       [id, clientId]
     );
     
-    // PostgreSQL usa result.rowCount, MySQL usa result.affectedRows
-    const affectedRows = isPostgreSQL ? result.rowCount : result.affectedRows;
-    if (affectedRows === 0) {
-      throw new Error('Meeting not found or you do not have permission');
-    }
-    
-    return result;
+    return { success: true };
   }
 
   /**
