@@ -29,18 +29,40 @@ class Meeting {
     const { client_id, title, description, date, location, type, status, google_meet_link = null } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [rows, fields] = await db.execute(
-      `INSERT INTO meetings (client_id, title, description, date, location, type, status, google_meet_link, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
-      [client_id, title, description, date, location, type, status || 'scheduled', google_meet_link]
-    );
-    // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
-    // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
-    if (isPostgreSQL) {
-      return rows?.[0]?.id;
+    
+    console.log('Meeting.create - isPostgreSQL:', isPostgreSQL);
+    console.log('Meeting.create - data:', { client_id, title, date, location, type, status });
+    
+    try {
+      const [rows, fields] = await db.execute(
+        `INSERT INTO meetings (client_id, title, description, date, location, type, status, google_meet_link, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
+        [client_id, title, description, date, location, type, status || 'scheduled', google_meet_link]
+      );
+      
+      console.log('Meeting.create - rows:', rows);
+      console.log('Meeting.create - rows type:', typeof rows);
+      console.log('Meeting.create - rows is array:', Array.isArray(rows));
+      if (rows && rows.length > 0) {
+        console.log('Meeting.create - rows[0]:', rows[0]);
+      }
+      
+      // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
+      // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
+      if (isPostgreSQL) {
+        const id = rows?.[0]?.id;
+        console.log('Meeting.create - PostgreSQL ID:', id);
+        return id;
+      }
+      const id = rows?.insertId;
+      console.log('Meeting.create - MySQL ID:', id);
+      return id;
+    } catch (error) {
+      console.error('❌ Error in Meeting.create:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      throw error;
     }
-    // Para MySQL, rows es el resultado completo, no solo las filas
-    return rows?.insertId;
   }
 
   static async update(id, data) {
