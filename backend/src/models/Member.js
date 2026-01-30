@@ -2,16 +2,20 @@ const db = require('../config/database');
 
 class Member {
   static async findAll(clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
-      'SELECT * FROM members WHERE client_id = ? AND active = 1 ORDER BY name',
+      `SELECT * FROM members WHERE client_id = ? AND ${activeCondition} ORDER BY name`,
       [clientId]
     );
     return rows;
   }
 
   static async findById(id, clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
-      'SELECT * FROM members WHERE id = ? AND client_id = ? AND active = 1',
+      `SELECT * FROM members WHERE id = ? AND client_id = ? AND ${activeCondition}`,
       [id, clientId]
     );
     return rows[0];
@@ -25,6 +29,11 @@ class Member {
       tipo_participante = null, rol_en_votacion = null,
       cuenta_quorum = 1, puede_votar = 1
     } = data;
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeValue = isPostgreSQL ? 'true' : '1';
+    const cuentaQuorumValue = isPostgreSQL ? (cuenta_quorum ? 'true' : 'false') : cuenta_quorum;
+    const puedeVotarValue = isPostgreSQL ? (puede_votar ? 'true' : 'false') : puede_votar;
+    const returningClause = isPostgreSQL ? ' RETURNING id' : '';
     const [result] = await db.execute(
       `INSERT INTO members (
         client_id, name, email, role, position, 
@@ -34,15 +43,18 @@ class Member {
         cuenta_quorum, puede_votar,
         active, created_at
       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
       [
         client_id, name, email, role, position, 
         member_type, principal_id, user_id,
         tipo_documento, numero_documento, rol_organico,
-        tipo_participante, rol_en_votacion,
-        cuenta_quorum, puede_votar
+        tipo_participante, rol_en_votacion
       ]
     );
+    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
+    if (isPostgreSQL) {
+      return result.rows?.[0]?.id;
+    }
     return result.insertId;
   }
 
@@ -126,8 +138,10 @@ class Member {
    * Busca un miembro por user_id
    */
   static async findByUserId(userId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
-      'SELECT * FROM members WHERE user_id = ? AND active = 1',
+      `SELECT * FROM members WHERE user_id = ? AND ${activeCondition}`,
       [userId]
     );
     return rows[0];
@@ -137,10 +151,12 @@ class Member {
    * Obtiene miembros con derecho a voto (principales, suplentes actuando, JV)
    */
   static async findWithVoteRight(clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
       `SELECT * FROM members 
        WHERE client_id = ? 
-       AND active = 1 
+       AND ${activeCondition} 
        AND (member_type = 'principal' OR member_type = 'junta_vigilancia')
        ORDER BY name`,
       [clientId]
@@ -152,10 +168,12 @@ class Member {
    * Cuenta total de miembros con derecho a voto
    */
   static async countWithVoteRight(clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
       `SELECT COUNT(*) as count FROM members 
        WHERE client_id = ? 
-       AND active = 1 
+       AND ${activeCondition} 
        AND (member_type = 'principal' OR member_type = 'junta_vigilancia')`,
       [clientId]
     );
@@ -163,8 +181,10 @@ class Member {
   }
 
   static async delete(id) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeValue = isPostgreSQL ? 'false' : '0';
     await db.execute(
-      'UPDATE members SET active = 0, updated_at = NOW() WHERE id = ?',
+      `UPDATE members SET active = ${activeValue}, updated_at = NOW() WHERE id = ?`,
       [id]
     );
   }
