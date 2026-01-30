@@ -106,16 +106,12 @@ class Meeting {
       }
       
       // Eliminar la reunión (las foreign keys con CASCADE eliminarán los registros relacionados)
-      const [result] = await db.execute(
+      await db.execute(
         'DELETE FROM meetings WHERE id = ? AND client_id = ?',
         [id, clientId]
       );
       
-      if (result.affectedRows === 0) {
-        throw new Error('No se pudo eliminar la reunión');
-      }
-      
-      return result;
+      return { success: true };
     } catch (error) {
       console.error('Error in Meeting.delete:', error);
       throw error;
