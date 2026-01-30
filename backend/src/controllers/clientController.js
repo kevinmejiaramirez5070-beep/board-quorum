@@ -71,6 +71,7 @@ exports.create = async (req, res) => {
     // Crear la organización
     let clientId;
     try {
+      console.log('Creating client with data:', { name, subdomain, primary_color, secondary_color, language });
       clientId = await Client.create({
         name,
         subdomain,
@@ -79,9 +80,28 @@ exports.create = async (req, res) => {
         secondary_color: secondary_color || '#00C6FF',
         language: language || 'es'
       });
+      console.log('Client created successfully with ID:', clientId);
+      
+      if (!clientId) {
+        console.error('❌ Client ID is null or undefined');
+        return res.status(500).json({ 
+          message: 'Error: No se pudo obtener el ID de la organización creada',
+          details: 'El backend creó la organización pero no pudo obtener el ID'
+        });
+      }
     } catch (createError) {
-      // Capturar error de duplicado de subdomain
-      if (createError.code === 'ER_DUP_ENTRY' && createError.sqlMessage.includes('subdomain')) {
+      console.error('❌ Error creating client:', createError);
+      console.error('Error message:', createError.message);
+      console.error('Error stack:', createError.stack);
+      
+      // Capturar error de duplicado de subdomain (MySQL)
+      if (createError.code === 'ER_DUP_ENTRY' && createError.sqlMessage && createError.sqlMessage.includes('subdomain')) {
+        return res.status(400).json({ 
+          message: `El subdominio "${subdomain}" ya está en uso. Por favor, elige otro subdominio.` 
+        });
+      }
+      // Capturar error de duplicado de subdomain (PostgreSQL)
+      if (createError.code === '23505' && createError.constraint && createError.constraint.includes('subdomain')) {
         return res.status(400).json({ 
           message: `El subdominio "${subdomain}" ya está en uso. Por favor, elige otro subdominio.` 
         });

@@ -34,16 +34,40 @@ class Client {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [result] = await db.execute(
-      `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, client_id, secret, active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,
-      [name, subdomain, logo, primary_color, secondary_color, language || 'es', client_id || null, secret || null]
-    );
-    // PostgreSQL devuelve el ID en result.rows[0].id, MySQL en result.insertId
-    if (isPostgreSQL) {
-      return result.rows?.[0]?.id;
+    
+    console.log('Client.create - isPostgreSQL:', isPostgreSQL);
+    console.log('Client.create - data:', { name, subdomain, primary_color, secondary_color, language });
+    
+    try {
+      const [rows, fields] = await db.execute(
+        `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, client_id, secret, active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,
+        [name, subdomain, logo, primary_color, secondary_color, language || 'es', client_id || null, secret || null]
+      );
+      
+      console.log('Client.create - rows:', rows);
+      console.log('Client.create - rows type:', typeof rows);
+      console.log('Client.create - rows is array:', Array.isArray(rows));
+      if (rows && rows.length > 0) {
+        console.log('Client.create - rows[0]:', rows[0]);
+      }
+      
+      // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
+      // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
+      if (isPostgreSQL) {
+        const id = rows?.[0]?.id;
+        console.log('Client.create - PostgreSQL ID:', id);
+        return id;
+      }
+      const id = rows?.insertId;
+      console.log('Client.create - MySQL ID:', id);
+      return id;
+    } catch (error) {
+      console.error('❌ Error in Client.create:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      throw error;
     }
-    return result.insertId;
   }
 
   static async update(id, data) {
