@@ -30,19 +30,25 @@ class Client {
   }
 
   static async create(data) {
-    const { name, subdomain, logo, primary_color, secondary_color, language, client_id, secret } = data;
+    const { name, subdomain, logo, primary_color, secondary_color, language, client_id, secret, paypal_client_id, paypal_secret } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
+    
+    // En PostgreSQL usamos paypal_client_id y paypal_secret, en MySQL usamos client_id y secret
+    const paypalIdColumn = isPostgreSQL ? 'paypal_client_id' : 'client_id';
+    const paypalSecretColumn = isPostgreSQL ? 'paypal_secret' : 'secret';
+    const paypalIdValue = isPostgreSQL ? (paypal_client_id || null) : (client_id || null);
+    const paypalSecretValue = isPostgreSQL ? (paypal_secret || null) : (secret || null);
     
     console.log('Client.create - isPostgreSQL:', isPostgreSQL);
     console.log('Client.create - data:', { name, subdomain, primary_color, secondary_color, language });
     
     try {
       const [rows, fields] = await db.execute(
-        `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, client_id, secret, active, created_at)
+        `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, ${paypalIdColumn}, ${paypalSecretColumn}, active, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,
-        [name, subdomain, logo, primary_color, secondary_color, language || 'es', client_id || null, secret || null]
+        [name, subdomain, logo, primary_color, secondary_color, language || 'es', paypalIdValue, paypalSecretValue]
       );
       
       console.log('Client.create - rows:', rows);
@@ -71,11 +77,19 @@ class Client {
   }
 
   static async update(id, data) {
-    const { name, logo, primary_color, secondary_color, language, client_id, secret } = data;
+    const { name, logo, primary_color, secondary_color, language, client_id, secret, paypal_client_id, paypal_secret } = data;
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    
+    // En PostgreSQL usamos paypal_client_id y paypal_secret, en MySQL usamos client_id y secret
+    const paypalIdColumn = isPostgreSQL ? 'paypal_client_id' : 'client_id';
+    const paypalSecretColumn = isPostgreSQL ? 'paypal_secret' : 'secret';
+    const paypalIdValue = isPostgreSQL ? (paypal_client_id || null) : (client_id || null);
+    const paypalSecretValue = isPostgreSQL ? (paypal_secret || null) : (secret || null);
+    
     await db.execute(
-      `UPDATE clients SET name = ?, logo = ?, primary_color = ?, secondary_color = ?, language = ?, client_id = ?, secret = ?, updated_at = NOW()
+      `UPDATE clients SET name = ?, logo = ?, primary_color = ?, secondary_color = ?, language = ?, ${paypalIdColumn} = ?, ${paypalSecretColumn} = ?, updated_at = NOW()
        WHERE id = ?`,
-      [name, logo, primary_color, secondary_color, language, client_id || null, secret || null, id]
+      [name, logo, primary_color, secondary_color, language, paypalIdValue, paypalSecretValue, id]
     );
   }
 
