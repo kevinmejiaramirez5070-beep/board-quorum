@@ -267,7 +267,7 @@ const Organizations = () => {
                         className="input input-sm"
                         required
                         placeholder={language === 'es' ? 'Ej: asocolci' : 'Ex: asocolci'}
-                        pattern="[a-z0-9-]+"
+                        pattern="[a-z0-9\-]+"
                         title={language === 'es' ? 'Solo letras minúsculas, números y guiones' : 'Only lowercase letters, numbers and hyphens'}
                       />
                     </div>
