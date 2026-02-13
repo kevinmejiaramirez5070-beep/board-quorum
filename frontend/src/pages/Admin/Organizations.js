@@ -447,15 +447,31 @@ const Organizations = () => {
                                   {org.lastActivity || (language === 'es' ? 'Sin actividad' : 'No activity')}
                                 </td>
                                 <td>
-                                  <button 
-                                    className="btn-enter-client"
-                                    onClick={() => {
-                                      // Por ahora redirigir a productos, pero debería ser a una vista específica del cliente
-                                      window.location.href = `/products?client=${org.id}`;
-                                    }}
-                                  >
-                                    {language === 'es' ? 'Entrar →' : 'Enter →'}
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <button 
+                                      className="btn-enter-client"
+                                      onClick={() => {
+                                        // Por ahora redirigir a productos, pero debería ser a una vista específica del cliente
+                                        window.location.href = `/products?client=${org.id}`;
+                                      }}
+                                    >
+                                      {language === 'es' ? 'Entrar →' : 'Enter →'}
+                                    </button>
+                                    <button 
+                                      className="btn-edit-client"
+                                      onClick={() => handleEdit(org)}
+                                      title={language === 'es' ? 'Editar' : 'Edit'}
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button 
+                                      className="btn-delete-client"
+                                      onClick={() => handleDelete(org.id)}
+                                      title={language === 'es' ? 'Eliminar' : 'Delete'}
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );

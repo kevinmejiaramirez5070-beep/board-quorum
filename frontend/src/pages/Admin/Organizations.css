@@ -56,6 +56,10 @@
   color: var(--text-primary);
 }
 
+.clients-table td:last-child {
+  white-space: nowrap;
+}
+
 .clients-table tbody tr:hover {
   background: var(--background);
 }
@@ -104,6 +108,34 @@
 .btn-enter-client:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 114, 255, 0.3);
+}
+
+.btn-edit-client,
+.btn-delete-client {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.btn-edit-client:hover {
+  background: rgba(0, 114, 255, 0.1);
+  border-color: #0072FF;
+  transform: translateY(-2px);
+}
+
+.btn-delete-client:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+  transform: translateY(-2px);
 }
 
 .table-footer {
