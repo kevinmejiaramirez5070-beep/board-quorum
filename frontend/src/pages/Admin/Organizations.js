@@ -474,40 +474,6 @@ const Organizations = () => {
                     </>
                   )}
                 </div>
-
-                {/* Principio Correcto */}
-                <div className="correct-principle-card">
-                  <div className="principle-header">
-                    <span className="principle-icon">✔</span>
-                    <h3>{language === 'es' ? 'Principio Correcto' : 'Correct Principle'}</h3>
-                  </div>
-                  <p className="principle-text">
-                    {language === 'es' 
-                      ? 'ASOCOLCI debe tener TODO su protagonismo en SU micrositio, NO en el nivel Admin Master.'
-                      : 'ASOCOLCI must have ALL its prominence on ITS microsite, NOT at the Admin Master level.'
-                    }
-                  </p>
-                  <ul className="principle-list">
-                    <li>
-                      {language === 'es' 
-                        ? 'Nivel Admin Master = Vista MULTI-CLIENTE (agnóstica)'
-                        : 'Admin Master Level = MULTI-CLIENT view (agnostic)'
-                      }
-                    </li>
-                    <li>
-                      {language === 'es' 
-                        ? 'Nivel Cliente = Vista ESPECÍFICA con todo el detalle'
-                        : 'Client Level = SPECIFIC view with all details'
-                      }
-                    </li>
-                    <li>
-                      {language === 'es' 
-                        ? 'Separación clara de contextos'
-                        : 'Clear separation of contexts'
-                      }
-                    </li>
-                  </ul>
-                </div>
               </>
             )}
           </div>
