@@ -189,6 +189,22 @@ class Member {
       [id]
     );
   }
+
+  /**
+   * Busca un miembro por número de documento
+   */
+  static async findByDocumentNumber(documentNumber, clientId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
+    const [rows] = await db.execute(
+      `SELECT id, name, numero_documento, tipo_documento, position, rol_organico, 
+              cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante
+       FROM members 
+       WHERE numero_documento = ? AND client_id = ? AND ${activeCondition}`,
+      [documentNumber, clientId]
+    );
+    return rows[0] || null;
+  }
 }
 
 module.exports = Member;

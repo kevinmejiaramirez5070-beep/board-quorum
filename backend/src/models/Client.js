@@ -45,6 +45,7 @@ class Client {
     console.log('Client.create - data:', { name, subdomain, primary_color, secondary_color, language });
     
     try {
+      // Asegurar que no especificamos el ID (dejamos que PostgreSQL lo genere automáticamente)
       const [rows, fields] = await db.execute(
         `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, ${paypalIdColumn}, ${paypalSecretColumn}, active, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,

@@ -49,6 +49,40 @@ class Vote {
     );
     return rows[0].count > 0;
   }
+
+  /**
+   * Verifica si un miembro ya votó por número de documento
+   */
+  static async hasVotedByDocument(votingId, documentNumber, clientId) {
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count 
+       FROM votes v
+       JOIN members m ON v.member_id = m.id
+       WHERE v.voting_id = ? AND m.numero_documento = ? AND m.client_id = ?`,
+      [votingId, documentNumber, clientId]
+    );
+    return rows[0].count > 0;
+  }
+
+  /**
+   * Crea un voto verificando por cédula
+   */
+  static async createByDocument(data) {
+    const { voting_id, member_id, option, comment } = data;
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const returningClause = isPostgreSQL ? ' RETURNING id' : '';
+    
+    const [result] = await db.execute(
+      `INSERT INTO votes (voting_id, member_id, option, comment, created_at)
+       VALUES (?, ?, ?, ?, NOW())${returningClause}`,
+      [voting_id, member_id, option, comment || null]
+    );
+    
+    if (isPostgreSQL) {
+      return result?.[0]?.id;
+    }
+    return result.insertId;
+  }
 }
 
 module.exports = Vote;

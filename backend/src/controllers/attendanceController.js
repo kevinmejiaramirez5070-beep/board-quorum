@@ -33,7 +33,158 @@ exports.updateAttendance = async (req, res) => {
   }
 };
 
-// Registro público de asistencia (sin autenticación, mediante link compartible)
+// PASO 1: Verificar cédula (nuevo sistema seguro)
+exports.verifyDocument = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { cedula } = req.body;
+
+    if (!cedula) {
+      return res.status(400).json({ message: 'Número de cédula es requerido' });
+    }
+
+    const Meeting = require('../models/Meeting');
+    const Member = require('../models/Member');
+    
+    // Obtener la reunión para validar que existe y obtener client_id
+    const meeting = await Meeting.findById(meetingId, null);
+    if (!meeting) {
+      return res.status(404).json({ message: 'Reunión no encontrada' });
+    }
+
+    // Buscar miembro por número de documento
+    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
+    
+    if (!member) {
+      // No encontrado - permitir registro manual
+      return res.status(404).json({ 
+        found: false,
+        message: 'No se encontró en la base de datos',
+        cedula: cedula
+      });
+    }
+
+    // Miembro encontrado - validar elegibilidad (INTERNO, no mostrar al usuario)
+    const isEligibleForQuorum = member.cuenta_quorum === true || member.cuenta_quorum === 1;
+    
+    // Retornar solo datos públicos para confirmación (NO mostrar campos sensibles)
+    res.json({
+      found: true,
+      member: {
+        id: member.id,
+        name: member.name,
+        numero_documento: member.numero_documento,
+        position: member.position || member.rol_organico || 'Miembro'
+      },
+      eligibleForQuorum: isEligibleForQuorum,
+      // Este mensaje se mostrará solo si NO es elegible
+      quorumMessage: isEligibleForQuorum 
+        ? null 
+        : 'Tu asistencia se registrará pero NO cuenta para quórum'
+    });
+  } catch (error) {
+    console.error('Error in verifyDocument:', error);
+    res.status(500).json({ message: error.message || 'Error al verificar la cédula' });
+  }
+};
+
+// PASO 5: Confirmar asistencia después de verificación
+exports.confirmAttendance = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { cedula, confirmado } = req.body;
+
+    if (!cedula || !confirmado) {
+      return res.status(400).json({ message: 'Cédula y confirmación son requeridos' });
+    }
+
+    const Meeting = require('../models/Meeting');
+    const Member = require('../models/Member');
+    
+    // Obtener la reunión
+    const meeting = await Meeting.findById(meetingId, null);
+    if (!meeting) {
+      return res.status(404).json({ message: 'Reunión no encontrada' });
+    }
+
+    // Buscar miembro por número de documento
+    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
+    if (!member) {
+      return res.status(404).json({ message: 'Miembro no encontrado' });
+    }
+
+    // Verificar si ya está registrado
+    const existingAttendance = await Attendance.findByMemberAndMeeting(meetingId, member.id);
+    if (existingAttendance) {
+      return res.status(400).json({ message: 'Ya has registrado tu asistencia para esta reunión' });
+    }
+
+    // Registrar asistencia
+    const data = {
+      meeting_id: meetingId,
+      member_id: member.id,
+      status: 'present',
+      arrival_time: new Date()
+    };
+
+    const attendanceId = await Attendance.create(data);
+    res.status(201).json({ 
+      id: attendanceId, 
+      message: 'Asistencia registrada exitosamente',
+      member: {
+        name: member.name,
+        position: member.position || member.rol_organico
+      }
+    });
+  } catch (error) {
+    console.error('Error in confirmAttendance:', error);
+    res.status(500).json({ message: error.message || 'Error al confirmar la asistencia' });
+  }
+};
+
+// Registro manual (pendiente de aprobación)
+exports.registerManualAttendance = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { cedula, nombre_completo, cargo } = req.body;
+
+    if (!cedula || !nombre_completo || !cargo) {
+      return res.status(400).json({ message: 'Cédula, nombre completo y cargo son requeridos' });
+    }
+
+    const Meeting = require('../models/Meeting');
+    
+    // Obtener la reunión
+    const meeting = await Meeting.findById(meetingId, null);
+    if (!meeting) {
+      return res.status(404).json({ message: 'Reunión no encontrada' });
+    }
+
+    // Crear registro pendiente de aprobación (member_id será null)
+    const data = {
+      meeting_id: meetingId,
+      member_id: null, // null porque no está en la BD
+      status: 'present',
+      arrival_time: new Date(),
+      pending_approval: true,
+      manual_name: nombre_completo,
+      manual_position: cargo,
+      manual_document: cedula
+    };
+
+    const attendanceId = await Attendance.create(data);
+    res.status(201).json({ 
+      id: attendanceId, 
+      message: 'Registro pendiente de aprobación del administrador',
+      pending: true
+    });
+  } catch (error) {
+    console.error('Error in registerManualAttendance:', error);
+    res.status(500).json({ message: error.message || 'Error al registrar la asistencia manual' });
+  }
+};
+
+// Registro público de asistencia (LEGACY - mantener para compatibilidad, pero deprecar)
 exports.registerPublicAttendance = async (req, res) => {
   try {
     const { meetingId } = req.params;

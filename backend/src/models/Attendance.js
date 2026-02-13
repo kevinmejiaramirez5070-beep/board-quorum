@@ -13,12 +13,28 @@ class Attendance {
   }
 
   static async create(data) {
-    const { meeting_id, member_id, status, arrival_time, acting_as_principal = 0 } = data;
+    const { 
+      meeting_id, member_id, status, arrival_time, acting_as_principal = 0,
+      pending_approval = false, manual_name = null, manual_position = null, manual_document = null
+    } = data;
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const pendingValue = isPostgreSQL ? (pending_approval ? 'true' : 'false') : (pending_approval ? 1 : 0);
+    const returningClause = isPostgreSQL ? ' RETURNING id' : '';
+    
+    // Si member_id es null, es un registro manual
+    const memberIdValue = member_id !== null && member_id !== undefined ? member_id : null;
+    
     const [result] = await db.execute(
-      `INSERT INTO attendance (meeting_id, member_id, status, arrival_time, acting_as_principal, created_at)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
-      [meeting_id, member_id, status, arrival_time, acting_as_principal]
+      `INSERT INTO attendance (meeting_id, member_id, status, arrival_time, acting_as_principal, 
+        pending_approval, manual_name, manual_position, manual_document, created_at)
+       VALUES (?, ?, ?, ?, ?, ${pendingValue}, ?, ?, ?, NOW())${returningClause}`,
+      [meeting_id, memberIdValue, status, arrival_time, acting_as_principal, 
+       manual_name, manual_position, manual_document]
     );
+    
+    if (isPostgreSQL) {
+      return result?.[0]?.id;
+    }
     return result.insertId;
   }
 
@@ -95,6 +111,34 @@ class Attendance {
       [meetingId, memberId]
     );
     return rows[0] || null;
+  }
+
+  /**
+   * Busca asistencias pendientes de aprobación
+   */
+  static async findPendingApproval(meetingId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const pendingCondition = isPostgreSQL ? 'pending_approval = true' : 'pending_approval = 1';
+    const [rows] = await db.execute(
+      `SELECT a.*, m.name as member_name, m.email, m.position
+       FROM attendance a
+       LEFT JOIN members m ON a.member_id = m.id
+       WHERE a.meeting_id = ? AND ${pendingCondition}`,
+      [meetingId]
+    );
+    return rows;
+  }
+
+  /**
+   * Aprueba una asistencia pendiente
+   */
+  static async approveAttendance(attendanceId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const pendingValue = isPostgreSQL ? 'false' : '0';
+    await db.execute(
+      `UPDATE attendance SET pending_approval = ${pendingValue}, updated_at = NOW() WHERE id = ?`,
+      [attendanceId]
+    );
   }
 }
 

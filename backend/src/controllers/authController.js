@@ -149,9 +149,7 @@ exports.changePassword = async (req, res) => {
 exports.changeEmail = async (req, res) => {
   try {
     const { newEmail, password } = req.body;
-    const userId = req.user.id;
-
-    if (!newEmail || !password) {
+    const userId = req.user.id;    if (!newEmail || !password) {
       return res.status(400).json({ message: 'Nuevo correo y contraseña son requeridos' });
     }
 
@@ -174,9 +172,7 @@ exports.changeEmail = async (req, res) => {
     const isValidPassword = await User.comparePassword(password, currentPasswordHash);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
-    }
-
-    // Actualizar el correo
+    }    // Actualizar el correo
     await User.updateEmail(userId, newEmail);
 
     // Obtener el usuario actualizado

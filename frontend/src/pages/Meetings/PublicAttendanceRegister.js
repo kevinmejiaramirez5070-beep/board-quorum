@@ -9,34 +9,30 @@ const PublicAttendanceRegister = () => {
   const { meetingId } = useParams();
   const { t, language } = useLanguage();
   const [meeting, setMeeting] = useState(null);
-  const [members, setMembers] = useState([]);
+  const [step, setStep] = useState('verify'); // 'verify', 'confirm', 'manual', 'registered'
   const [formData, setFormData] = useState({
-    member_id: '',
-    name: '',
-    email: ''
+    cedula: '',
+    nombre_completo: '',
+    cargo: ''
   });
+  const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [quorumMessage, setQuorumMessage] = useState(null);
 
   useEffect(() => {
-    loadData();
+    loadMeeting();
   }, [meetingId]);
 
-  const loadData = async () => {
+  const loadMeeting = async () => {
     try {
-      // Usar endpoints públicos (sin autenticación)
       const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      
-      const [meetingRes, membersRes] = await Promise.all([
-        axios.get(`${baseURL}/meetings/public/${meetingId}`),
-        axios.get(`${baseURL}/members/public/meeting/${meetingId}`)
-      ]);
+      const meetingRes = await axios.get(`${baseURL}/meetings/public/${meetingId}`);
       setMeeting(meetingRes.data);
-      setMembers(membersRes.data || []);
     } catch (error) {
-      console.error('Error loading data:', error);
-      alert(t('errorLoadingMeeting') || (language === 'es' ? 'Error al cargar la información de la reunión' : 'Error loading meeting information'));
+      console.error('Error loading meeting:', error);
+      alert(language === 'es' ? 'Error al cargar la información de la reunión' : 'Error loading meeting information');
     } finally {
       setLoading(false);
     }
@@ -49,52 +45,94 @@ const PublicAttendanceRegister = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
+  // PASO 1: Verificar cédula
+  const handleVerify = async (e) => {
     e.preventDefault();
+    if (!formData.cedula) {
+      alert(language === 'es' ? 'Por favor ingresa tu número de cédula' : 'Please enter your ID number');
+      return;
+    }
+
     setSubmitting(true);
-
     try {
-      // Si seleccionó un miembro existente, usar su ID
-      let memberId = formData.member_id;
-      
-      // Si no seleccionó un miembro pero ingresó nombre/email, buscar o crear
-      if (!memberId && formData.name) {
-        // Buscar miembro por nombre o email
-        const foundMember = members.find(m => 
-          m.name.toLowerCase() === formData.name.toLowerCase() || 
-          m.email?.toLowerCase() === formData.email.toLowerCase()
-        );
-        
-        if (foundMember) {
-          memberId = foundMember.id;
-        } else {
-          alert(t('memberNotFoundHelp') || (language === 'es' ? 'Por favor selecciona un miembro de la lista o verifica que el nombre/email coincida con un miembro registrado.' : 'Please select a member from the list or verify that the name/email matches a registered member.'));
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      if (!memberId) {
-        alert(t('selectMember') || (language === 'es' ? 'Por favor selecciona un miembro' : 'Please select a member'));
-        setSubmitting(false);
-        return;
-      }
-
-      // Llamar al endpoint público directamente
       const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      await axios.post(`${baseURL}/attendance/public/meeting/${meetingId}`, {
-        member_id: parseInt(memberId),
-        status: 'present'
+      const response = await axios.post(`${baseURL}/attendance/verify/meeting/${meetingId}`, {
+        cedula: formData.cedula
+      });
+
+      if (response.data.found) {
+        // Miembro encontrado - mostrar confirmación
+        setMemberData(response.data.member);
+        setQuorumMessage(response.data.quorumMessage);
+        setStep('confirm');
+      } else {
+        // No encontrado - mostrar opción de registro manual
+        setStep('notFound');
+      }
+    } catch (error) {
+      if (error.response?.status === 404 && error.response?.data?.found === false) {
+        // No encontrado - mostrar opción de registro manual
+        setStep('notFound');
+      } else {
+        console.error('Error verifying document:', error);
+        const errorMessage = error.response?.data?.message || (language === 'es' ? 'Error al verificar la cédula' : 'Error verifying ID');
+        alert(errorMessage);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // PASO 5: Confirmar asistencia
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      await axios.post(`${baseURL}/attendance/confirm/meeting/${meetingId}`, {
+        cedula: formData.cedula,
+        confirmado: true
       });
       
       setRegistered(true);
+      setStep('registered');
       setTimeout(() => {
         if (meeting?.google_meet_link) {
           window.open(meeting.google_meet_link, '_blank');
         }
       }, 2000);
     } catch (error) {
-      console.error('Error registering attendance:', error);
+      console.error('Error confirming attendance:', error);
+      const errorMessage = error.response?.data?.message || (language === 'es' ? 'Error al confirmar la asistencia' : 'Error confirming attendance');
+      alert(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Registro manual
+  const handleManualRegister = async (e) => {
+    e.preventDefault();
+    if (!formData.nombre_completo || !formData.cargo) {
+      alert(language === 'es' ? 'Por favor completa todos los campos' : 'Please complete all fields');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      await axios.post(`${baseURL}/attendance/manual/meeting/${meetingId}`, {
+        cedula: formData.cedula,
+        nombre_completo: formData.nombre_completo,
+        cargo: formData.cargo
+      });
+      
+      setRegistered(true);
+      setStep('registered');
+      alert(language === 'es' 
+        ? 'Tu registro quedará pendiente de revisión por el administrador' 
+        : 'Your registration will be pending administrator review');
+    } catch (error) {
+      console.error('Error registering manual attendance:', error);
       const errorMessage = error.response?.data?.message || (language === 'es' ? 'Error al registrar la asistencia' : 'Error registering attendance');
       alert(errorMessage);
     } finally {
@@ -102,10 +140,15 @@ const PublicAttendanceRegister = () => {
     }
   };
 
+  const handleRetry = () => {
+    setStep('verify');
+    setFormData({ ...formData, cedula: '' });
+  };
+
   if (loading) {
     return (
       <div className="public-attendance-page">
-        <div className="loading">{t('loading')}</div>
+        <div className="loading">{t('loading') || 'Cargando...'}</div>
       </div>
     );
   }
@@ -113,19 +156,19 @@ const PublicAttendanceRegister = () => {
   if (!meeting) {
     return (
       <div className="public-attendance-page">
-        <div className="error-message">{t('meetingNotFound')}</div>
+        <div className="error-message">{t('meetingNotFound') || 'Reunión no encontrada'}</div>
       </div>
     );
   }
 
-  if (registered) {
+  if (registered && step === 'registered') {
     return (
       <div className="public-attendance-page">
         <div className="public-attendance-container">
           <Logo size="medium" showText={true} />
           <div className="success-message">
-            <h2>✓ {t('attendanceRegistered')}</h2>
-            <p>{t('attendanceRegisteredSuccess')}</p>
+            <h2>✓ {language === 'es' ? 'Asistencia Registrada' : 'Attendance Registered'}</h2>
+            <p>{language === 'es' ? 'Tu asistencia ha sido registrada exitosamente' : 'Your attendance has been successfully registered'}</p>
             {meeting.google_meet_link && (
               <div style={{ marginTop: '24px' }}>
                 <a 
@@ -134,7 +177,7 @@ const PublicAttendanceRegister = () => {
                   rel="noopener noreferrer"
                   className="btn btn-primary btn-large"
                 >
-                  {t('joinMeeting')} →
+                  {language === 'es' ? 'Unirse a la Reunión' : 'Join Meeting'} →
                 </a>
               </div>
             )}
@@ -148,51 +191,201 @@ const PublicAttendanceRegister = () => {
     <div className="public-attendance-page">
       <div className="public-attendance-container">
         <Logo size="medium" showText={true} />
-        <h1>{t('attendanceRegistration')}</h1>
+        <h1>{language === 'es' ? 'Registro de Asistencia' : 'Attendance Registration'}</h1>
+        
         <div className="meeting-info-card">
           <h2>{meeting.title}</h2>
-          <p><strong>{t('dateAndTime')}:</strong> {new Date(meeting.date).toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}</p>
-          {meeting.location && <p><strong>{t('location')}:</strong> {meeting.location}</p>}
+          <p><strong>{language === 'es' ? 'Fecha y Hora' : 'Date and Time'}:</strong> {new Date(meeting.date).toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}</p>
+          {meeting.location && <p><strong>{language === 'es' ? 'Ubicación' : 'Location'}:</strong> {meeting.location}</p>}
         </div>
 
-        <form onSubmit={handleSubmit} className="public-attendance-form">
-          <div className="form-group">
-            <label className="label">{t('selectMember')} *</label>
-            <select
-              name="member_id"
-              value={formData.member_id}
-              onChange={handleChange}
-              className="input select-member"
-              required
+        {/* PASO 1: Verificar cédula */}
+        {step === 'verify' && (
+          <form onSubmit={handleVerify} className="public-attendance-form">
+            <div className="form-group">
+              <label className="label">{language === 'es' ? 'Ingresa tu número de cédula' : 'Enter your ID number'} *</label>
+              <input
+                type="text"
+                name="cedula"
+                value={formData.cedula}
+                onChange={handleChange}
+                className="input"
+                placeholder={language === 'es' ? 'Ejemplo: 52209188' : 'Example: 52209188'}
+                required
+              />
+              <small className="form-help">
+                {language === 'es' 
+                  ? 'Si no encuentras tu cédula, contacta al administrador' 
+                  : 'If you cannot find your ID, contact the administrator'}
+              </small>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn btn-primary btn-large btn-block"
+              disabled={submitting}
             >
-              <option value="">{t('selectMemberFromList')}</option>
-              {members.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.name} {member.position ? `- ${member.position}` : ''}
-                </option>
-              ))}
-            </select>
-            <small className="form-help">{t('memberNotFoundHelp')}</small>
+              {submitting 
+                ? (language === 'es' ? 'Verificando...' : 'Verifying...') 
+                : (language === 'es' ? 'Verificar Asistencia' : 'Verify Attendance')}
+            </button>
+          </form>
+        )}
+
+        {/* PASO 4: Confirmación (miembro encontrado) */}
+        {step === 'confirm' && memberData && (
+          <div className="confirmation-section">
+            <div className="confirmation-card">
+              <h3>{language === 'es' ? 'Confirmación' : 'Confirmation'}</h3>
+              <div className="member-info">
+                <p><strong>{language === 'es' ? 'Nombre' : 'Name'}:</strong> {memberData.name}</p>
+                <p><strong>{language === 'es' ? 'CC' : 'ID'}:</strong> {memberData.numero_documento}</p>
+                <p><strong>{language === 'es' ? 'Cargo' : 'Position'}:</strong> {memberData.position}</p>
+              </div>
+              
+              {quorumMessage && (
+                <div className="alert alert-warning" style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                  {quorumMessage}
+                </div>
+              )}
+
+              <p style={{ marginTop: '20px', fontSize: '16px', fontWeight: 'bold' }}>
+                {language === 'es' ? '¿Eres tú?' : 'Is it you?'}
+              </p>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button 
+                  onClick={handleRetry}
+                  className="btn btn-secondary"
+                  disabled={submitting}
+                >
+                  {language === 'es' ? 'No, Reintentar' : 'No, Retry'}
+                </button>
+                <button 
+                  onClick={handleConfirm}
+                  className="btn btn-primary btn-large"
+                  disabled={submitting}
+                >
+                  {submitting 
+                    ? (language === 'es' ? 'Registrando...' : 'Registering...') 
+                    : (language === 'es' ? 'SÍ, SOY YO' : 'YES, IT\'S ME')}
+                </button>
+              </div>
+            </div>
           </div>
+        )}
 
-          <button 
-            type="submit" 
-            className="btn btn-primary btn-large btn-block"
-            disabled={submitting}
-          >
-            {submitting ? t('registering') : t('registerAttendance')}
-          </button>
-        </form>
+        {/* CASO: Cédula no encontrada */}
+        {step === 'notFound' && (
+          <div className="not-found-section">
+            <div className="alert alert-warning" style={{ padding: '16px', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '20px' }}>
+              <strong>⚠️ {language === 'es' ? 'No Encontrada' : 'Not Found'}</strong>
+              <p style={{ marginTop: '8px' }}>
+                {language === 'es' ? 'Número ingresado' : 'Number entered'}: <strong>{formData.cedula}</strong>
+              </p>
+              <p>{language === 'es' ? 'No se encontró en la base de datos' : 'Not found in the database'}</p>
+              <p style={{ marginTop: '8px' }}>
+                <strong>{language === 'es' ? '¿El número es correcto?' : 'Is the number correct?'}</strong>
+              </p>
+            </div>
 
-        {meeting.google_meet_link && (
-          <div className="meet-link-section">
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
+              <button 
+                onClick={handleRetry}
+                className="btn btn-secondary"
+              >
+                {language === 'es' ? 'NO, ME EQUIVOQUÉ (Reintentar)' : 'NO, I MADE A MISTAKE (Retry)'}
+              </button>
+              <button 
+                onClick={() => setStep('manual')}
+                className="btn btn-warning"
+              >
+                {language === 'es' ? 'SÍ, ES CORRECTO (Continuar)' : 'YES, IT IS CORRECT (Continue)'}
+              </button>
+            </div>
+
+            {/* Registro Manual */}
+            {step === 'manual' && (
+              <div className="manual-registration-section">
+                <h3 style={{ color: '#0072FF', marginBottom: '16px' }}>
+                  {language === 'es' ? 'Registro Manual' : 'Manual Registration'}
+                </h3>
+                <div className="alert alert-info" style={{ padding: '12px', backgroundColor: '#d1ecf1', borderRadius: '4px', marginBottom: '20px' }}>
+                  {language === 'es' 
+                    ? 'Este registro quedará pendiente de revisión por el administrador' 
+                    : 'This registration will be pending administrator review'}
+                </div>
+
+                <form onSubmit={handleManualRegister} className="manual-form">
+                  <div className="form-group">
+                    <label className="label">{language === 'es' ? 'CC (confirmado)' : 'ID (confirmed)'}</label>
+                    <input
+                      type="text"
+                      value={formData.cedula}
+                      className="input"
+                      disabled
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">{language === 'es' ? 'Nombre completo' : 'Full name'} *</label>
+                    <input
+                      type="text"
+                      name="nombre_completo"
+                      value={formData.nombre_completo}
+                      onChange={handleChange}
+                      className="input"
+                      placeholder={language === 'es' ? 'Nombres y apellidos completos' : 'First and last names'}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">{language === 'es' ? 'Cargo' : 'Position'} *</label>
+                    <input
+                      type="text"
+                      name="cargo"
+                      value={formData.cargo}
+                      onChange={handleChange}
+                      className="input"
+                      placeholder={language === 'es' ? 'Selecciona...' : 'Select...'}
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn btn-warning btn-large btn-block"
+                    disabled={submitting}
+                  >
+                    {submitting 
+                      ? (language === 'es' ? 'Registrando...' : 'Registering...') 
+                      : (language === 'es' ? 'Registrar (Pendiente Aprobación)' : 'Register (Pending Approval)')}
+                  </button>
+                </form>
+
+                <div className="use-cases" style={{ marginTop: '24px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                  <strong>{language === 'es' ? 'CASOS DE USO:' : 'USE CASES:'}</strong>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                    <li>{language === 'es' ? 'Error de digitación del miembro' : 'Member typing error'}</li>
+                    <li>{language === 'es' ? 'Invitado ocasional no en BD' : 'Occasional guest not in DB'}</li>
+                    <li>{language === 'es' ? 'Miembro nuevo sin actualizar BD' : 'New member not updated in DB'}</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {meeting.google_meet_link && step === 'verify' && (
+          <div className="meet-link-section" style={{ marginTop: '24px' }}>
             <a 
               href={meeting.google_meet_link} 
               target="_blank" 
               rel="noopener noreferrer"
               className="btn btn-secondary btn-large btn-block"
             >
-              {t('joinMeeting')} →
+              {language === 'es' ? 'Unirse a la Reunión' : 'Join Meeting'} →
             </a>
           </div>
         )}
@@ -202,6 +395,3 @@ const PublicAttendanceRegister = () => {
 };
 
 export default PublicAttendanceRegister;
-
-
-
