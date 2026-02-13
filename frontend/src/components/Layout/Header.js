@@ -68,7 +68,7 @@ const Header = () => {
               <>
                 {isAuthenticated && (
                   <>
-                    <Link to="/meetings">{t('meetings')}</Link>
+                    <Link to="/products">{t('meetings')}</Link>
                     {/* Admin Master: Ver organizaciones */}
                     {user?.role === 'admin_master' && (
                       <Link to="/admin/organizations">{t('organizations')}</Link>

@@ -4,7 +4,8 @@ const QuorumService = require('../services/quorumService');
 
 exports.getAllMeetings = async (req, res) => {
   try {
-    const meetings = await Meeting.findAll(req.user.client_id);
+    const productId = req.query.product_id ? parseInt(req.query.product_id) : null;
+    const meetings = await Meeting.findAll(req.user.client_id, productId);
     res.json(meetings);
   } catch (error) {
     res.status(500).json({ message: error.message });

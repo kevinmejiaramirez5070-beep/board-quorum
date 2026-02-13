@@ -1,23 +1,48 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { meetingService } from '../../services/meetingService';
+import api from '../../services/api';
 import './CreateMeeting.css';
 
 const CreateMeeting = () => {
   const navigate = useNavigate();
+  const { productId } = useParams();
   const { t, language } = useLanguage();
+  const { client } = useAuth();
+  const [product, setProduct] = useState(null);
+  const [loadingProduct, setLoadingProduct] = useState(!!productId);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     date: '',
     location: '',
-    type: 'junta_directiva',
+    product_id: productId ? parseInt(productId) : null,
     status: 'scheduled',
     google_meet_link: ''
   });
   const [loading, setLoading] = useState(false);
   const [meetLinkGenerated, setMeetLinkGenerated] = useState(false);
+
+  useEffect(() => {
+    if (productId) {
+      loadProduct();
+    }
+  }, [productId]);
+
+  const loadProduct = async () => {
+    try {
+      setLoadingProduct(true);
+      const response = await api.get(`/products/${productId}`);
+      setProduct(response.data);
+    } catch (error) {
+      console.error('Error loading product:', error);
+      alert(language === 'es' ? 'Error al cargar el producto' : 'Error loading product');
+    } finally {
+      setLoadingProduct(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -59,7 +84,12 @@ const CreateMeeting = () => {
       }
       
       console.log('Navegando a reunión con ID:', meetingId);
-      navigate(`/meetings/${meetingId}`);
+      // Si venimos de un producto, volver a la lista de reuniones del producto
+      if (productId) {
+        navigate(`/products/${productId}/meetings`);
+      } else {
+        navigate(`/meetings/${meetingId}`);
+      }
     } catch (error) {
       console.error('Error creating meeting:', error);
       alert(t('errorCreatingMeeting'));
@@ -68,12 +98,29 @@ const CreateMeeting = () => {
     }
   };
 
+  if (loadingProduct) {
+    return <div className="loading">{t('loading')}</div>;
+  }
+
   return (
     <div className="create-meeting">
       <div className="container">
         <div className="form-header">
-          <h1>{t('newMeetingTitle')}</h1>
-          <button onClick={() => navigate('/meetings')} className="btn btn-secondary">
+          <div>
+            <h1>{t('newMeetingTitle')}</h1>
+            {product && (
+              <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '14px' }}>
+                {language === 'es' 
+                  ? `La reunión se crea automáticamente asociada a ${product.name}`
+                  : `The meeting is automatically created associated with ${product.name}`
+                }
+              </p>
+            )}
+          </div>
+          <button 
+            onClick={() => productId ? navigate(`/products/${productId}/meetings`) : navigate('/meetings')} 
+            className="btn btn-secondary"
+          >
             {t('cancel')}
           </button>
         </div>
@@ -143,21 +190,6 @@ const CreateMeeting = () => {
                 : 'Create a meeting in Google Meet and paste the link here. Meetings will be held in Google Meet.'
               }
             </small>
-          </div>
-
-          <div className="form-group">
-            <label className="label">{t('meetingType')}</label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="junta_directiva">{t('boardMeeting')}</option>
-              <option value="asamblea">{t('assembly')}</option>
-              <option value="comite">{t('committee')}</option>
-              <option value="consejo">{t('council')}</option>
-            </select>
           </div>
 
           <div className="form-group">

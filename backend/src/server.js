@@ -44,6 +44,7 @@ try {
   app.use('/api/votes', require('./routes/votes'));
   app.use('/api/members', require('./routes/members'));
   app.use('/api/clients', require('./routes/clients'));
+  app.use('/api/products', require('./routes/products'));
   app.use('/api/contact', require('./routes/contact'));
   console.log('✅ All routes loaded successfully');
 } catch (error) {

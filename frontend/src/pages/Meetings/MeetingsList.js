@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { meetingService } from '../../services/meetingService';
 import { joinRequestService } from '../../services/joinRequestService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './MeetingsList.css';
 
 const MeetingsList = () => {
+  const { productId } = useParams();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState(null);
   const [requestStatuses, setRequestStatuses] = useState({});
 
   useEffect(() => {
+    if (productId) {
+      loadProduct();
+    }
     loadMeetings();
-  }, []);
+  }, [productId]);
 
   useEffect(() => {
     if (user?.role === 'member' && meetings.length > 0) {
@@ -37,9 +43,25 @@ const MeetingsList = () => {
     setRequestStatuses(statuses);
   };
 
+  const loadProduct = async () => {
+    try {
+      const response = await api.get(`/products/${productId}`);
+      setProduct(response.data);
+    } catch (error) {
+      console.error('Error loading product:', error);
+    }
+  };
+
   const loadMeetings = async () => {
     try {
-      const response = await meetingService.getAll();
+      let response;
+      if (productId) {
+        // Filtrar por producto
+        response = await api.get(`/meetings?product_id=${productId}`);
+      } else {
+        // Cargar todas las reuniones (compatibilidad hacia atrás)
+        response = await meetingService.getAll();
+      }
       setMeetings(response.data);
     } catch (error) {
       console.error('Error loading meetings:', error);
@@ -99,11 +121,23 @@ const MeetingsList = () => {
       <div className="container" style={{ paddingLeft: '0' }}>
         <div className="page-header" style={{ paddingLeft: '0', marginLeft: '0' }}>
           <div className="header-content" style={{ paddingLeft: '0', marginLeft: '0' }}>
-            <p className="page-subtitle">{t('manageMeetings')}</p>
+            {product ? (
+              <>
+                <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>{product.name}</h1>
+                <p className="page-subtitle">
+                  {language === 'es' ? 'Gestiona las reuniones de este órgano' : 'Manage meetings for this body'}
+                </p>
+              </>
+            ) : (
+              <p className="page-subtitle">{t('manageMeetings')}</p>
+            )}
           </div>
           {(user?.role === 'admin' || user?.role === 'admin_master') && (
-            <Link to="/meetings/new" className="btn btn-primary">
-              <span style={{ fontSize: '18px' }}>+</span> {t('newMeeting')}
+            <Link 
+              to={productId ? `/products/${productId}/meetings/new` : '/meetings/new'} 
+              className="btn btn-primary"
+            >
+              <span style={{ fontSize: '18px' }}>+</span> {product ? (language === 'es' ? 'Nueva Reunión' : 'New Meeting') : t('newMeeting')}
             </Link>
           )}
         </div>

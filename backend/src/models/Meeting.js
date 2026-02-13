@@ -1,7 +1,14 @@
 const db = require('../config/database');
 
 class Meeting {
-  static async findAll(clientId) {
+  static async findAll(clientId, productId = null) {
+    if (productId) {
+      const [rows] = await db.execute(
+        `SELECT * FROM meetings WHERE client_id = ? AND product_id = ? ORDER BY date DESC`,
+        [clientId, productId]
+      );
+      return rows;
+    }
     const [rows] = await db.execute(
       `SELECT * FROM meetings WHERE client_id = ? ORDER BY date DESC`,
       [clientId]
@@ -26,18 +33,19 @@ class Meeting {
   }
 
   static async create(data) {
-    const { client_id, title, description, date, location, type, status, google_meet_link = null } = data;
+    const { client_id, product_id, title, description, date, location, type, status, google_meet_link = null } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
     
     console.log('Meeting.create - isPostgreSQL:', isPostgreSQL);
-    console.log('Meeting.create - data:', { client_id, title, date, location, type, status });
+    console.log('Meeting.create - data:', { client_id, product_id, title, date, location, type, status });
     
     try {
+      // Usar product_id si está disponible, sino usar type (compatibilidad hacia atrás)
       const [rows, fields] = await db.execute(
-        `INSERT INTO meetings (client_id, title, description, date, location, type, status, google_meet_link, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
-        [client_id, title, description, date, location, type, status || 'scheduled', google_meet_link]
+        `INSERT INTO meetings (client_id, product_id, title, description, date, location, type, status, google_meet_link, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
+        [client_id, product_id || null, title, description, date, location, type || null, status || 'scheduled', google_meet_link]
       );
       
       console.log('Meeting.create - rows:', rows);
