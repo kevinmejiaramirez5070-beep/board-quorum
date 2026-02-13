@@ -68,20 +68,22 @@ const Header = () => {
               <>
                 {isAuthenticated && (
                   <>
-                    <Link to="/products">{t('meetings')}</Link>
-                    {/* Admin Master: Ver organizaciones */}
-                    {user?.role === 'admin_master' && (
-                      <Link to="/admin/organizations">{t('organizations')}</Link>
+                    {/* Admin Master: Solo ver organizaciones y administración (nivel multi-cliente) */}
+                    {user?.role === 'admin_master' ? (
+                      <>
+                        <Link to="/admin/organizations">{t('organizations')}</Link>
+                        <Link to="/admin">{t('administration')}</Link>
+                      </>
+                    ) : (
+                      <>
+                        {/* Admin/Authorized: Ver reuniones y miembros (nivel cliente específico) */}
+                        <Link to="/products">{t('meetings')}</Link>
+                        {(user?.role === 'admin' || user?.role === 'authorized') && (
+                          <Link to="/admin/members">{t('members')}</Link>
+                        )}
+                        <Link to="/admin">{t('administration')}</Link>
+                      </>
                     )}
-                    {/* Admin: Ver miembros (puede editarlos) */}
-                    {user?.role === 'admin' && (
-                      <Link to="/admin/members">{t('members')}</Link>
-                    )}
-                    {/* Authorized: Ver miembros (solo lectura) */}
-                    {user?.role === 'authorized' && (
-                      <Link to="/admin/members">{t('members')}</Link>
-                    )}
-                    <Link to="/admin">{t('administration')}</Link>
                   </>
                 )}
               </>

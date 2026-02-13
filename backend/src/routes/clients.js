@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth');
+const { auth, isAdminMaster } = require('../middleware/auth');
 const clientController = require('../controllers/clientController');
 
-router.get('/', clientController.getAll);
+router.get('/', auth, clientController.getAll);
+router.get('/stats/platform', auth, isAdminMaster, clientController.getPlatformStats);
+router.get('/meetings/active', auth, isAdminMaster, clientController.getActiveMeetings);
 router.get('/:id', clientController.getById);
 router.post('/', auth, clientController.create);
 router.put('/:id', auth, clientController.update);

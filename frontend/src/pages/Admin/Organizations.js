@@ -376,44 +376,139 @@ const Organizations = () => {
             )}
 
             {!showForm && (
-              <div className="organizations-list">
-                {organizations.length === 0 ? (
-                  <div className="empty-state">
-                    <p>{language === 'es' ? 'No hay organizaciones registradas' : 'No organizations registered'}</p>
-                    <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
-                      {t('createFirstOrganization')}
-                    </button>
+              <>
+                <div className="organizations-table-wrapper">
+                  <div className="table-header">
+                    <h2>
+                      <span className="table-icon">📄</span>
+                      {language === 'es' ? 'TODOS LOS CLIENTES' : 'ALL CLIENTS'}
+                    </h2>
                   </div>
-                ) : (
-                  organizations.map(org => (
-                    <div key={org.id} className="organization-item">
-                      <div className="org-header">
-                        {org.logo && (
-                          <img src={org.logo} alt={org.name} className="org-logo" />
-                        )}
-                        <div className="org-info">
-                          <h3>{org.name}</h3>
-                          <p className="org-subdomain">{org.subdomain}</p>
-                        </div>
-                      </div>
-                      <div className="org-actions">
-                        <button 
-                          className="btn btn-secondary btn-xs"
-                          onClick={() => handleEdit(org)}
-                        >
-                          {t('edit')}
-                        </button>
-                        <button 
-                          className="btn btn-danger btn-xs"
-                          onClick={() => handleDelete(org.id)}
-                        >
-                          {t('delete')}
-                        </button>
-                      </div>
+                  
+                  {organizations.length === 0 ? (
+                    <div className="empty-state">
+                      <p>{language === 'es' ? 'No hay organizaciones registradas' : 'No organizations registered'}</p>
+                      <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+                        {t('createFirstOrganization')}
+                      </button>
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : (
+                    <>
+                      <table className="clients-table">
+                        <thead>
+                          <tr>
+                            <th>{language === 'es' ? 'Cliente' : 'Client'}</th>
+                            <th>{language === 'es' ? 'Estado' : 'Status'}</th>
+                            <th>{language === 'es' ? 'Última Actividad' : 'Last Activity'}</th>
+                            <th>{language === 'es' ? 'Acción' : 'Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {organizations.map(org => {
+                            const getStatusColor = (status) => {
+                              if (status === 'activa') return '#dc2626'; // Red
+                              if (status === 'programada') return '#f59e0b'; // Orange
+                              return '#10b981'; // Green (inactivo)
+                            };
+                            
+                            const getStatusLabel = (status) => {
+                              if (status === 'activa') return language === 'es' ? 'ACTIVA' : 'ACTIVE';
+                              if (status === 'programada') return language === 'es' ? 'Programada' : 'Scheduled';
+                              return language === 'es' ? 'Inactivo' : 'Inactive';
+                            };
+                            
+                            return (
+                              <tr key={org.id}>
+                                <td className="client-name">{org.name}</td>
+                                <td>
+                                  <span 
+                                    className="status-badge"
+                                    style={{ 
+                                      color: getStatusColor(org.status || 'inactivo'),
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
+                                    <span 
+                                      className="status-dot"
+                                      style={{ 
+                                        backgroundColor: getStatusColor(org.status || 'inactivo'),
+                                        width: '8px',
+                                        height: '8px',
+                                        borderRadius: '50%',
+                                        display: 'inline-block'
+                                      }}
+                                    ></span>
+                                    {getStatusLabel(org.status || 'inactivo')}
+                                  </span>
+                                </td>
+                                <td className="last-activity">
+                                  {org.lastActivity || (language === 'es' ? 'Sin actividad' : 'No activity')}
+                                </td>
+                                <td>
+                                  <button 
+                                    className="btn-enter-client"
+                                    onClick={() => {
+                                      // Por ahora redirigir a productos, pero debería ser a una vista específica del cliente
+                                      window.location.href = `/products?client=${org.id}`;
+                                    }}
+                                  >
+                                    {language === 'es' ? 'Entrar →' : 'Enter →'}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      
+                      <div className="table-footer">
+                        <button 
+                          className="btn btn-primary btn-new-client"
+                          onClick={() => setShowForm(true)}
+                        >
+                          + {language === 'es' ? 'Nuevo Cliente' : 'New Client'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Principio Correcto */}
+                <div className="correct-principle-card">
+                  <div className="principle-header">
+                    <span className="principle-icon">✔</span>
+                    <h3>{language === 'es' ? 'Principio Correcto' : 'Correct Principle'}</h3>
+                  </div>
+                  <p className="principle-text">
+                    {language === 'es' 
+                      ? 'ASOCOLCI debe tener TODO su protagonismo en SU micrositio, NO en el nivel Admin Master.'
+                      : 'ASOCOLCI must have ALL its prominence on ITS microsite, NOT at the Admin Master level.'
+                    }
+                  </p>
+                  <ul className="principle-list">
+                    <li>
+                      {language === 'es' 
+                        ? 'Nivel Admin Master = Vista MULTI-CLIENTE (agnóstica)'
+                        : 'Admin Master Level = MULTI-CLIENT view (agnostic)'
+                      }
+                    </li>
+                    <li>
+                      {language === 'es' 
+                        ? 'Nivel Cliente = Vista ESPECÍFICA con todo el detalle'
+                        : 'Client Level = SPECIFIC view with all details'
+                      }
+                    </li>
+                    <li>
+                      {language === 'es' 
+                        ? 'Separación clara de contextos'
+                        : 'Clear separation of contexts'
+                      }
+                    </li>
+                  </ul>
+                </div>
+              </>
             )}
           </div>
         </div>

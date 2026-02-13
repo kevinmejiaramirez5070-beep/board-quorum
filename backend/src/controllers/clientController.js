@@ -1,9 +1,81 @@
 const Client = require('../models/Client');
 const User = require('../models/User');
+const Meeting = require('../models/Meeting');
+const db = require('../config/database');
 
 exports.getAll = async (req, res) => {
   try {
     const clients = await Client.findAll();
+    
+    // Si es admin master, agregar información de última actividad
+    if (req.user?.role === 'admin_master') {
+      const clientsWithActivity = await Promise.all(
+        clients.map(async (client) => {
+          try {
+            // Obtener última reunión activa o próxima
+            const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+            const [lastMeeting] = await db.execute(
+              `SELECT id, title, status, date, updated_at 
+               FROM meetings 
+               WHERE client_id = ? 
+               ORDER BY updated_at DESC, date DESC 
+               LIMIT 1`,
+              [client.id]
+            );
+            
+            // Determinar estado del cliente
+            let status = 'inactivo';
+            let lastActivity = null;
+            
+            if (lastMeeting && lastMeeting.length > 0) {
+              const meeting = lastMeeting[0];
+              const meetingDate = new Date(meeting.updated_at || meeting.date);
+              const now = new Date();
+              const diffMinutes = (now - meetingDate) / (1000 * 60);
+              const diffHours = diffMinutes / 60;
+              
+              if (meeting.status === 'active') {
+                status = 'activa';
+                lastActivity = 'Ahora';
+              } else if (diffMinutes < 60) {
+                status = 'activa';
+                lastActivity = `Hace ${Math.floor(diffMinutes)} min`;
+              } else if (diffHours < 24) {
+                status = 'activa';
+                lastActivity = `Hace ${Math.floor(diffHours)} h`;
+              } else if (diffHours < 48) {
+                status = 'activa';
+                lastActivity = 'Ayer ' + meetingDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+              } else {
+                const meetingDateObj = new Date(meeting.date);
+                if (meetingDateObj > now) {
+                  status = 'programada';
+                  lastActivity = 'Mañana ' + meetingDateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                  lastActivity = meetingDate.toLocaleDateString('es-ES');
+                }
+              }
+            }
+            
+            return {
+              ...client,
+              status,
+              lastActivity
+            };
+          } catch (error) {
+            console.error(`Error getting activity for client ${client.id}:`, error);
+            return {
+              ...client,
+              status: 'inactivo',
+              lastActivity: null
+            };
+          }
+        })
+      );
+      
+      return res.json(clientsWithActivity);
+    }
+    
     res.json(clients);
   } catch (error) {
     console.error('Error in getAll clients:', error);
@@ -182,5 +254,89 @@ exports.delete = async (req, res) => {
     res.json({ message: 'Organización eliminada exitosamente' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Estadísticas de plataforma (solo para admin_master)
+exports.getPlatformStats = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin_master') {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
+
+    // Clientes activos
+    const [activeClients] = await db.execute(
+      `SELECT COUNT(*) as count FROM clients WHERE ${activeCondition}`
+    );
+
+    // Reuniones activas
+    const [activeMeetings] = await db.execute(
+      `SELECT COUNT(*) as count FROM meetings WHERE status = 'active'`
+    );
+
+    // Usuarios totales
+    const [totalUsers] = await db.execute(
+      `SELECT COUNT(*) as count FROM users WHERE ${activeCondition}`
+    );
+
+    res.json({
+      activeClients: parseInt(activeClients[0]?.count || 0),
+      activeMeetings: parseInt(activeMeetings[0]?.count || 0),
+      totalUsers: parseInt(totalUsers[0]?.count || 0)
+    });
+  } catch (error) {
+    console.error('Error getting platform stats:', error);
+    res.status(500).json({ message: error.message || 'Error al obtener estadísticas de plataforma' });
+  }
+};
+
+// Reuniones activas de todos los clientes (solo para admin_master)
+exports.getActiveMeetings = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin_master') {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    const [meetings] = await db.execute(
+      `SELECT 
+        m.id,
+        m.title,
+        m.status,
+        m.date,
+        m.location,
+        m.google_meet_link,
+        c.id as client_id,
+        c.name as client_name,
+        p.name as product_name
+      FROM meetings m
+      JOIN clients c ON m.client_id = c.id
+      LEFT JOIN products p ON m.product_id = p.id
+      WHERE m.status = 'active'
+      ORDER BY m.date ASC`
+    );
+
+    // Agregar información de quórum si es posible
+    const meetingsWithQuorum = await Promise.all(
+      meetings.map(async (meeting) => {
+        try {
+          const QuorumService = require('../services/quorumService');
+          const quorumInfo = await QuorumService.getQuorumInfo(meeting.id, meeting.client_id);
+          return {
+            ...meeting,
+            quorum: quorumInfo
+          };
+        } catch (error) {
+          return meeting;
+        }
+      })
+    );
+
+    res.json(meetingsWithQuorum);
+  } catch (error) {
+    console.error('Error getting active meetings:', error);
+    res.status(500).json({ message: error.message || 'Error al obtener reuniones activas' });
   }
 };

@@ -3,6 +3,190 @@
   min-height: 60vh;
 }
 
+/* Tabla de Clientes */
+.organizations-table-wrapper {
+  margin-bottom: 32px;
+}
+
+.table-header {
+  margin-bottom: 20px;
+}
+
+.table-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.table-icon {
+  font-size: 20px;
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.clients-table thead {
+  background: var(--background);
+}
+
+.clients-table th {
+  padding: 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border);
+}
+
+.clients-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.clients-table tbody tr:hover {
+  background: var(--background);
+}
+
+.clients-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.client-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.status-badge {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.last-activity {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.btn-enter-client {
+  background: linear-gradient(135deg, #0072FF 0%, #00C6FF 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-enter-client:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 114, 255, 0.3);
+}
+
+.table-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.btn-new-client {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-new-client:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Principio Correcto Card */
+.correct-principle-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 32px;
+}
+
+.principle-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.principle-icon {
+  font-size: 24px;
+  color: #10b981;
+}
+
+.principle-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #059669;
+  margin: 0;
+}
+
+.principle-text {
+  font-size: 15px;
+  color: #059669;
+  font-weight: 500;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.principle-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.principle-list li {
+  font-size: 14px;
+  color: #059669;
+  margin-bottom: 8px;
+  padding-left: 24px;
+  position: relative;
+}
+
+.principle-list li:before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: 700;
+}
+
 .organizations-wrapper {
   max-width: 900px;
   margin: 0 auto;
