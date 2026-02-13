@@ -20,8 +20,18 @@ const ProductsList = () => {
   const loadProducts = async () => {
     try {
       setError('');
+      console.log('Loading products...');
       const response = await api.get('/products');
+      console.log('Products response:', response);
       const productsData = response.data || [];
+      console.log('Products data:', productsData);
+      
+      if (productsData.length === 0) {
+        console.warn('No products found. This might mean:');
+        console.warn('1. Products table is empty');
+        console.warn('2. Products exist but are inactive');
+        console.warn('3. Client ID mismatch');
+      }
       
       // Cargar estadísticas para cada producto
       const productsWithStats = await Promise.all(
@@ -39,6 +49,7 @@ const ProductsList = () => {
       setProducts(productsWithStats);
     } catch (error) {
       console.error('Error loading products:', error);
+      console.error('Error details:', error.response?.data);
       setError(error.response?.data?.message || (language === 'es' ? 'Error al cargar productos' : 'Error loading products'));
     } finally {
       setLoading(false);

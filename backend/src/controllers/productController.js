@@ -5,8 +5,16 @@ const Meeting = require('../models/Meeting');
 // Obtener todos los productos de un cliente
 exports.getAll = async (req, res) => {
   try {
-    const { clientId } = req.user;
+    // El token JWT guarda client_id, no clientId
+    const clientId = req.user.client_id || req.user.clientId;
+    console.log('Getting products for clientId:', clientId, 'User:', req.user);
+    
+    if (!clientId) {
+      return res.status(400).json({ message: 'Client ID no encontrado en el token' });
+    }
+    
     const products = await Product.findAll(clientId);
+    console.log('Products found:', products.length);
     res.json(products);
   } catch (error) {
     console.error('Error in getAll products:', error);
@@ -18,7 +26,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { clientId } = req.user;
+    const clientId = req.user.client_id || req.user.clientId;
     const product = await Product.findById(id, clientId);
     
     if (!product) {
@@ -42,7 +50,7 @@ exports.getById = async (req, res) => {
 // Crear un nuevo producto
 exports.create = async (req, res) => {
   try {
-    const { clientId } = req.user;
+    const clientId = req.user.client_id || req.user.clientId;
     const { name, description, quorum_rule, quorum_value, voting_rule, allow_substitutions } = req.body;
     
     if (!name) {
@@ -70,7 +78,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { clientId } = req.user;
+    const clientId = req.user.client_id || req.user.clientId;
     
     // Verificar que el producto existe y pertenece al cliente
     const product = await Product.findById(id, clientId);
@@ -90,7 +98,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const { clientId } = req.user;
+    const clientId = req.user.client_id || req.user.clientId;
     
     // Verificar que el producto existe y pertenece al cliente
     const product = await Product.findById(id, clientId);
@@ -110,7 +118,7 @@ exports.delete = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const { id } = req.params;
-    const { clientId } = req.user;
+    const clientId = req.user.client_id || req.user.clientId;
     
     const product = await Product.findById(id, clientId);
     if (!product) {
