@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
       
-      return { success: true };
+      return { success: true, user: userData };
     } catch (error) {
       const message = error.response?.data?.message || 'Error al iniciar sesión';
       return { success: false, message };

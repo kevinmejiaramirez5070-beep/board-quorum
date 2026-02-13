@@ -15,7 +15,7 @@ const Login = () => {
     };
   }, []);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { t, language } = useLanguage();
   const [organizations, setOrganizations] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -77,7 +77,12 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      navigate('/meetings');
+      // Redirigir según el rol del usuario
+      if (result.user?.role === 'admin_master') {
+        navigate('/admin/organizations');
+      } else {
+        navigate('/products');
+      }
     } else {
       setError(result.message || t('loginError'));
     }

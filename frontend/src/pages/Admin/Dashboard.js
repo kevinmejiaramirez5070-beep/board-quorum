@@ -34,9 +34,14 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
+      // Admin Master debe ir directamente a organizaciones
+      if (isAdminMaster) {
+        navigate('/admin/organizations', { replace: true });
+        return;
+      }
       loadDashboardData();
     }
-  }, [user?.role]);
+  }, [user?.role, isAdminMaster, navigate]);
 
   const loadDashboardData = async () => {
     try {
