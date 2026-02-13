@@ -3,6 +3,24 @@ const User = require('../models/User');
 const Meeting = require('../models/Meeting');
 const db = require('../config/database');
 
+// Endpoint público para obtener organizaciones activas (para login)
+exports.getPublic = async (req, res) => {
+  try {
+    const clients = await Client.findAll();
+    // Solo devolver id y name para el login (sin información sensible)
+    const publicClients = clients.map(client => ({
+      id: client.id,
+      name: client.name
+    }));
+    res.json(publicClients);
+  } catch (error) {
+    console.error('Error in getPublic clients:', error);
+    res.status(500).json({ 
+      message: error.message || 'Error al cargar organizaciones'
+    });
+  }
+};
+
 exports.getAll = async (req, res) => {
   try {
     const clients = await Client.findAll();

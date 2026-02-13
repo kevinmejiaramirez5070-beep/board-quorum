@@ -33,10 +33,12 @@ const Login = () => {
 
   const loadOrganizations = async () => {
     try {
-      const response = await api.get('/clients');
+      // Usar endpoint público para obtener organizaciones (sin autenticación)
+      const response = await api.get('/clients/public');
       setOrganizations(response.data || []);
     } catch (error) {
       console.error('Error loading organizations:', error);
+      setOrganizations([]);
     } finally {
       setLoadingOrgs(false);
     }
