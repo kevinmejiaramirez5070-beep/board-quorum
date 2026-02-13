@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { meetingService } from '../../services/meetingService';
 import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
+import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
 const MeetingDetail = () => {
@@ -20,6 +21,7 @@ const MeetingDetail = () => {
   const [votingLink, setVotingLink] = useState(null);
   const [attendanceLink, setAttendanceLink] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const quorumIntervalRef = useRef(null);
 
   const getStatusLabel = (status) => {
     const labels = {
@@ -39,7 +41,41 @@ const MeetingDetail = () => {
 
   useEffect(() => {
     loadMeetingData();
+    
+    // Limpiar intervalo al desmontar
+    return () => {
+      if (quorumIntervalRef.current) {
+        clearInterval(quorumIntervalRef.current);
+      }
+    };
   }, [meetingIdParam]);
+
+  // Actualización automática del quórum cada 5 segundos si la reunión está activa
+  useEffect(() => {
+    if (meeting && meeting.status === 'active') {
+      // Limpiar intervalo anterior si existe
+      if (quorumIntervalRef.current) {
+        clearInterval(quorumIntervalRef.current);
+      }
+      
+      // Crear nuevo intervalo
+      quorumIntervalRef.current = setInterval(() => {
+        loadQuorum();
+      }, 5000); // Actualizar cada 5 segundos
+      
+      return () => {
+        if (quorumIntervalRef.current) {
+          clearInterval(quorumIntervalRef.current);
+        }
+      };
+    } else {
+      // Limpiar intervalo si la reunión no está activa
+      if (quorumIntervalRef.current) {
+        clearInterval(quorumIntervalRef.current);
+        quorumIntervalRef.current = null;
+      }
+    }
+  }, [meeting?.status, meetingIdParam]);
 
   const loadMeetingData = async () => {
     try {
@@ -94,6 +130,16 @@ const MeetingDetail = () => {
     }
   };
 
+  // Función separada para cargar solo el quórum (para actualización automática)
+  const loadQuorum = async () => {
+    try {
+      const quorumRes = await meetingService.getQuorum(meetingIdParam);
+      setQuorum(quorumRes.data);
+    } catch (quorumError) {
+      console.warn('Error loading quorum (non-critical):', quorumError);
+    }
+  };
+
   const handleActivateVoting = async (votingId) => {
     try {
       setErrorMessage(null);
@@ -104,6 +150,333 @@ const MeetingDetail = () => {
       // Mostrar el mensaje específico del backend si está disponible
       const errorMsg = error.response?.data?.message || t('errorActivatingVoting');
       setErrorMessage(errorMsg);
+    }
+  };
+
+  // Generar PDF de asistencia
+  const generateAttendancePDF = () => {
+    if (!meeting || !attendance) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPos = margin;
+    const lineHeight = 7;
+
+    // Título
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(language === 'es' ? 'Lista de Asistencia' : 'Attendance List', margin, yPos);
+    yPos += lineHeight * 2;
+
+    // Información de la reunión
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(language === 'es' ? 'Reunión:' : 'Meeting:', margin, yPos);
+    yPos += lineHeight;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const meetingTitleLines = doc.splitTextToSize(meeting.title, pageWidth - 2 * margin);
+    doc.text(meetingTitleLines, margin, yPos);
+    yPos += lineHeight * (meetingTitleLines.length + 1);
+
+    doc.text(`${language === 'es' ? 'Fecha:' : 'Date:'} ${new Date(meeting.date).toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}`, margin, yPos);
+    yPos += lineHeight;
+
+    if (meeting.location) {
+      doc.text(`${language === 'es' ? 'Ubicación:' : 'Location:'} ${meeting.location}`, margin, yPos);
+      yPos += lineHeight;
+    }
+
+    yPos += lineHeight;
+
+    // Resumen de quórum
+    if (quorum) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'Resumen de Quórum' : 'Quorum Summary', margin, yPos);
+      yPos += lineHeight;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${language === 'es' ? 'Presentes:' : 'Present:'} ${quorum.present}`, margin, yPos);
+      yPos += lineHeight;
+      doc.text(`${language === 'es' ? 'Total:' : 'Total:'} ${quorum.total}`, margin, yPos);
+      yPos += lineHeight;
+      doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${quorum.percentage}%`, margin, yPos);
+      yPos += lineHeight;
+      doc.setFont('helvetica', 'bold');
+      doc.text(quorum.met 
+        ? (language === 'es' ? '✓ Quórum alcanzado' : '✓ Quorum reached')
+        : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached'), 
+        margin, yPos);
+      yPos += lineHeight * 2;
+    }
+
+    // Lista de asistencia
+    if (yPos > doc.internal.pageSize.getHeight() - 50) {
+      doc.addPage();
+      yPos = margin;
+    }
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(language === 'es' ? 'Lista de Asistentes' : 'Attendees List', margin, yPos);
+    yPos += lineHeight;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(language === 'es' ? 'Miembro' : 'Member', margin, yPos);
+    doc.text(language === 'es' ? 'Rol' : 'Role', margin + 80, yPos);
+    doc.text(language === 'es' ? 'Estado' : 'Status', margin + 130, yPos);
+    yPos += lineHeight;
+
+    // Línea separadora
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += lineHeight;
+
+    // Asistentes
+    doc.setFont('helvetica', 'normal');
+    attendance.forEach((item) => {
+      if (yPos > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        yPos = margin;
+      }
+
+      const memberName = doc.splitTextToSize(item.member_name || '-', 70);
+      const role = doc.splitTextToSize(item.role || '-', 40);
+      const status = item.status === 'present' 
+        ? (language === 'es' ? 'Presente' : 'Present')
+        : item.status;
+
+      doc.text(memberName, margin, yPos);
+      doc.text(role, margin + 80, yPos);
+      doc.text(status, margin + 130, yPos);
+      yPos += lineHeight * Math.max(memberName.length, role.length, 1);
+    });
+
+    // Fecha de generación
+    yPos += lineHeight;
+    if (yPos > doc.internal.pageSize.getHeight() - 20) {
+      doc.addPage();
+      yPos = margin;
+    }
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    const generatedDate = new Date().toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
+    doc.text(`${language === 'es' ? 'Generado el' : 'Generated on'}: ${generatedDate}`, margin, yPos);
+
+    // Guardar PDF
+    const fileName = `Asistencia_${meeting.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
+    doc.save(fileName);
+  };
+
+  // Generar reporte completo de reunión (asistencia + todas las votaciones)
+  const generateFullMeetingReport = async () => {
+    if (!meeting || !attendance) return;
+
+    try {
+      // Cargar resultados de todas las votaciones
+      const votingResultsPromises = votings.map(voting => 
+        votingService.getResults(voting.id).catch(err => {
+          console.warn(`Error loading results for voting ${voting.id}:`, err);
+          return null;
+        })
+      );
+      const allVotingResults = await Promise.all(votingResultsPromises);
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPos = margin;
+      const lineHeight = 7;
+
+      // Portada
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'REPORTE COMPLETO DE REUNIÓN' : 'COMPLETE MEETING REPORT', margin, yPos);
+      yPos += lineHeight * 3;
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      const meetingTitleLines = doc.splitTextToSize(meeting.title, pageWidth - 2 * margin);
+      doc.text(meetingTitleLines, margin, yPos);
+      yPos += lineHeight * (meetingTitleLines.length + 1);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${language === 'es' ? 'Fecha:' : 'Date:'} ${new Date(meeting.date).toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}`, margin, yPos);
+      yPos += lineHeight;
+      if (meeting.location) {
+        doc.text(`${language === 'es' ? 'Ubicación:' : 'Location:'} ${meeting.location}`, margin, yPos);
+        yPos += lineHeight;
+      }
+      yPos += lineHeight * 2;
+
+      // Sección 1: Asistencia
+      if (yPos > doc.internal.pageSize.getHeight() - 100) {
+        doc.addPage();
+        yPos = margin;
+      }
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? '1. ASISTENCIA' : '1. ATTENDANCE', margin, yPos);
+      yPos += lineHeight * 2;
+
+      if (quorum) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(language === 'es' ? 'Resumen de Quórum' : 'Quorum Summary', margin, yPos);
+        yPos += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${language === 'es' ? 'Presentes:' : 'Present:'} ${quorum.present}`, margin, yPos);
+        yPos += lineHeight;
+        doc.text(`${language === 'es' ? 'Total:' : 'Total:'} ${quorum.total}`, margin, yPos);
+        yPos += lineHeight;
+        doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${quorum.percentage}%`, margin, yPos);
+        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text(quorum.met 
+          ? (language === 'es' ? '✓ Quórum alcanzado' : '✓ Quorum reached')
+          : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached'), 
+          margin, yPos);
+        yPos += lineHeight * 2;
+      }
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'Lista de Asistentes' : 'Attendees List', margin, yPos);
+      yPos += lineHeight;
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'Miembro' : 'Member', margin, yPos);
+      doc.text(language === 'es' ? 'Rol' : 'Role', margin + 80, yPos);
+      doc.text(language === 'es' ? 'Estado' : 'Status', margin + 130, yPos);
+      yPos += lineHeight;
+
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += lineHeight;
+
+      doc.setFont('helvetica', 'normal');
+      attendance.forEach((item) => {
+        if (yPos > doc.internal.pageSize.getHeight() - 20) {
+          doc.addPage();
+          yPos = margin;
+        }
+
+        const memberName = doc.splitTextToSize(item.member_name || '-', 70);
+        const role = doc.splitTextToSize(item.role || '-', 40);
+        const status = item.status === 'present' 
+          ? (language === 'es' ? 'Presente' : 'Present')
+          : item.status;
+
+        doc.text(memberName, margin, yPos);
+        doc.text(role, margin + 80, yPos);
+        doc.text(status, margin + 130, yPos);
+        yPos += lineHeight * Math.max(memberName.length, role.length, 1);
+      });
+
+      yPos += lineHeight * 2;
+
+      // Sección 2: Votaciones
+      if (votings.length > 0) {
+        if (yPos > doc.internal.pageSize.getHeight() - 100) {
+          doc.addPage();
+          yPos = margin;
+        }
+
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(language === 'es' ? '2. VOTACIONES' : '2. VOTINGS', margin, yPos);
+        yPos += lineHeight * 2;
+
+        votings.forEach((voting, index) => {
+          if (yPos > doc.internal.pageSize.getHeight() - 80) {
+            doc.addPage();
+            yPos = margin;
+          }
+
+          // Título de la votación
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${index + 1}. ${voting.title}`, margin, yPos);
+          yPos += lineHeight;
+
+          if (voting.description) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const descLines = doc.splitTextToSize(voting.description, pageWidth - 2 * margin);
+            doc.text(descLines, margin, yPos);
+            yPos += lineHeight * descLines.length;
+          }
+
+          // Resultados de la votación
+          const votingResult = allVotingResults[index];
+          if (votingResult && votingResult.data) {
+            const { results: voteResults, votes, totalVotes, majorityValidation } = votingResult.data;
+
+            yPos += lineHeight;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(language === 'es' ? 'Resultados:' : 'Results:', margin, yPos);
+            yPos += lineHeight;
+
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${language === 'es' ? 'Total de Votos:' : 'Total Votes:'} ${totalVotes}`, margin, yPos);
+            yPos += lineHeight;
+
+            voteResults.forEach((result) => {
+              const percentage = totalVotes > 0 ? (result.votes / totalVotes) * 100 : 0;
+              doc.text(`${result.option}: ${result.votes} (${percentage.toFixed(1)}%)`, margin + 10, yPos);
+              yPos += lineHeight;
+            });
+
+            if (majorityValidation) {
+              yPos += lineHeight;
+              doc.setFont('helvetica', 'bold');
+              const status = majorityValidation.approved 
+                ? (language === 'es' ? 'APROBADA' : 'APPROVED')
+                : (language === 'es' ? 'RECHAZADA' : 'REJECTED');
+              doc.text(`${language === 'es' ? 'Resultado:' : 'Result:'} ${status}`, margin, yPos);
+              yPos += lineHeight;
+            }
+          } else {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'italic');
+            doc.text(language === 'es' ? 'Sin resultados disponibles' : 'No results available', margin, yPos);
+            yPos += lineHeight;
+          }
+
+          yPos += lineHeight * 2;
+        });
+      }
+
+      // Fecha de generación
+      if (yPos > doc.internal.pageSize.getHeight() - 30) {
+        doc.addPage();
+        yPos = margin;
+      }
+      yPos += lineHeight;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      const generatedDate = new Date().toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
+      doc.text(`${language === 'es' ? 'Generado el' : 'Generated on'}: ${generatedDate}`, margin, yPos);
+
+      // Guardar PDF
+      const fileName = `Reporte_Completo_${meeting.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating full report:', error);
+      alert(language === 'es' 
+        ? 'Error al generar el reporte completo. Por favor, intente nuevamente.'
+        : 'Error generating full report. Please try again.');
     }
   };
 
@@ -158,6 +531,17 @@ const MeetingDetail = () => {
               <strong>{language === 'es' ? 'Descripción:' : 'Description:'}</strong> {meeting.description}
             </div>
           )}
+        </div>
+
+        {/* Botón para generar reporte completo */}
+        <div style={{ marginBottom: '24px', textAlign: 'right' }}>
+          <button 
+            className="btn btn-primary"
+            onClick={generateFullMeetingReport}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '16px' }}
+          >
+            📊 {language === 'es' ? 'Generar Reporte Completo' : 'Generate Full Report'}
+          </button>
         </div>
 
         {/* Sección de Links Importantes */}
@@ -268,7 +652,14 @@ const MeetingDetail = () => {
 
         {quorum && (
           <div className={`quorum-card ${quorum.met ? 'quorum-met' : 'quorum-not-met'}`}>
-            <h3>{t('quorum')}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>{t('quorum')}</h3>
+              {meeting.status === 'active' && (
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                  {language === 'es' ? 'Actualización automática cada 5 segundos' : 'Auto-updating every 5 seconds'}
+                </span>
+              )}
+            </div>
             <div className="quorum-stats">
               <div className="stat">
                 <span className="stat-value">{quorum.present}</span>
@@ -312,12 +703,21 @@ const MeetingDetail = () => {
             <div className="attendance-section">
               <div className="section-header">
                 <h2>{language === 'es' ? 'Lista de Asistencia' : 'Attendance List'}</h2>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => navigate(`/meetings/${id}/attendance/register`)}
-                >
-                  {t('registerAttendance')}
-                </button>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={generateAttendancePDF}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    📄 {language === 'es' ? 'Generar PDF Asistencia' : 'Generate Attendance PDF'}
+                  </button>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/meetings/${id}/attendance/register`)}
+                  >
+                    {t('registerAttendance')}
+                  </button>
+                </div>
               </div>
               {attendance.length === 0 ? (
                 <p className="empty">{language === 'es' ? 'No hay registros de asistencia' : 'No attendance records'}</p>
@@ -346,9 +746,11 @@ const MeetingDetail = () => {
             <div className="votings-section">
               <div className="section-header">
                 <h2>{t('votings')}</h2>
-                <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
-                  {t('newVoting')}
-                </button>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
+                    {t('newVoting')}
+                  </button>
+                </div>
               </div>
               {votings.length === 0 ? (
                 <p className="empty">{language === 'es' ? 'No hay votaciones registradas' : 'No votings registered'}</p>
