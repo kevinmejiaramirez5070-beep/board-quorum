@@ -26,7 +26,7 @@ exports.getMember = async (req, res) => {
 exports.createMember = async (req, res) => {
   try {
     const { 
-      email, name, role, position, member_type, principal_id, 
+      product_id, email, name, role, position, member_type, principal_id, 
       tipo_documento, numero_documento, rol_organico,
       tipo_participante, rol_en_votacion,
       cuenta_quorum, puede_votar,
@@ -71,6 +71,7 @@ exports.createMember = async (req, res) => {
 
     const data = {
       client_id,
+      product_id: product_id || null,
       name: name.trim(),
       email: email || null,
       role: role || 'member',

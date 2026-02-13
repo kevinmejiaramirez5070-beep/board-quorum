@@ -23,7 +23,7 @@ class Member {
 
   static async create(data) {
     const { 
-      client_id, name, email, role, position, 
+      client_id, product_id = null, name, email, role, position, 
       member_type = 'principal', principal_id = null, user_id = null,
       tipo_documento = null, numero_documento = null, rol_organico = null,
       tipo_participante = null, rol_en_votacion = null,
@@ -36,16 +36,16 @@ class Member {
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
     const [rows, fields] = await db.execute(
       `INSERT INTO members (
-        client_id, name, email, role, position, 
+        client_id, product_id, name, email, role, position, 
         member_type, principal_id, user_id,
         tipo_documento, numero_documento, rol_organico,
         tipo_participante, rol_en_votacion,
         cuenta_quorum, puede_votar,
         active, created_at
       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
       [
-        client_id, name, email, role, position, 
+        client_id, product_id, name, email, role, position, 
         member_type, principal_id, user_id,
         tipo_documento, numero_documento, rol_organico,
         tipo_participante, rol_en_votacion
@@ -61,7 +61,7 @@ class Member {
 
   static async update(id, data) {
     const { 
-      name, email, role, position, member_type, principal_id, user_id,
+      product_id, name, email, role, position, member_type, principal_id, user_id,
       tipo_documento, numero_documento, rol_organico,
       tipo_participante, rol_en_votacion,
       cuenta_quorum, puede_votar
@@ -69,6 +69,10 @@ class Member {
     const updateFields = [];
     const updateValues = [];
     
+    if (product_id !== undefined) {
+      updateFields.push('product_id = ?');
+      updateValues.push(product_id);
+    }
     if (name !== undefined) {
       updateFields.push('name = ?');
       updateValues.push(name);

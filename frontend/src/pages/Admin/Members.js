@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { memberService } from '../../services/memberService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import './Members.css';
 
 const Members = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [members, setMembers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   
   // Authorized NO puede editar miembros
   const canEditMembers = user?.role === 'admin' || user?.role === 'admin_master';
   const [formData, setFormData] = useState({
+    product_id: '',
     tipo_documento: '',
     numero_documento: '',
     name: '',
@@ -30,6 +33,7 @@ const Members = () => {
 
   useEffect(() => {
     loadMembers();
+    loadProducts();
   }, []);
 
   const loadMembers = async () => {
@@ -40,6 +44,15 @@ const Members = () => {
       console.error('Error loading members:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      const response = await api.get('/products');
+      setProducts(response.data || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
     }
   };
 
@@ -64,6 +77,7 @@ const Members = () => {
       }
       
       const dataToSend = {
+        product_id: formData.product_id ? parseInt(formData.product_id) : null,
         tipo_documento: formData.tipo_documento || null,
         numero_documento: formData.numero_documento || null,
         name: formData.name.trim(),
@@ -99,6 +113,7 @@ const Members = () => {
 
   const handleEdit = (member) => {
     setFormData({
+      product_id: member.product_id || '',
       tipo_documento: member.tipo_documento || '',
       numero_documento: member.numero_documento || '',
       name: member.name || '',
@@ -128,6 +143,7 @@ const Members = () => {
 
   const resetForm = () => {
     setFormData({
+      product_id: '',
       tipo_documento: '',
       numero_documento: '',
       name: '',
@@ -168,6 +184,30 @@ const Members = () => {
             <form onSubmit={handleSubmit} className="member-form">
               <div className="form-columns">
                 <div className="form-column">
+                  <div className="form-group">
+                    <label className="label">{language === 'es' ? 'Órgano de Gobierno' : 'Governing Body'} *</label>
+                    <select
+                      name="product_id"
+                      value={formData.product_id}
+                      onChange={handleChange}
+                      className="input"
+                      required
+                    >
+                      <option value="">{language === 'es' ? 'Selecciona un órgano' : 'Select a governing body'}</option>
+                      {products.map(product => (
+                        <option key={product.id} value={product.id}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                    <small style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                      {language === 'es' 
+                        ? 'Selecciona a qué órgano pertenece este miembro (Junta Directiva, Asamblea General, etc.)'
+                        : 'Select which governing body this member belongs to (Board of Directors, General Assembly, etc.)'
+                      }
+                    </small>
+                  </div>
+
                   <div className="form-group">
                     <label className="label">{t('documentType')}</label>
                     <select
