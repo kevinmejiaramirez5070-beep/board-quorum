@@ -67,15 +67,20 @@ class Attendance {
 
   /**
    * Cuenta miembros presentes con derecho a voto
+   * SOLO cuenta miembros con cuenta_quorum = true (validación interna)
    * Incluye principales, suplentes actuando como principales, y Junta de Vigilancia
    */
   static async countPresentWithVote(meetingId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const cuentaQuorumCondition = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
+    
     const [rows] = await db.execute(
       `SELECT COUNT(DISTINCT a.member_id) as count
        FROM attendance a
        JOIN members m ON a.member_id = m.id
        WHERE a.meeting_id = ? 
        AND a.status = 'present'
+       AND ${cuentaQuorumCondition}
        AND (
          m.member_type = 'principal' 
          OR m.member_type = 'junta_vigilancia'

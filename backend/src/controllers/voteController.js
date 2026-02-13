@@ -173,6 +173,15 @@ exports.confirmVote = async (req, res) => {
       return res.status(400).json({ message: 'Ya has votado en esta votación' });
     }
 
+    // Validar elegibilidad para votar (INTERNO - validación crítica)
+    const canVote = member.puede_votar === true || member.puede_votar === 1;
+    if (!canVote) {
+      return res.status(403).json({ 
+        message: 'No tienes permiso para votar en esta reunión',
+        canVote: false
+      });
+    }
+
     // Registrar voto
     const voteId = await Vote.createByDocument({
       voting_id: parseInt(votingId),
