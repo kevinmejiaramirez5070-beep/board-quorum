@@ -1,6 +1,6 @@
 {
   "name": "board-quorum-frontend",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "dependencies": {
     "axios": "^1.6.2",
