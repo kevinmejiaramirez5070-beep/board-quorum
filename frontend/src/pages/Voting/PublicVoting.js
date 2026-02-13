@@ -289,20 +289,38 @@ const PublicVoting = () => {
           {/* CASO: Cédula no encontrada */}
           {step === 'notFound' && (
             <div className="not-found-section">
-              <div className="alert alert-warning" style={{ padding: '16px', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '20px' }}>
-                <strong>⚠️ {language === 'es' ? 'No Encontrada' : 'Not Found'}</strong>
-                <p style={{ marginTop: '8px' }}>
-                  {language === 'es' ? 'Número ingresado' : 'Number entered'}: <strong>{formData.cedula}</strong>
-                </p>
-                <p>{language === 'es' ? 'No se encontró en la base de datos' : 'Not found in the database'}</p>
-                <p style={{ marginTop: '8px' }}>
-                  <strong>{language === 'es' ? 'Solo los miembros registrados pueden votar.' : 'Only registered members can vote.'}</strong>
+              <div className="alert alert-warning" style={{ 
+                padding: '24px', 
+                backgroundColor: '#fff3cd', 
+                borderRadius: '8px', 
+                marginBottom: '24px',
+                border: '2px solid #ffc107',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '32px', marginRight: '12px' }}>⚠️</span>
+                  <strong style={{ fontSize: '18px', color: '#856404' }}>
+                    {language === 'es' ? 'Cédula No Encontrada' : 'ID Not Found'}
+                  </strong>
+                </div>
+                <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #ffc107' }}>
+                  <p style={{ margin: '8px 0', fontSize: '14px', color: '#333' }}>
+                    <strong style={{ color: '#856404' }}>{language === 'es' ? 'Número ingresado:' : 'Number entered:'}</strong>{' '}
+                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#000' }}>{formData.cedula}</span>
+                  </p>
+                  <p style={{ margin: '8px 0', fontSize: '14px', color: '#666' }}>
+                    {language === 'es' ? 'No se encontró en la base de datos' : 'Not found in the database'}
+                  </p>
+                </div>
+                <p style={{ marginTop: '16px', fontSize: '16px', fontWeight: 'bold', color: '#856404' }}>
+                  {language === 'es' ? 'Solo los miembros registrados pueden votar.' : 'Only registered members can vote.'}
                 </p>
               </div>
 
               <button 
                 onClick={handleRetry}
                 className="btn btn-secondary btn-large btn-block"
+                style={{ padding: '14px', fontSize: '16px', fontWeight: '600' }}
               >
                 {language === 'es' ? 'Reintentar' : 'Retry'}
               </button>
