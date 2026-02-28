@@ -2,11 +2,17 @@ const db = require('../config/database');
 
 class Client {
   static async findAll() {
-    // PostgreSQL usa booleanos, MySQL usa 1/0
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
-    const [rows] = await db.execute(`SELECT * FROM clients WHERE ${activeCondition}`);
-    return rows;
+    try {
+      const [rows] = await db.execute(`SELECT * FROM clients WHERE ${activeCondition}`);
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      // Si falla (ej. columna active no existe o tipo distinto), intentar sin filtro active
+      console.warn('Client.findAll with active filter failed, trying without:', err.message);
+      const [rows] = await db.execute('SELECT * FROM clients');
+      return Array.isArray(rows) ? rows : [];
+    }
   }
 
   static async findById(id) {

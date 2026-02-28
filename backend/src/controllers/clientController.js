@@ -7,15 +7,17 @@ const db = require('../config/database');
 exports.getPublic = async (req, res) => {
   try {
     const clients = await Client.findAll();
-    // Solo devolver id y name para el login (sin información sensible)
-    const publicClients = clients.map(client => ({
-      id: client.id,
-      name: client.name
-    }));
+    const list = Array.isArray(clients) ? clients : [];
+    const publicClients = list
+      .filter(c => c != null)
+      .map(client => ({
+        id: client.id,
+        name: client.name != null ? String(client.name) : ''
+      }));
     res.json(publicClients);
   } catch (error) {
     console.error('Error in getPublic clients:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: error.message || 'Error al cargar organizaciones'
     });
   }

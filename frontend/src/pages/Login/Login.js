@@ -19,6 +19,7 @@ const Login = () => {
   const { t, language } = useLanguage();
   const [organizations, setOrganizations] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [errorOrgs, setErrorOrgs] = useState('');
   const [formData, setFormData] = useState({
     organization_id: '',
     email: '',
@@ -32,13 +33,25 @@ const Login = () => {
   }, []);
 
   const loadOrganizations = async () => {
+    setErrorOrgs('');
+    setLoadingOrgs(true);
     try {
-      // Usar endpoint público para obtener organizaciones (sin autenticación)
       const response = await api.get('/clients/public');
-      setOrganizations(response.data || []);
-    } catch (error) {
-      console.error('Error loading organizations:', error);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setOrganizations(list);
+      if (list.length === 0) {
+        setErrorOrgs(language === 'es' ? 'No hay organizaciones registradas. Contacte al administrador.' : 'No organizations registered. Contact the administrator.');
+      }
+    } catch (err) {
+      console.error('Error loading organizations:', err);
       setOrganizations([]);
+      const msg = err.response?.data?.message || err.message;
+      const isNetwork = err.code === 'ERR_NETWORK' || err.message?.includes('Network');
+      setErrorOrgs(
+        isNetwork
+          ? (language === 'es' ? 'No se pudo conectar al servidor. Verifique su conexión o que la aplicación esté desplegada.' : 'Could not connect to server. Check your connection or that the app is deployed.')
+          : (language === 'es' ? `Error al cargar organizaciones: ${msg}` : `Error loading organizations: ${msg}`)
+      );
     } finally {
       setLoadingOrgs(false);
     }
@@ -127,6 +140,14 @@ const Login = () => {
                   </option>
                 ))}
               </select>
+              {errorOrgs && (
+                <div className="error-message error-orgs" style={{ marginTop: '8px' }}>
+                  {errorOrgs}
+                  <button type="button" className="retry-link" onClick={loadOrganizations}>
+                    {language === 'es' ? ' Reintentar' : ' Retry'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

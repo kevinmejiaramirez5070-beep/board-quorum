@@ -15,14 +15,17 @@ app.use(cors({
       // Dominios de producción
       'https://datacastilla.com',
       'https://www.datacastilla.com',
+      'https://board-quorum.vercel.app',
+      'https://www.board-quorum.vercel.app',
       process.env.CORS_ORIGIN // Permite configurar desde .env
     ].filter(Boolean); // Elimina valores undefined/null
     
-    // Permitir cualquier URL de Cloudflare Tunnel
+    // Permitir cualquier URL de Cloudflare Tunnel y Vercel
     const isCloudflareTunnel = origin?.includes('.trycloudflare.com');
-    const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1;
+    const isVercel = origin?.includes('.vercel.app');
+    const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1 || isVercel;
     
-    if (isAllowedOrigin || isCloudflareTunnel) {
+    if (isAllowedOrigin || isCloudflareTunnel || isVercel) {
       callback(null, true);
     } else {
       console.warn('CORS blocked origin:', origin);

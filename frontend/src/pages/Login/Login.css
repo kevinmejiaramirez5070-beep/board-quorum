@@ -107,6 +107,21 @@
   margin: 0;
 }
 
+.error-message .retry-link {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  margin-left: 4px;
+}
+
+.error-message .retry-link:hover {
+  opacity: 0.9;
+}
+
 .login-form .btn {
   padding: 12px;
   font-size: 14px;
