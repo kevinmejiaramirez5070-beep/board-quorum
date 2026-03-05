@@ -19,11 +19,9 @@ const CreateMeeting = () => {
     date: '',
     location: '',
     product_id: productId ? parseInt(productId) : null,
-    status: 'scheduled',
-    google_meet_link: ''
+    status: 'scheduled'
   });
   const [loading, setLoading] = useState(false);
-  const [meetLinkGenerated, setMeetLinkGenerated] = useState(false);
 
   useEffect(() => {
     if (productId) {
@@ -49,12 +47,6 @@ const CreateMeeting = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
-  };
-
-  const generateMeetLink = () => {
-    // Abrir Google Meet en una nueva pestaña para que el usuario cree la reunión
-    window.open('https://meet.google.com/new', '_blank');
-    setMeetLinkGenerated(true);
   };
 
   const handleSubmit = async (e) => {
@@ -161,35 +153,6 @@ const CreateMeeting = () => {
               className="input"
               placeholder={language === 'es' ? 'Ej: Sala de juntas, Virtual, etc.' : 'Ex: Meeting room, Virtual, etc.'}
             />
-          </div>
-
-          <div className="form-group">
-            <label className="label">{language === 'es' ? 'Enlace de Google Meet' : 'Google Meet Link'}</label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <input
-                type="url"
-                name="google_meet_link"
-                value={formData.google_meet_link}
-                onChange={handleChange}
-                className="input"
-                placeholder={language === 'es' ? 'https://meet.google.com/xxx-xxxx-xxx' : 'https://meet.google.com/xxx-xxxx-xxx'}
-                style={{ flex: 1 }}
-              />
-              <button
-                type="button"
-                onClick={generateMeetLink}
-                className="btn btn-secondary"
-                style={{ whiteSpace: 'nowrap' }}
-              >
-                {language === 'es' ? 'Crear en Google Meet' : 'Create in Google Meet'}
-              </button>
-            </div>
-            <small style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-              {language === 'es' 
-                ? 'Crea una reunión en Google Meet y pega el enlace aquí. Las reuniones se realizarán en Google Meet.'
-                : 'Create a meeting in Google Meet and paste the link here. Meetings will be held in Google Meet.'
-              }
-            </small>
           </div>
 
           <div className="form-group">

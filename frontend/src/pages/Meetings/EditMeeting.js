@@ -13,7 +13,6 @@ const EditMeeting = () => {
     description: '',
     date: '',
     location: '',
-    google_meet_link: '',
     type: 'junta_directiva',
     status: 'scheduled'
   });
@@ -38,7 +37,6 @@ const EditMeeting = () => {
         description: meeting.description || '',
         date: formattedDate,
         location: meeting.location || '',
-        google_meet_link: meeting.google_meet_link || '',
         type: meeting.type || 'junta_directiva',
         status: meeting.status || 'scheduled'
       });
@@ -124,24 +122,6 @@ const EditMeeting = () => {
               className="input"
               placeholder={language === 'es' ? 'Ej: Sala de juntas, Virtual, etc.' : 'Ex: Meeting room, Virtual, etc.'}
             />
-          </div>
-
-          <div className="form-group">
-            <label className="label">{language === 'es' ? 'Enlace de Google Meet' : 'Google Meet Link'}</label>
-            <input
-              type="url"
-              name="google_meet_link"
-              value={formData.google_meet_link}
-              onChange={handleChange}
-              className="input"
-              placeholder={language === 'es' ? 'https://meet.google.com/xxx-xxxx-xxx' : 'https://meet.google.com/xxx-xxxx-xxx'}
-            />
-            <small style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-              {language === 'es' 
-                ? 'Las reuniones se realizan en Google Meet. Comparte este enlace con los participantes.'
-                : 'Meetings are held in Google Meet. Share this link with participants.'
-              }
-            </small>
           </div>
 
           <div className="form-group">

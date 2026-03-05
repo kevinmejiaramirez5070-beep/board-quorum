@@ -131,10 +131,8 @@ class QuorumService {
   }
 
   /**
-   * Obtiene información completa del quórum para una reunión
-   * @param {number} meetingId - ID de la reunión
-   * @param {number} clientId - ID del cliente
-   * @returns {Promise<Object>} - Información completa del quórum
+   * Obtiene información completa del quórum para una reunión (BUG-01, BUG-02).
+   * Total dinámico desde BD (elegibles con cuenta_quorum). Porcentaje calculado.
    */
   static async getQuorumInfo(meetingId, clientId) {
     const meeting = await Meeting.findById(meetingId, clientId);
@@ -143,23 +141,18 @@ class QuorumService {
     }
 
     const present = await this.countPresentWithVote(meetingId);
-    
-    // Para asamblea, necesitaríamos contar el total de delegados
-    // Por ahora, usamos el total de miembros activos del cliente
-    let totalMembers = null;
-    if (meeting.type === 'asamblea') {
-      const allMembers = await Member.findAll(clientId);
-      totalMembers = allMembers.length;
-    }
-
-    const required = this.calculateRequiredQuorum(meeting.type, totalMembers);
-    const valid = present >= required;
+    const total = await Member.countEligibleForQuorum(clientId, meeting.product_id || null);
+    const required = this.calculateRequiredQuorum(meeting.type, total);
+    const valid = total > 0 && present >= required;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
     return {
       present,
       required,
-      total: totalMembers || 12, // 12 para JD (11 + 1 JV), null para asamblea
+      total,
+      percentage,
       valid,
+      met: valid,
       type: meeting.type,
       message: valid
         ? `Quórum válido: ${present} presentes (mínimo requerido: ${required})`

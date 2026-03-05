@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { meetingService } from '../../services/meetingService';
 import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
+import { normalizeNameForDisplay } from '../../utils/nameDisplay';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -204,12 +205,13 @@ const MeetingDetail = () => {
       yPos += lineHeight;
       doc.text(`${language === 'es' ? 'Total:' : 'Total:'} ${quorum.total}`, margin, yPos);
       yPos += lineHeight;
-      doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${quorum.percentage}%`, margin, yPos);
+      const pct = quorum.percentage != null ? quorum.percentage : (quorum.total > 0 ? Math.round((quorum.present / quorum.total) * 100) : 0);
+      doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${pct}%`, margin, yPos);
       yPos += lineHeight;
       doc.setFont('helvetica', 'bold');
       doc.text(quorum.met 
-        ? (language === 'es' ? '✓ Quórum alcanzado' : '✓ Quorum reached')
-        : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached'), 
+        ? (language === 'es' ? 'Quorum alcanzado' : 'Quorum reached')
+        : (language === 'es' ? 'Quorum no alcanzado' : 'Quorum not reached'), 
         margin, yPos);
       yPos += lineHeight * 2;
     }
@@ -237,7 +239,7 @@ const MeetingDetail = () => {
     doc.line(margin, yPos, pageWidth - margin, yPos);
     yPos += lineHeight;
 
-    // Asistentes
+    // Asistentes (nombres y roles normalizados para PDF - BUG-05, BUG-06)
     doc.setFont('helvetica', 'normal');
     attendance.forEach((item) => {
       if (yPos > doc.internal.pageSize.getHeight() - 20) {
@@ -245,8 +247,8 @@ const MeetingDetail = () => {
         yPos = margin;
       }
 
-      const memberName = doc.splitTextToSize(item.member_name || '-', 70);
-      const role = doc.splitTextToSize(item.role || '-', 40);
+      const memberName = doc.splitTextToSize(normalizeNameForDisplay(item.member_name) || '-', 70);
+      const role = doc.splitTextToSize(normalizeNameForDisplay(item.role) || '-', 40);
       const status = item.status === 'present' 
         ? (language === 'es' ? 'Presente' : 'Present')
         : item.status;
@@ -334,16 +336,17 @@ const MeetingDetail = () => {
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
+        const pctFull = quorum.percentage != null ? quorum.percentage : (quorum.total > 0 ? Math.round((quorum.present / quorum.total) * 100) : 0);
         doc.text(`${language === 'es' ? 'Presentes:' : 'Present:'} ${quorum.present}`, margin, yPos);
         yPos += lineHeight;
         doc.text(`${language === 'es' ? 'Total:' : 'Total:'} ${quorum.total}`, margin, yPos);
         yPos += lineHeight;
-        doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${quorum.percentage}%`, margin, yPos);
+        doc.text(`${language === 'es' ? 'Porcentaje:' : 'Percentage:'} ${pctFull}%`, margin, yPos);
         yPos += lineHeight;
         doc.setFont('helvetica', 'bold');
         doc.text(quorum.met 
-          ? (language === 'es' ? '✓ Quórum alcanzado' : '✓ Quorum reached')
-          : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached'), 
+          ? (language === 'es' ? 'Quorum alcanzado' : 'Quorum reached')
+          : (language === 'es' ? 'Quorum no alcanzado' : 'Quorum not reached'), 
           margin, yPos);
         yPos += lineHeight * 2;
       }
@@ -371,8 +374,8 @@ const MeetingDetail = () => {
           yPos = margin;
         }
 
-        const memberName = doc.splitTextToSize(item.member_name || '-', 70);
-        const role = doc.splitTextToSize(item.role || '-', 40);
+        const memberName = doc.splitTextToSize(normalizeNameForDisplay(item.member_name) || '-', 70);
+        const role = doc.splitTextToSize(normalizeNameForDisplay(item.role) || '-', 40);
         const status = item.status === 'present' 
           ? (language === 'es' ? 'Presente' : 'Present')
           : item.status;
@@ -670,7 +673,7 @@ const MeetingDetail = () => {
                 <span className="stat-label">{language === 'es' ? 'Total' : 'Total'}</span>
               </div>
               <div className="stat">
-                <span className="stat-value">{quorum.percentage}%</span>
+                <span className="stat-value">{(quorum.percentage ?? (quorum.total > 0 ? Math.round((quorum.present / quorum.total) * 100) : 0))}%</span>
                 <span className="stat-label">{language === 'es' ? 'Porcentaje' : 'Percentage'}</span>
               </div>
             </div>
@@ -726,8 +729,8 @@ const MeetingDetail = () => {
                   {attendance.map((item) => (
                     <div key={item.id} className="attendance-item">
                       <div className="member-info">
-                        <strong>{item.member_name}</strong>
-                        <span className="role">{item.role}</span>
+                        <strong>{normalizeNameForDisplay(item.member_name) || item.member_name}</strong>
+                        <span className="role">{normalizeNameForDisplay(item.role) || item.role || '-'}</span>
                       </div>
                       <span className={`attendance-status status-${item.status}`}>
                         {item.status === 'present' 

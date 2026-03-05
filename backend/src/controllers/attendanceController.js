@@ -113,10 +113,14 @@ exports.confirmAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }
 
-    // Verificar si ya está registrado
-    const existingAttendance = await Attendance.findByMemberAndMeeting(meetingId, member.id);
-    if (existingAttendance) {
-      return res.status(400).json({ message: 'Ya has registrado tu asistencia para esta reunión' });
+    // Verificar si ya está registrado (por member_id o por número de documento - BUG-03)
+    const existingByMember = await Attendance.findByMemberAndMeeting(meetingId, member.id);
+    if (existingByMember) {
+      return res.status(400).json({ message: 'Ya registraste tu asistencia para esta reunión' });
+    }
+    const existingByDoc = await Attendance.findByDocumentAndMeeting(meetingId, cedula);
+    if (existingByDoc) {
+      return res.status(400).json({ message: 'Ya registraste tu asistencia para esta reunión' });
     }
 
     // Registrar asistencia
@@ -154,6 +158,12 @@ exports.registerManualAttendance = async (req, res) => {
 
     const Meeting = require('../models/Meeting');
     
+    // Evitar registro duplicado por mismo documento (BUG-03)
+    const existingByDoc = await Attendance.findByDocumentAndMeeting(meetingId, cedula);
+    if (existingByDoc) {
+      return res.status(400).json({ message: 'Ya registraste tu asistencia para esta reunión' });
+    }
+
     // Obtener la reunión
     const meeting = await Meeting.findById(meetingId, null);
     if (!meeting) {

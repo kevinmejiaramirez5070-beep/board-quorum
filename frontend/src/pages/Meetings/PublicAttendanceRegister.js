@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useLanguage } from '../../context/LanguageContext';
+import { normalizeNameForDisplay } from '../../utils/nameDisplay';
 import Logo from '../../components/Logo/Logo';
 import './PublicAttendanceRegister.css';
 
@@ -238,9 +239,9 @@ const PublicAttendanceRegister = () => {
             <div className="confirmation-card">
               <h3>{language === 'es' ? 'Confirmación' : 'Confirmation'}</h3>
               <div className="member-info">
-                <p><strong>{language === 'es' ? 'Nombre' : 'Name'}:</strong> {memberData.name}</p>
+                <p><strong>{language === 'es' ? 'Nombre' : 'Name'}:</strong> {normalizeNameForDisplay(memberData.name) || memberData.name}</p>
                 <p><strong>{language === 'es' ? 'CC' : 'ID'}:</strong> {memberData.numero_documento}</p>
-                <p><strong>{language === 'es' ? 'Cargo' : 'Position'}:</strong> {memberData.position}</p>
+                <p><strong>{language === 'es' ? 'Cargo' : 'Position'}:</strong> {normalizeNameForDisplay(memberData.position) || memberData.position}</p>
               </div>
               
               {quorumMessage && (

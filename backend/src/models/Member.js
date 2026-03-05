@@ -185,6 +185,26 @@ class Member {
     return rows[0].count;
   }
 
+  /**
+   * Cuenta miembros elegibles para quórum (cuenta_quorum = true).
+   * Si productId es null, cuenta por client_id; si no, filtra por product_id (BUG-02: total dinámico).
+   */
+  static async countEligibleForQuorum(clientId, productId = null) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
+    const quorumCondition = isPostgreSQL ? 'cuenta_quorum = true' : 'cuenta_quorum = 1';
+    let query = `SELECT COUNT(*) as count FROM members 
+       WHERE client_id = ? AND ${activeCondition} AND ${quorumCondition}`;
+    const params = [clientId];
+    if (productId != null) {
+      query += ' AND (product_id = ? OR product_id IS NULL)';
+      params.push(productId);
+    }
+    const [rows] = await db.execute(query, params);
+    const count = rows[0]?.count ?? 0;
+    return typeof count === 'string' ? parseInt(count, 10) : count;
+  }
+
   static async delete(id) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'false' : '0';

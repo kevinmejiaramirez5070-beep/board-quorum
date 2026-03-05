@@ -3,10 +3,14 @@ const db = require('../config/database');
 class Attendance {
   static async findByMeeting(meetingId) {
     const [rows] = await db.execute(
-      `SELECT a.*, m.name as member_name, m.role, m.email
+      `SELECT a.*,
+         COALESCE(m.name, a.manual_name) AS member_name,
+         COALESCE(m.rol_organico, m.position, m.role, a.manual_position, '') AS role,
+         m.email
        FROM attendance a
-       JOIN members m ON a.member_id = m.id
-       WHERE a.meeting_id = ?`,
+       LEFT JOIN members m ON a.member_id = m.id
+       WHERE a.meeting_id = ?
+       ORDER BY a.arrival_time, a.id`,
       [meetingId]
     );
     return rows;
@@ -66,29 +70,40 @@ class Attendance {
   }
 
   /**
-   * Cuenta miembros presentes con derecho a voto
-   * SOLO cuenta miembros con cuenta_quorum = true (validación interna)
-   * Incluye principales, suplentes actuando como principales, y Junta de Vigilancia
+   * Cuenta miembros presentes que suman al quórum (BUG-01, BUG-04).
+   * - Principales y Junta de Vigilancia: cuentan siempre que estén presentes y cuenta_quorum.
+   * - Suplentes: solo cuentan si el principal NO está presente (regla de suplencias).
+   * acting_as_principal en PostgreSQL puede ser true/false.
    */
   static async countPresentWithVote(meetingId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const cuentaQuorumCondition = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
-    
+
     const [rows] = await db.execute(
-      `SELECT COUNT(DISTINCT a.member_id) as count
-       FROM attendance a
-       JOIN members m ON a.member_id = m.id
-       WHERE a.meeting_id = ? 
-       AND a.status = 'present'
-       AND ${cuentaQuorumCondition}
-       AND (
-         m.member_type = 'principal' 
-         OR m.member_type = 'junta_vigilancia'
-         OR (m.member_type = 'suplente' AND a.acting_as_principal = 1)
-       )`,
-      [meetingId]
+      `SELECT COUNT(*) as count FROM (
+         SELECT 1
+         FROM attendance a
+         JOIN members m ON a.member_id = m.id
+         WHERE a.meeting_id = ?
+           AND a.status = 'present'
+           AND a.member_id IS NOT NULL
+           AND ${cuentaQuorumCondition}
+           AND (
+             m.member_type = 'principal'
+             OR m.member_type = 'junta_vigilancia'
+             OR (m.member_type = 'suplente' AND (
+               m.principal_id IS NULL
+               OR m.principal_id NOT IN (
+                 SELECT member_id FROM attendance
+                 WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
+               )
+             ))
+           )
+       ) sub`,
+      [meetingId, meetingId]
     );
-    return rows[0].count;
+    const count = rows[0]?.count ?? 0;
+    return typeof count === 'string' ? parseInt(count, 10) : count;
   }
 
   static async countByStatus(meetingId, status) {
@@ -114,6 +129,24 @@ class Attendance {
     const [rows] = await db.execute(
       'SELECT * FROM attendance WHERE meeting_id = ? AND member_id = ?',
       [meetingId, memberId]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * Comprueba si ya existe un registro de asistencia para este número de documento en la reunión.
+   * Evita registro duplicado (Comentario 02 / BUG-03).
+   */
+  static async findByDocumentAndMeeting(meetingId, documentNumber) {
+    if (!documentNumber) return null;
+    const doc = String(documentNumber).trim();
+    const [rows] = await db.execute(
+      `SELECT a.* FROM attendance a
+       LEFT JOIN members m ON a.member_id = m.id
+       WHERE a.meeting_id = ?
+         AND (m.numero_documento = ? OR a.manual_document = ?)
+       LIMIT 1`,
+      [meetingId, doc, doc]
     );
     return rows[0] || null;
   }

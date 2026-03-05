@@ -131,14 +131,17 @@ exports.getQuorum = async (req, res) => {
       const quorumInfo = await QuorumService.getQuorumInfo(req.params.id, req.user.client_id);
       res.json(quorumInfo);
     } catch (quorumError) {
-      // Si hay error al calcular quorum (por ejemplo, no hay asistencias aún), devolver valores por defecto
       console.warn('Error calculating quorum, returning default values:', quorumError);
-      const required = QuorumService.calculateRequiredQuorum(meeting.type, null);
+      const Member = require('../models/Member');
+      const total = await Member.countEligibleForQuorum(req.user.client_id, meeting.product_id || null);
+      const required = QuorumService.calculateRequiredQuorum(meeting.type, total);
       res.json({
         present: 0,
-        required: required,
-        total: meeting.type === 'junta_directiva' ? 12 : null,
+        required,
+        total: total || (meeting.type === 'junta_directiva' ? 12 : 0),
+        percentage: 0,
         valid: false,
+        met: false,
         type: meeting.type,
         message: `Quórum insuficiente: 0 presentes (mínimo requerido: ${required})`
       });
