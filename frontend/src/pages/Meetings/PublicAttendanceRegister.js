@@ -245,7 +245,7 @@ const PublicAttendanceRegister = () => {
               </div>
               
               {quorumMessage && (
-                <div className="alert alert-warning" style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                <div className="quorum-notice-box">
                   {quorumMessage}
                 </div>
               )}
