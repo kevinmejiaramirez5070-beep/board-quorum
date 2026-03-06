@@ -187,7 +187,7 @@ class Member {
 
   /**
    * Cuenta miembros elegibles para quórum (cuenta_quorum = true).
-   * Si productId es null, cuenta por client_id; si no, filtra por product_id (BUG-02: total dinámico).
+   * Si productId es null, cuenta todos del cliente; si no, solo miembros de ese producto (BUG-01, BUG-02).
    */
   static async countEligibleForQuorum(clientId, productId = null) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
@@ -196,7 +196,7 @@ class Member {
     let query = `SELECT COUNT(*) as count FROM members 
        WHERE client_id = ? AND ${activeCondition} AND ${quorumCondition}`;
     const params = [clientId];
-    if (productId != null) {
+    if (productId != null && productId !== '') {
       query += ' AND (product_id = ? OR product_id IS NULL)';
       params.push(productId);
     }

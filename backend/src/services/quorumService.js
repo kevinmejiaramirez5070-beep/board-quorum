@@ -132,7 +132,7 @@ class QuorumService {
 
   /**
    * Obtiene información completa del quórum para una reunión (BUG-01, BUG-02).
-   * Total dinámico desde BD (elegibles con cuenta_quorum). Porcentaje calculado.
+   * Total dinámico desde BD (elegibles con cuenta_quorum). Si total sale 0, fallback a client_id solo.
    */
   static async getQuorumInfo(meetingId, clientId) {
     const meeting = await Meeting.findById(meetingId, clientId);
@@ -141,7 +141,10 @@ class QuorumService {
     }
 
     const present = await this.countPresentWithVote(meetingId);
-    const total = await Member.countEligibleForQuorum(clientId, meeting.product_id || null);
+    let total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
+    if (total === 0) {
+      total = await Member.countEligibleForQuorum(clientId, null);
+    }
     const required = this.calculateRequiredQuorum(meeting.type, total);
     const valid = total > 0 && present >= required;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;

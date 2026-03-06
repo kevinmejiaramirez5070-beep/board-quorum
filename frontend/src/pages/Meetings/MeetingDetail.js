@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { meetingService } from '../../services/meetingService';
 import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
-import { normalizeNameForDisplay } from '../../utils/nameDisplay';
+import { displayNameWithAccents } from '../../utils/nameDisplay';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -247,8 +247,8 @@ const MeetingDetail = () => {
         yPos = margin;
       }
 
-      const memberName = doc.splitTextToSize(normalizeNameForDisplay(item.member_name) || '-', 70);
-      const role = doc.splitTextToSize(normalizeNameForDisplay(item.role) || '-', 40);
+      const memberName = doc.splitTextToSize(displayNameWithAccents(item.member_name) || '-', 70);
+      const role = doc.splitTextToSize(displayNameWithAccents(item.role) || '-', 40);
       const status = item.status === 'present' 
         ? (language === 'es' ? 'Presente' : 'Present')
         : item.status;
@@ -374,8 +374,8 @@ const MeetingDetail = () => {
           yPos = margin;
         }
 
-        const memberName = doc.splitTextToSize(normalizeNameForDisplay(item.member_name) || '-', 70);
-        const role = doc.splitTextToSize(normalizeNameForDisplay(item.role) || '-', 40);
+        const memberName = doc.splitTextToSize(displayNameWithAccents(item.member_name) || '-', 70);
+        const role = doc.splitTextToSize(displayNameWithAccents(item.role) || '-', 40);
         const status = item.status === 'present' 
           ? (language === 'es' ? 'Presente' : 'Present')
           : item.status;
@@ -729,8 +729,8 @@ const MeetingDetail = () => {
                   {attendance.map((item) => (
                     <div key={item.id} className="attendance-item">
                       <div className="member-info">
-                        <strong>{normalizeNameForDisplay(item.member_name) || item.member_name}</strong>
-                        <span className="role">{normalizeNameForDisplay(item.role) || item.role || '-'}</span>
+                        <strong>{displayNameWithAccents(item.member_name) || item.member_name}</strong>
+                        <span className="role">{displayNameWithAccents(item.role) || item.role || '-'}</span>
                       </div>
                       <span className={`attendance-status status-${item.status}`}>
                         {item.status === 'present' 

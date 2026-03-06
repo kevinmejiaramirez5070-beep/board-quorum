@@ -133,12 +133,13 @@ exports.getQuorum = async (req, res) => {
     } catch (quorumError) {
       console.warn('Error calculating quorum, returning default values:', quorumError);
       const Member = require('../models/Member');
-      const total = await Member.countEligibleForQuorum(req.user.client_id, meeting.product_id || null);
+      let total = await Member.countEligibleForQuorum(req.user.client_id, meeting.product_id ?? null);
+      if (total === 0) total = await Member.countEligibleForQuorum(req.user.client_id, null);
       const required = QuorumService.calculateRequiredQuorum(meeting.type, total);
       res.json({
         present: 0,
         required,
-        total: total || (meeting.type === 'junta_directiva' ? 12 : 0),
+        total,
         percentage: 0,
         valid: false,
         met: false,

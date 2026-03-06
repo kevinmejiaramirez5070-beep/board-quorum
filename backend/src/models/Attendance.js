@@ -70,38 +70,44 @@ class Attendance {
   }
 
   /**
-   * Cuenta miembros presentes que suman al quórum (BUG-01, BUG-04).
-   * - Principales y Junta de Vigilancia: cuentan siempre que estén presentes y cuenta_quorum.
-   * - Suplentes: solo cuentan si el principal NO está presente (regla de suplencias).
-   * acting_as_principal en PostgreSQL puede ser true/false.
+   * Cuenta miembros presentes que suman al quórum (BUG-04, BUG-02B).
+   * - Principales: cuentan 1 cada uno si están presentes y cuenta_quorum.
+   * - Suplentes: solo cuentan si tienen principal_id y el principal NO está presente.
+   * - Junta de Vigilancia: máximo 1 voto institucional (no 3 individuales).
    */
   static async countPresentWithVote(meetingId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const cuentaQuorumCondition = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
+    const leastFn = isPostgreSQL ? 'LEAST' : 'LEAST';
 
-    const [rows] = await db.execute(
-      `SELECT COUNT(*) as count FROM (
-         SELECT 1
-         FROM attendance a
+    const sql = `
+      SELECT
+        (SELECT COUNT(*) FROM (
+          SELECT 1
+          FROM attendance a
+          JOIN members m ON a.member_id = m.id
+          WHERE a.meeting_id = ?
+            AND a.status = 'present'
+            AND a.member_id IS NOT NULL
+            AND ${cuentaQuorumCondition}
+            AND (
+              m.member_type = 'principal'
+              OR (m.member_type = 'suplente' AND m.principal_id IS NOT NULL AND m.principal_id NOT IN (
+                SELECT member_id FROM attendance
+                WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
+              ))
+            )
+        ) sub1)
+        +
+        (SELECT ${leastFn}(1, COUNT(*)) FROM attendance a
          JOIN members m ON a.member_id = m.id
          WHERE a.meeting_id = ?
            AND a.status = 'present'
            AND a.member_id IS NOT NULL
            AND ${cuentaQuorumCondition}
-           AND (
-             m.member_type = 'principal'
-             OR m.member_type = 'junta_vigilancia'
-             OR (m.member_type = 'suplente' AND (
-               m.principal_id IS NULL
-               OR m.principal_id NOT IN (
-                 SELECT member_id FROM attendance
-                 WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
-               )
-             ))
-           )
-       ) sub`,
-      [meetingId, meetingId]
-    );
+           AND m.member_type = 'junta_vigilancia') AS count
+    `;
+    const [rows] = await db.execute(sql, [meetingId, meetingId, meetingId]);
     const count = rows[0]?.count ?? 0;
     return typeof count === 'string' ? parseInt(count, 10) : count;
   }
