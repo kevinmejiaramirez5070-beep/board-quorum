@@ -5,6 +5,12 @@
 function fixEncoding(name) {
   if (name == null || typeof name !== 'string') return '';
   return name
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã±/g, 'ñ')
     .replace(/\u2022/g, 'Í')           // bullet • → Í (ej. MARA•A)
     .replace(/Ã•/g, 'Í')               // mojibake común
     .replace(/MARA\u2022A/gi, 'MARÍA')

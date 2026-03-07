@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { displayNameWithAccents } from '../../utils/nameDisplay';
 import UserSettingsModal from '../UserSettings/UserSettingsModal';
 import './UserMenuDropdown.css';
 
@@ -60,7 +61,7 @@ const UserMenuDropdown = () => {
           aria-label="User menu"
         >
           <div className="user-info">
-            <span className="user-name">{user?.name}</span>
+            <span className="user-name">{displayNameWithAccents(user?.name) || user?.name}</span>
             <span className={`user-role ${user?.role === 'authorized' ? 'authorized' : ''}`}>
               {getRoleLabel()}
             </span>
