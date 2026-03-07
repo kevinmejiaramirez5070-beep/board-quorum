@@ -26,6 +26,10 @@ const CreateMeeting = () => {
   useEffect(() => {
     if (productId) {
       loadProduct();
+      setFormData(prev => ({
+        ...prev,
+        product_id: parseInt(productId, 10) || null
+      }));
     }
   }, [productId]);
 
@@ -54,7 +58,11 @@ const CreateMeeting = () => {
     setLoading(true);
 
     try {
-      const response = await meetingService.create(formData);
+      const payload = {
+        ...formData,
+        product_id: productId ? parseInt(productId, 10) : (formData.product_id ?? null)
+      };
+      const response = await meetingService.create(payload);
       console.log('Meeting creation response:', response);
       console.log('Response data:', response.data);
       

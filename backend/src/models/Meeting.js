@@ -4,7 +4,7 @@ class Meeting {
   static async findAll(clientId, productId = null) {
     if (productId) {
       const [rows] = await db.execute(
-        `SELECT * FROM meetings WHERE client_id = ? AND product_id = ? ORDER BY date DESC`,
+        `SELECT * FROM meetings WHERE client_id = ? AND (product_id = ? OR product_id IS NULL) ORDER BY date DESC`,
         [clientId, productId]
       );
       return rows;
