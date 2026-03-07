@@ -130,15 +130,15 @@ class Product {
     );
     
     const [meetingCountRows] = await db.execute(
-      `SELECT COUNT(*) as count FROM meetings WHERE product_id = ? AND client_id = ?`,
-      [productId, clientId]
+      `SELECT COUNT(*) as count FROM meetings WHERE client_id = ? AND (product_id = ? OR product_id IS NULL)`,
+      [clientId, productId]
     );
     
     const [activeMeetingRows] = await db.execute(
       `SELECT id, title, status FROM meetings 
-       WHERE product_id = ? AND client_id = ? AND status = 'active' 
+       WHERE client_id = ? AND (product_id = ? OR product_id IS NULL) AND status = 'active' 
        ORDER BY date DESC LIMIT 1`,
-      [productId, clientId]
+      [clientId, productId]
     );
     
     return {

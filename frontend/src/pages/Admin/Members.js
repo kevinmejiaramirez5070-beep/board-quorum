@@ -25,6 +25,7 @@ const Members = () => {
     cargo: '',
     role: '',
     tipo_participante: '',
+    principal_id: '',
     rol_en_votacion: '',
     cuenta_quorum: true,
     puede_votar: true
@@ -85,6 +86,7 @@ const Members = () => {
         position: formData.cargo || null,
         role: formData.role || 'member',
         member_type: member_type,
+        principal_id: formData.tipo_participante === 'SUPLENTE' && formData.principal_id ? parseInt(formData.principal_id, 10) : null,
         tipo_participante: formData.tipo_participante || null,
         rol_en_votacion: formData.rol_en_votacion || null,
         cuenta_quorum: formData.cuenta_quorum !== undefined ? formData.cuenta_quorum : true,
@@ -112,6 +114,7 @@ const Members = () => {
   };
 
   const handleEdit = (member) => {
+    const tipoParticipante = member.tipo_participante || (member.member_type === 'suplente' ? 'SUPLENTE' : member.member_type === 'junta_vigilancia' ? 'JUNTA_DE_VIGILANCIA' : 'PRINCIPAL');
     setFormData({
       product_id: member.product_id || '',
       tipo_documento: member.tipo_documento || '',
@@ -120,7 +123,8 @@ const Members = () => {
       rol_organico: member.rol_organico || '',
       cargo: member.position || '',
       role: member.role || '',
-      tipo_participante: member.tipo_participante || '',
+      tipo_participante: tipoParticipante,
+      principal_id: member.principal_id || '',
       rol_en_votacion: member.rol_en_votacion || '',
       cuenta_quorum: member.cuenta_quorum !== undefined ? member.cuenta_quorum : true,
       puede_votar: member.puede_votar !== undefined ? member.puede_votar : true
@@ -151,6 +155,7 @@ const Members = () => {
       cargo: '',
       role: '',
       tipo_participante: '',
+      principal_id: '',
       rol_en_votacion: '',
       cuenta_quorum: true,
       puede_votar: true
@@ -158,6 +163,10 @@ const Members = () => {
     setEditingId(null);
     setShowForm(false);
   };
+
+  const principalsForSuplente = members.filter(
+    m => (m.member_type === 'principal' || !m.member_type) && (String(m.product_id || '') === String(formData.product_id || '')) && m.id !== editingId
+  );
 
   if (loading) return <div className="loading">{t('loading')}</div>;
 
@@ -310,6 +319,30 @@ const Members = () => {
                       <option value="NO_APLICA">{language === 'es' ? 'No Aplica' : 'Not Applicable'}</option>
                     </select>
                   </div>
+
+                  {formData.tipo_participante === 'SUPLENTE' && (
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Suplente de (Principal)' : 'Substitute of (Principal)'} *</label>
+                      <select
+                        name="principal_id"
+                        value={formData.principal_id}
+                        onChange={handleChange}
+                        className="input"
+                      >
+                        <option value="">{language === 'es' ? 'Selecciona el principal' : 'Select the principal'}</option>
+                        {principalsForSuplente.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.rol_organico ? `(${p.rol_organico})` : ''} {p.position ? `- ${p.position}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <small style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                        {language === 'es'
+                          ? 'Para que el quórum cuente bien: si el principal está presente, el suplente no suma.'
+                          : 'For correct quorum: if the principal is present, the substitute does not count.'}
+                      </small>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label className="label">{t('votingRole')}</label>
