@@ -405,18 +405,13 @@ const Organizations = () => {
                         </thead>
                         <tbody>
                           {organizations.map(org => {
-                            const getStatusColor = (status) => {
-                              if (status === 'activa') return '#dc2626'; // Red
-                              if (status === 'programada') return '#f59e0b'; // Orange
-                              return '#10b981'; // Green (inactivo)
-                            };
-                            
-                            const getStatusLabel = (status) => {
-                              if (status === 'activa') return language === 'es' ? 'ACTIVA' : 'ACTIVE';
-                              if (status === 'programada') return language === 'es' ? 'Programada' : 'Scheduled';
-                              return language === 'es' ? 'Inactivo' : 'Inactive';
-                            };
-                            
+                            const isActiveClient = org?.active === true || org?.active === 1;
+                            const getStatusColor = (active) => (active ? '#10b981' : '#dc2626'); // Green/Red
+                            const getStatusLabel = (active) =>
+                              active
+                                ? (language === 'es' ? 'ACTIVO' : 'ACTIVE')
+                                : (language === 'es' ? 'INACTIVO' : 'INACTIVE');
+
                             return (
                               <tr key={org.id}>
                                 <td className="client-name">{org.name}</td>
@@ -424,7 +419,7 @@ const Organizations = () => {
                                   <span 
                                     className="status-badge"
                                     style={{ 
-                                      color: getStatusColor(org.status || 'inactivo'),
+                                      color: getStatusColor(isActiveClient),
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: '6px'
@@ -433,14 +428,14 @@ const Organizations = () => {
                                     <span 
                                       className="status-dot"
                                       style={{ 
-                                        backgroundColor: getStatusColor(org.status || 'inactivo'),
+                                        backgroundColor: getStatusColor(isActiveClient),
                                         width: '8px',
                                         height: '8px',
                                         borderRadius: '50%',
                                         display: 'inline-block'
                                       }}
                                     ></span>
-                                    {getStatusLabel(org.status || 'inactivo')}
+                                    {getStatusLabel(isActiveClient)}
                                   </span>
                                 </td>
                                 <td className="last-activity">

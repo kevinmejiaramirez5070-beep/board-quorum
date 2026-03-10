@@ -91,8 +91,8 @@ class Attendance {
             AND a.member_id IS NOT NULL
             AND ${cuentaQuorumCondition}
             AND (
-              m.member_type = 'principal'
-              OR (m.member_type = 'suplente' AND m.principal_id IS NOT NULL AND m.principal_id NOT IN (
+              (m.member_type = 'principal' OR m.tipo_participante = 'PRINCIPAL')
+              OR ((m.member_type = 'suplente' OR m.tipo_participante = 'SUPLENTE') AND m.principal_id IS NOT NULL AND m.principal_id NOT IN (
                 SELECT member_id FROM attendance
                 WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
               ))
@@ -105,7 +105,7 @@ class Attendance {
            AND a.status = 'present'
            AND a.member_id IS NOT NULL
            AND ${cuentaQuorumCondition}
-           AND m.member_type = 'junta_vigilancia') AS count
+           AND (m.member_type = 'junta_vigilancia' OR m.tipo_participante = 'JUNTA_DE_VIGILANCIA')) AS count
     `;
     const [rows] = await db.execute(sql, [meetingId, meetingId, meetingId]);
     const count = rows[0]?.count ?? 0;
