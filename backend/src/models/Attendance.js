@@ -72,7 +72,8 @@ class Attendance {
   /**
    * Cuenta miembros presentes que suman al quórum (BUG-04, BUG-02B).
    * - Principales: cuentan 1 cada uno si están presentes y cuenta_quorum.
-   * - Suplentes: solo cuentan si tienen principal_id y el principal NO está presente.
+   * - Suplentes: cuentan si el principal NO está presente (o no tienen principal_id).
+   *   Si solo el suplente asiste → cuenta 1. Si ambos asisten → solo cuenta el principal.
    * - Junta de Vigilancia: máximo 1 voto institucional (no 3 individuales).
    */
   static async countPresentWithVote(meetingId) {
@@ -92,9 +93,12 @@ class Attendance {
             AND ${cuentaQuorumCondition}
             AND (
               (m.member_type = 'principal' OR m.tipo_participante = 'PRINCIPAL')
-              OR ((m.member_type = 'suplente' OR m.tipo_participante = 'SUPLENTE') AND m.principal_id IS NOT NULL AND m.principal_id NOT IN (
-                SELECT member_id FROM attendance
-                WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
+              OR ((m.member_type = 'suplente' OR m.tipo_participante = 'SUPLENTE') AND (
+                m.principal_id IS NULL
+                OR m.principal_id NOT IN (
+                  SELECT member_id FROM attendance
+                  WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
+                )
               ))
             )
         ) sub1)
