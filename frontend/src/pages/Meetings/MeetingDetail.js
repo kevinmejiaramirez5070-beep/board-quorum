@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { meetingService } from '../../services/meetingService';
 import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
@@ -13,6 +14,7 @@ const MeetingDetail = () => {
   const meetingIdParam = meetingId || id;
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { client } = useAuth();
   const [meeting, setMeeting] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [votings, setVotings] = useState([]);
@@ -22,6 +24,7 @@ const MeetingDetail = () => {
   const [votingLink, setVotingLink] = useState(null);
   const [attendanceLink, setAttendanceLink] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [showQuorumProjection, setShowQuorumProjection] = useState(false);
   const quorumIntervalRef = useRef(null);
 
   const getStatusLabel = (status) => {
@@ -655,13 +658,23 @@ const MeetingDetail = () => {
 
         {quorum && (
           <div className={`quorum-card ${quorum.met ? 'quorum-met' : 'quorum-not-met'}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h3 style={{ margin: 0 }}>{t('quorum')}</h3>
-              {meeting.status === 'active' && (
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                  {language === 'es' ? 'Actualización automática cada 5 segundos' : 'Auto-updating every 5 seconds'}
-                </span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {meeting.status === 'active' && (
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                    {language === 'es' ? 'Actualización automática cada 5 segundos' : 'Auto-updating every 5 seconds'}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-quorum-projection"
+                  onClick={() => setShowQuorumProjection(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  🖥️ {language === 'es' ? 'Proyectar en pantalla completa' : 'Project full screen'}
+                </button>
+              </div>
             </div>
             <div className="quorum-stats">
               <div className="stat">
@@ -682,6 +695,61 @@ const MeetingDetail = () => {
                 ? (language === 'es' ? '✓ Quórum alcanzado' : '✓ Quorum reached')
                 : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached')
               }
+            </div>
+          </div>
+        )}
+
+        {showQuorumProjection && quorum && (
+          <div className="quorum-projection-overlay" onClick={(e) => e.target === e.currentTarget && setShowQuorumProjection(false)}>
+            <div className="quorum-projection-content">
+              <button
+                type="button"
+                className="quorum-projection-close"
+                onClick={() => setShowQuorumProjection(false)}
+                aria-label={language === 'es' ? 'Salir de proyección' : 'Exit projection'}
+              >
+                ✕ {language === 'es' ? 'Salir de proyección' : 'Exit projection'}
+              </button>
+              <header className="quorum-projection-header">
+                BOARD QUORUM · {meeting?.type === 'junta_directiva' ? (language === 'es' ? 'JUNTA DIRECTIVA' : 'BOARD OF DIRECTORS') : (meeting?.type === 'asamblea' ? (language === 'es' ? 'ASAMBLEA GENERAL' : 'GENERAL ASSEMBLY') : (meeting?.type || '').toUpperCase())} · {(client?.name || '').toUpperCase() || 'ORGANIZACIÓN'}
+              </header>
+              <div className={`quorum-projection-result ${quorum.met ? 'met' : 'not-met'}`}>
+                <div className="quorum-projection-badge">
+                  {quorum.met ? (language === 'es' ? 'SÍ' : 'YES') : (language === 'es' ? 'NO' : 'NO')}
+                </div>
+                <h1 className="quorum-projection-title">
+                  {quorum.met 
+                    ? (language === 'es' ? 'QUÓRUM ALCANZADO' : 'QUORUM REACHED')
+                    : (language === 'es' ? 'QUÓRUM NO ALCANZADO' : 'QUORUM NOT REACHED')
+                  }
+                </h1>
+                {!quorum.met && quorum.required != null && (
+                  <p className="quorum-projection-subtitle">
+                    {language === 'es' 
+                      ? `Faltan ${Math.max(0, quorum.required - quorum.present)} miembros más`
+                      : `${Math.max(0, quorum.required - quorum.present)} more members needed`
+                    }
+                  </p>
+                )}
+              </div>
+              <div className="quorum-projection-details">
+                <div className="quorum-projection-row">
+                  <span className="quorum-projection-label">{language === 'es' ? 'Quórum deliberatorio:' : 'Deliberative quorum:'}</span>
+                  <span className="quorum-projection-value">
+                    {quorum.present} {language === 'es' ? 'votan quórum' : 'vote quorum'} / {quorum.required ?? '-'} {language === 'es' ? 'mínimos requeridos' : 'minimum required'}
+                  </span>
+                </div>
+                <div className="quorum-projection-row">
+                  <span className="quorum-projection-label">{language === 'es' ? 'Quórum mínimo:' : 'Minimum quorum:'}</span>
+                  <span className="quorum-projection-value">
+                    {quorum.required ?? '-'} {language === 'es' ? 'votos' : 'votes'} ({quorum.total > 0 ? Math.round(((quorum.required ?? 0) / quorum.total) * 100) : 0}% {language === 'es' ? 'de' : 'of'} {quorum.total} {language === 'es' ? 'elegibles' : 'eligible'})
+                  </span>
+                </div>
+                <div className="quorum-projection-row">
+                  <span className="quorum-projection-label">{language === 'es' ? 'Total presentes en la reunión:' : 'Total present at meeting:'}</span>
+                  <span className="quorum-projection-value">{quorum.present} / {quorum.total}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
