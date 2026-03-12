@@ -54,32 +54,26 @@ const MeetingDetail = () => {
     };
   }, [meetingIdParam]);
 
-  // Actualización automática del quórum cada 5 segundos si la reunión está activa
+  // Polling cada 4 segundos: asistencia + quórum se actualizan solos (sin recargar página)
   useEffect(() => {
-    if (meeting && meeting.status === 'active') {
-      // Limpiar intervalo anterior si existe
-      if (quorumIntervalRef.current) {
-        clearInterval(quorumIntervalRef.current);
-      }
-      
-      // Crear nuevo intervalo
-      quorumIntervalRef.current = setInterval(() => {
-        loadQuorum();
-      }, 5000); // Actualizar cada 5 segundos
-      
-      return () => {
-        if (quorumIntervalRef.current) {
-          clearInterval(quorumIntervalRef.current);
-        }
-      };
-    } else {
-      // Limpiar intervalo si la reunión no está activa
+    if (!meeting || !meetingIdParam) return;
+
+    if (quorumIntervalRef.current) {
+      clearInterval(quorumIntervalRef.current);
+    }
+
+    const POLL_INTERVAL_MS = 4000;
+    quorumIntervalRef.current = setInterval(() => {
+      loadAttendanceAndQuorum();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
       if (quorumIntervalRef.current) {
         clearInterval(quorumIntervalRef.current);
         quorumIntervalRef.current = null;
       }
-    }
-  }, [meeting?.status, meetingIdParam]);
+    };
+  }, [meeting?.id, meetingIdParam]);
 
   const loadMeetingData = async () => {
     try {
@@ -141,6 +135,20 @@ const MeetingDetail = () => {
       setQuorum(quorumRes.data);
     } catch (quorumError) {
       console.warn('Error loading quorum (non-critical):', quorumError);
+    }
+  };
+
+  // Actualización de asistencia + quórum para polling (sin recargar página)
+  const loadAttendanceAndQuorum = async () => {
+    try {
+      const [attendanceRes, quorumRes] = await Promise.all([
+        attendanceService.getByMeeting(meetingIdParam),
+        meetingService.getQuorum(meetingIdParam)
+      ]);
+      setAttendance(attendanceRes.data ?? []);
+      setQuorum(quorumRes.data);
+    } catch (err) {
+      console.warn('Error en actualización automática asistencia/quórum:', err);
     }
   };
 
