@@ -36,7 +36,7 @@ const Login = () => {
     setErrorOrgs('');
     setLoadingOrgs(true);
     try {
-      const response = await api.get('/clients/public');
+      const response = await api.get(`/clients/public?t=${Date.now()}`);
       const list = Array.isArray(response.data) ? response.data : [];
       setOrganizations(list);
       if (list.length === 0) {

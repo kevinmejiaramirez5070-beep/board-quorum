@@ -3,13 +3,28 @@ const User = require('../models/User');
 const Meeting = require('../models/Meeting');
 const db = require('../config/database');
 
+// Considerar activo: true, 1, 't', 'true' (PostgreSQL puede devolver distinto)
+function isClientActive(c) {
+  if (c == null || c.active == null) return false;
+  if (c.active === true || c.active === 1) return true;
+  if (typeof c.active === 'string' && (c.active === 't' || c.active.toLowerCase() === 'true')) return true;
+  return false;
+}
+
 // Endpoint público: solo organizaciones ACTIVAS (para login)
 exports.getPublic = async (req, res) => {
   try {
-    const clients = await Client.findAll();
-    const list = Array.isArray(clients) ? clients : [];
+    let list = await Client.findAll();
+    list = Array.isArray(list) ? list : [];
+    // Si la consulta por activos devuelve vacío, intentar con todos y filtrar en JS (por si active viene en otro formato en la BD)
+    if (list.length === 0) {
+      const all = await Client.findAllForAdmin();
+      list = Array.isArray(all) ? all.filter(isClientActive) : [];
+    } else {
+      list = list.filter(isClientActive);
+    }
     const publicClients = list
-      .filter(c => c != null && (c.active === true || c.active === 1))
+      .filter(c => c != null)
       .map(client => ({
         id: client.id,
         name: client.name != null ? String(client.name) : ''
