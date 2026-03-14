@@ -29,6 +29,7 @@ const Organizations = () => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
     // Redirigir si no es admin master
@@ -55,6 +56,31 @@ const Organizations = () => {
       setOrganizations([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (org) => {
+    const isActive = org?.active === true || org?.active === 1;
+    const nextActive = !isActive;
+    setTogglingId(org.id);
+    setError('');
+    setSuccess('');
+    try {
+      await api.patch(`/clients/${org.id}/active`, { active: nextActive });
+      setOrganizations(prev =>
+        prev.map(o => (o.id === org.id ? { ...o, active: nextActive } : o))
+      );
+      setSuccess(
+        nextActive
+          ? (language === 'es' ? 'Organización activada.' : 'Organization activated.')
+          : (language === 'es' ? 'Organización desactivada.' : 'Organization deactivated.')
+      );
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message;
+      setError(language === 'es' ? `Error al cambiar estado: ${msg}` : `Error changing status: ${msg}`);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -416,14 +442,21 @@ const Organizations = () => {
                               <tr key={org.id}>
                                 <td className="client-name">{org.name}</td>
                                 <td>
-                                  <span 
-                                    className="status-badge"
+                                  <button
+                                    type="button"
+                                    className="status-badge status-badge-clickable"
                                     style={{ 
                                       color: getStatusColor(isActiveClient),
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: '6px'
                                     }}
+                                    onClick={() => handleToggleActive(org)}
+                                    disabled={togglingId === org.id}
+                                    title={language === 'es' 
+                                      ? (isActiveClient ? 'Clic para desactivar' : 'Clic para activar')
+                                      : (isActiveClient ? 'Click to deactivate' : 'Click to activate')
+                                    }
                                   >
                                     <span 
                                       className="status-dot"
@@ -435,8 +468,11 @@ const Organizations = () => {
                                         display: 'inline-block'
                                       }}
                                     ></span>
-                                    {getStatusLabel(isActiveClient)}
-                                  </span>
+                                    {togglingId === org.id 
+                                      ? (language === 'es' ? '...' : '...') 
+                                      : getStatusLabel(isActiveClient)
+                                    }
+                                  </button>
                                 </td>
                                 <td className="last-activity">
                                   {org.lastActivity || (language === 'es' ? 'Sin actividad' : 'No activity')}

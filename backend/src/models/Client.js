@@ -1,24 +1,27 @@
 const db = require('../config/database');
 
 class Client {
+  /** Solo clientes activos (para login / listado público) */
   static async findAll() {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
-    // Aceptar active = true (boolean) o active = 1 (entero) por compatibilidad
     const activeCondition = isPostgreSQL ? '(active = true OR active = 1)' : 'active = 1';
     try {
       const [rows] = await db.execute(`SELECT * FROM clients WHERE ${activeCondition}`);
-      const list = Array.isArray(rows) ? rows : [];
-      // Si no hay resultados con filtro active, devolver todos (para login y restauraciones)
-      if (list.length === 0) {
-        const [allRows] = await db.execute('SELECT * FROM clients');
-        return Array.isArray(allRows) ? allRows : [];
-      }
-      return list;
-    } catch (err) {
-      // Si falla (ej. columna active no existe o tipo distinto), intentar sin filtro active
-      console.warn('Client.findAll with active filter failed, trying without:', err.message);
-      const [rows] = await db.execute('SELECT * FROM clients');
       return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      console.warn('Client.findAll failed:', err.message);
+      return [];
+    }
+  }
+
+  /** Todos los clientes (para panel admin: ver activos e inactivos) */
+  static async findAllForAdmin() {
+    try {
+      const [rows] = await db.execute('SELECT * FROM clients ORDER BY name');
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      console.warn('Client.findAllForAdmin failed:', err.message);
+      return [];
     }
   }
 
@@ -112,6 +115,16 @@ class Client {
     const activeValue = isPostgreSQL ? 'false' : '0';
     await db.execute(
       `UPDATE clients SET active = ${activeValue}, updated_at = NOW() WHERE id = ?`,
+      [id]
+    );
+  }
+
+  /** Activar o desactivar cliente (toggle para admin) */
+  static async setActive(id, active) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const value = active ? (isPostgreSQL ? 'true' : '1') : (isPostgreSQL ? 'false' : '0');
+    await db.execute(
+      `UPDATE clients SET active = ${value}, updated_at = NOW() WHERE id = ?`,
       [id]
     );
   }

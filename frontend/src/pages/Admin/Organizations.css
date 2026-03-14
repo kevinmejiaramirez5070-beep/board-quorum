@@ -81,6 +81,22 @@
   gap: 6px;
 }
 
+.status-badge-clickable {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.status-badge-clickable:hover {
+  background-color: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}
+.status-badge-clickable:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;

@@ -12,6 +12,7 @@ router.get('/meetings/active', auth, isAdminMaster, clientController.getActiveMe
 router.get('/:id', clientController.getById);
 router.post('/', auth, clientController.create);
 router.put('/:id', auth, clientController.update);
+router.patch('/:id/active', auth, clientController.setActive);
 router.delete('/:id', auth, clientController.delete);
 
 module.exports = router;

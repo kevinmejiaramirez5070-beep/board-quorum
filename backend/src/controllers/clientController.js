@@ -3,19 +3,13 @@ const User = require('../models/User');
 const Meeting = require('../models/Meeting');
 const db = require('../config/database');
 
-// Endpoint público para obtener organizaciones activas (para login)
+// Endpoint público: solo organizaciones ACTIVAS (para login)
 exports.getPublic = async (req, res) => {
   try {
-    let clients = await Client.findAll();
-    let list = Array.isArray(clients) ? clients : [];
-    // Si sigue vacío, intentar sin filtro (por si la BD tiene otra estructura)
-    if (list.length === 0) {
-      const db = require('../config/database');
-      const [rows] = await db.execute('SELECT id, name FROM clients');
-      list = Array.isArray(rows) ? rows : [];
-    }
+    const clients = await Client.findAll();
+    const list = Array.isArray(clients) ? clients : [];
     const publicClients = list
-      .filter(c => c != null)
+      .filter(c => c != null && (c.active === true || c.active === 1))
       .map(client => ({
         id: client.id,
         name: client.name != null ? String(client.name) : ''
@@ -31,7 +25,7 @@ exports.getPublic = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const clients = await Client.findAll();
+    const clients = await Client.findAllForAdmin();
     
     // Si es admin master, agregar información de última actividad
     if (req.user?.role === 'admin_master') {
@@ -280,6 +274,20 @@ exports.delete = async (req, res) => {
     res.json({ message: 'Organización eliminada exitosamente' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+/** Activar o desactivar organización (solo admin master). Body: { active: true|false } */
+exports.setActive = async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin_master' && req.user?.email !== 'admin@boardquorum.com') {
+      return res.status(403).json({ message: 'No tienes permisos para cambiar el estado' });
+    }
+    const active = req.body.active === true || req.body.active === 'true' || req.body.active === 1;
+    await Client.setActive(req.params.id, active);
+    res.json({ success: true, active });
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Error al actualizar estado' });
   }
 };
 
