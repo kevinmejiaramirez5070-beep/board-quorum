@@ -6,8 +6,14 @@ const db = require('../config/database');
 // Endpoint público para obtener organizaciones activas (para login)
 exports.getPublic = async (req, res) => {
   try {
-    const clients = await Client.findAll();
-    const list = Array.isArray(clients) ? clients : [];
+    let clients = await Client.findAll();
+    let list = Array.isArray(clients) ? clients : [];
+    // Si sigue vacío, intentar sin filtro (por si la BD tiene otra estructura)
+    if (list.length === 0) {
+      const db = require('../config/database');
+      const [rows] = await db.execute('SELECT id, name FROM clients');
+      list = Array.isArray(rows) ? rows : [];
+    }
     const publicClients = list
       .filter(c => c != null)
       .map(client => ({
