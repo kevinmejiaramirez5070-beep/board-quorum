@@ -111,12 +111,10 @@ class Client {
   }
 
   static async delete(id) {
-    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
-    const activeValue = isPostgreSQL ? 'false' : '0';
-    await db.execute(
-      `UPDATE clients SET active = ${activeValue}, updated_at = NOW() WHERE id = ?`,
-      [id]
-    );
+    // Hard delete: para que “Eliminar” realmente desaparezca del panel.
+    // Con las FKs (users/products/meetings/... con ON DELETE CASCADE),
+    // se eliminarán también los datos dependientes.
+    await db.execute(`DELETE FROM clients WHERE id = ?`, [id]);
   }
 
   /** Activar o desactivar cliente (toggle para admin) */
