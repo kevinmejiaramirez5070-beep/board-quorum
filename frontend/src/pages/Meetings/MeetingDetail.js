@@ -54,6 +54,22 @@ const MeetingDetail = () => {
     };
   }, [meetingIdParam]);
 
+  // Si se abre la pantalla con un hash (ej. #meeting-quorum-card),
+  // nos aseguramos de hacer scroll al bloque correcto.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const targetId = hash.replace('#', '');
+    if (!targetId) return;
+
+    setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, [meetingIdParam]);
+
   // Polling cada 4 segundos: asistencia + quórum se actualizan solos (sin recargar página)
   useEffect(() => {
     if (!meeting || !meetingIdParam) return;
@@ -691,7 +707,10 @@ const MeetingDetail = () => {
         )}
 
         {quorum && (
-          <div className={`quorum-card ${quorum.met ? 'quorum-met' : 'quorum-not-met'}`}>
+          <div
+            id="meeting-quorum-card"
+            className={`quorum-card ${quorum.met ? 'quorum-met' : 'quorum-not-met'}`}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h3 style={{ margin: 0 }}>{t('quorum')}</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>

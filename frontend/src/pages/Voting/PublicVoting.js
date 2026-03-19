@@ -181,7 +181,7 @@ const PublicVoting = () => {
     const meetingId = voting.meeting_id;
     const backToMeeting =
       meetingId
-        ? `${window.location.origin}/public/meeting/${meetingId}/attendance`
+        ? `${window.location.origin}/meetings/${meetingId}#meeting-quorum-card`
         : null;
 
     return (
