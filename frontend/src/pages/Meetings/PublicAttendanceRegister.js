@@ -386,11 +386,6 @@ const PublicAttendanceRegister = () => {
             >
               <div style={{ padding: '18px', backgroundColor: '#0f172a', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <h4 style={{ margin: 0, color: '#fbbf24' }}>Opción 1 - Miembro de un órgano ASOCOLCI</h4>
-                <p style={{ color: '#cbd5e1', marginTop: '10px' }}>
-                  {language === 'es'
-                    ? 'Pendiente de validación (no cuenta al quórum hasta que valide el Admin).'
-                    : 'Pending validation (does not count to quorum until Admin approves).'}
-                </p>
                 <button className="btn btn-primary btn-large" style={{ width: '100%', marginTop: '14px' }} onClick={() => startManualFlow('ORG_MEMBER')}>
                   {language === 'es' ? 'Elegir Opción 1' : 'Choose Option 1'}
                 </button>
@@ -398,11 +393,6 @@ const PublicAttendanceRegister = () => {
 
               <div style={{ padding: '18px', backgroundColor: '#0b1220', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <h4 style={{ margin: 0, color: '#60a5fa' }}>Opción 2 - Invitado externo</h4>
-                <p style={{ color: '#cbd5e1', marginTop: '10px' }}>
-                  {language === 'es'
-                    ? 'INVITADO. No cuenta al quórum y no puede votar.'
-                    : 'INVITED. Does not count for quorum and cannot vote.'}
-                </p>
                 <button className="btn btn-primary btn-large" style={{ width: '100%', marginTop: '14px' }} onClick={() => startManualFlow('INVITADO')}>
                   {language === 'es' ? 'Elegir Opción 2' : 'Choose Option 2'}
                 </button>
@@ -410,11 +400,6 @@ const PublicAttendanceRegister = () => {
 
               <div style={{ padding: '18px', backgroundColor: '#0b1220', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <h4 style={{ margin: 0, color: '#34d399' }}>Opción 3 - Personal administrativo ASOCOLCI</h4>
-                <p style={{ color: '#cbd5e1', marginTop: '10px' }}>
-                  {language === 'es'
-                    ? 'PERSONAL ADMIN. No cuenta al quórum y no puede votar.'
-                    : 'PERSONAL ADMIN. Does not count for quorum and cannot vote.'}
-                </p>
                 <button className="btn btn-primary btn-large" style={{ width: '100%', marginTop: '14px' }} onClick={() => startManualFlow('PERSONAL_ADMIN')}>
                   {language === 'es' ? 'Elegir Opción 3' : 'Choose Option 3'}
                 </button>
@@ -422,11 +407,6 @@ const PublicAttendanceRegister = () => {
 
               <div style={{ padding: '18px', backgroundColor: '#111827', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <h4 style={{ margin: 0, color: '#fb7185' }}>Opción 4 - Ninguna aplica / Error</h4>
-                <p style={{ color: '#cbd5e1', marginTop: '10px' }}>
-                  {language === 'es'
-                    ? 'Contacta al administrador.'
-                    : 'Contact the administrator.'}
-                </p>
                 <button className="btn btn-danger btn-large" style={{ width: '100%', marginTop: '14px' }} onClick={() => setStep('manualNone')}>
                   {language === 'es' ? 'Elegir Opción 4' : 'Choose Option 4'}
                 </button>
