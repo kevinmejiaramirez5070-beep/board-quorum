@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { useLanguage } from '../../context/LanguageContext';
 import Logo from '../../components/Logo/Logo';
+import api from '../../services/api';
 import './PublicVoting.css';
 
 const PublicVoting = () => {
@@ -28,12 +28,12 @@ const PublicVoting = () => {
 
   const loadVotingData = async () => {
     try {
-      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${baseURL}/votings/public/${votingId}`);
+      const response = await api.get(`/votings/public/${votingId}`);
       setVoting(response.data);
     } catch (error) {
       console.error('Error loading voting data:', error);
-      alert(language === 'es' ? 'Error al cargar la información de la votación' : 'Error loading voting information');
+      const msg = error.response?.data?.message || (language === 'es' ? 'Error al cargar la información de la votación' : 'Error loading voting information');
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,7 @@ const PublicVoting = () => {
 
     setSubmitting(true);
     try {
-      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await axios.post(`${baseURL}/votes/verify/${votingId}`, {
+      const response = await api.post(`/votes/verify/${votingId}`, {
         cedula: formData.cedula
       });
 
@@ -108,8 +107,7 @@ const PublicVoting = () => {
 
     setSubmitting(true);
     try {
-      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      await axios.post(`${baseURL}/votes/confirm/${votingId}`, {
+      await api.post(`/votes/confirm/${votingId}`, {
         cedula: formData.cedula,
         option: formData.option,
         confirmado: true
@@ -144,8 +142,7 @@ const PublicVoting = () => {
 
     setSubmitting(true);
     try {
-      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      await axios.post(`${baseURL}/votes/public/${votingId}`, {
+      await api.post(`/votes/public/${votingId}`, {
         name: formData.guestName,
         email: formData.guestEmail || null,
         option: formData.option
