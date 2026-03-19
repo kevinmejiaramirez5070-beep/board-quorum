@@ -44,24 +44,40 @@ class Voting {
       ? JSON.stringify(options) 
       : null;
     
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const returningClause = isPostgreSQL ? ' RETURNING id' : '';
+
     try {
       // Intentar insertar con la columna options si existe
-      const [result] = await db.execute(
+      const [rows] = await db.execute(
         `INSERT INTO votings (meeting_id, title, description, type, status, options, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+         VALUES (?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
         [meeting_id, title, description || null, type || 'simple', status || 'pending', optionsJson]
       );
-      return result.insertId;
+
+      if (isPostgreSQL) {
+        return rows?.[0]?.id;
+      }
+      // MySQL
+      return rows?.insertId;
     } catch (error) {
       // Si falla porque la columna options no existe, intentar sin ella
-      if (error.code === 'ER_BAD_FIELD_ERROR' && error.sqlMessage && error.sqlMessage.includes('options')) {
+      if (
+        (error.code === 'ER_BAD_FIELD_ERROR' && error.sqlMessage && error.sqlMessage.includes('options')) ||
+        (error.code === '42703' && error.message && error.message.toLowerCase().includes('options'))
+      ) {
         console.warn('Column "options" does not exist, creating voting without it');
-        const [result] = await db.execute(
+        const [rows] = await db.execute(
           `INSERT INTO votings (meeting_id, title, description, type, status, created_at)
-           VALUES (?, ?, ?, ?, ?, NOW())`,
+           VALUES (?, ?, ?, ?, ?, NOW())${returningClause}`,
           [meeting_id, title, description || null, type || 'simple', status || 'pending']
         );
-        return result.insertId;
+
+        if (isPostgreSQL) {
+          return rows?.[0]?.id;
+        }
+        // MySQL
+        return rows?.insertId;
       }
       throw error;
     }
