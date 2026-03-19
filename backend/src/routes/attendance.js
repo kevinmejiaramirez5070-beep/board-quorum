@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth');
+const { auth, isAdmin } = require('../middleware/auth');
 const attendanceController = require('../controllers/attendanceController');
 
 // Rutas autenticadas
@@ -15,6 +15,10 @@ router.post('/manual/meeting/:meetingId', attendanceController.registerManualAtt
 
 // Ruta legacy (mantener para compatibilidad, pero deprecar)
 router.post('/public/meeting/:meetingId', attendanceController.registerPublicAttendance);
+
+// Admin valida / rechaza asistencia pendiente
+router.patch('/:id/approve', auth, isAdmin, attendanceController.approvePendingAttendance);
+router.patch('/:id/reject', auth, isAdmin, attendanceController.rejectPendingAttendance);
 
 module.exports = router;
 

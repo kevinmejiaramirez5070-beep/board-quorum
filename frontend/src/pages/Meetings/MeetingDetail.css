@@ -441,6 +441,16 @@
   color: var(--success);
 }
 
+.attendance-status.status-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.attendance-status.status-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
 .votings-list {
   display: flex;
   flex-direction: column;

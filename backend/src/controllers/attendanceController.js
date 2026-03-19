@@ -241,3 +241,24 @@ exports.registerPublicAttendance = async (req, res) => {
   }
 };
 
+// Admin valida / rechaza asistencia pendiente (INVITADO / PERSONAL ADMIN / Miembros de órgano)
+exports.approvePendingAttendance = async (req, res) => {
+  try {
+    const attendanceId = req.params.id;
+    await Attendance.approveAttendance(attendanceId);
+    res.json({ success: true, id: attendanceId });
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Error al aprobar asistencia' });
+  }
+};
+
+exports.rejectPendingAttendance = async (req, res) => {
+  try {
+    const attendanceId = req.params.id;
+    await Attendance.rejectAttendance(attendanceId);
+    res.json({ success: true, id: attendanceId });
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Error al rechazar asistencia' });
+  }
+};
+

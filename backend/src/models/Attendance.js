@@ -179,10 +179,58 @@ class Attendance {
    * Aprueba una asistencia pendiente
    */
   static async approveAttendance(attendanceId) {
+    // Regla de validación:
+    // - Si es INVITADO o PERSONAL ADMIN: solo quitar pending_approval (NUNCA asignar member_id).
+    // - Si es PENDIENTE DE VALIDAR de un miembro del órgano: intentar asignar member_id por manual_document
+    //   para que SÍ cuente en quórum (si el documento existe en members).
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const pendingValue = isPostgreSQL ? 'false' : '0';
+
+    const invitedCond = isPostgreSQL
+      ? "a.manual_position ILIKE '%INVITADO%'"
+      : "LOWER(a.manual_position) LIKE '%invitado%'";
+    const personalAdminCond = isPostgreSQL
+      ? "a.manual_position ILIKE '%PERSONAL ADMIN%'"
+      : "LOWER(a.manual_position) LIKE '%personal admin%'";
+
+    const sql = `
+      UPDATE attendance a
+      SET
+        pending_approval = ${pendingValue},
+        status = 'present',
+        member_id = CASE
+          WHEN ${invitedCond} THEN NULL
+          WHEN ${personalAdminCond} THEN NULL
+          ELSE (
+            SELECT m.id
+            FROM members m
+            JOIN meetings meet ON meet.id = a.meeting_id
+            WHERE m.client_id = meet.client_id
+              AND m.numero_documento = a.manual_document
+            LIMIT 1
+          )
+        END,
+        updated_at = NOW()
+      WHERE a.id = ?
+    `;
+
+    await db.execute(sql, [attendanceId]);
+  }
+
+  /**
+   * Rechaza una asistencia pendiente (no cuenta en quórum).
+   * Dejamos status = 'rejected' para que el contador de quórum (status='present') no la tome.
+   */
+  static async rejectAttendance(attendanceId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const pendingValue = isPostgreSQL ? 'false' : '0';
     await db.execute(
-      `UPDATE attendance SET pending_approval = ${pendingValue}, updated_at = NOW() WHERE id = ?`,
+      `UPDATE attendance
+       SET pending_approval = ${pendingValue},
+           status = 'rejected',
+           member_id = NULL,
+           updated_at = NOW()
+       WHERE id = ?`,
       [attendanceId]
     );
   }

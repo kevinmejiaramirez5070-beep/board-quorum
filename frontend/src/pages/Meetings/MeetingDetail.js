@@ -14,7 +14,7 @@ const MeetingDetail = () => {
   const meetingIdParam = meetingId || id;
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const { client } = useAuth();
+  const { client, user } = useAuth();
   const [meeting, setMeeting] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [votings, setVotings] = useState([]);
@@ -260,9 +260,13 @@ const MeetingDetail = () => {
 
       const memberName = doc.splitTextToSize(displayNameWithAccents(item.member_name) || '-', 70);
       const role = doc.splitTextToSize(displayNameWithAccents(item.role) || '-', 40);
-      const status = item.status === 'present' 
-        ? (language === 'es' ? 'Presente' : 'Present')
-        : item.status;
+      const status = item.pending_approval
+        ? (language === 'es' ? 'Pendiente de validación' : 'Pending validation')
+        : (item.status === 'present'
+          ? (language === 'es' ? 'Presente' : 'Present')
+          : (item.status === 'rejected'
+            ? (language === 'es' ? 'Rechazado' : 'Rejected')
+            : item.status));
 
       doc.text(memberName, margin, yPos);
       doc.text(role, margin + 80, yPos);
@@ -284,6 +288,28 @@ const MeetingDetail = () => {
     // Guardar PDF
     const fileName = `Asistencia_${meeting.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
     doc.save(fileName);
+  };
+
+  const isAdminForApproval = user?.role === 'admin' || user?.role === 'admin_master';
+
+  const handleApproveAttendance = async (attendanceId) => {
+    try {
+      await attendanceService.approvePending(attendanceId);
+      await loadAttendanceAndQuorum();
+    } catch (error) {
+      console.error('Error approving attendance:', error);
+      setErrorMessage(error.response?.data?.message || (language === 'es' ? 'Error al aprobar asistencia' : 'Error approving attendance'));
+    }
+  };
+
+  const handleRejectAttendance = async (attendanceId) => {
+    try {
+      await attendanceService.rejectPending(attendanceId);
+      await loadAttendanceAndQuorum();
+    } catch (error) {
+      console.error('Error rejecting attendance:', error);
+      setErrorMessage(error.response?.data?.message || (language === 'es' ? 'Error al rechazar asistencia' : 'Error rejecting attendance'));
+    }
   };
 
   // Generar reporte completo de reunión (asistencia + todas las votaciones)
@@ -808,12 +834,38 @@ const MeetingDetail = () => {
                         <strong>{displayNameWithAccents(item.member_name) || item.member_name}</strong>
                         <span className="role">{displayNameWithAccents(item.role) || item.role || '-'}</span>
                       </div>
-                      <span className={`attendance-status status-${item.status}`}>
-                        {item.status === 'present' 
-                          ? (language === 'es' ? '✓ Presente' : '✓ Present')
-                          : item.status
-                        }
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        {item.pending_approval ? (
+                          <span className="attendance-status status-pending">
+                            {language === 'es' ? '⌛ Pendiente de validación' : '⌛ Pending validation'}
+                          </span>
+                        ) : (
+                          <span className={`attendance-status status-${item.status}`}>
+                            {item.status === 'present'
+                              ? (language === 'es' ? '✓ Presente' : '✓ Present')
+                              : item.status === 'rejected'
+                              ? (language === 'es' ? '✗ Rechazado' : '✗ Rejected')
+                              : item.status}
+                          </span>
+                        )}
+
+                        {item.pending_approval && isAdminForApproval && (
+                          <>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleApproveAttendance(item.id)}
+                            >
+                              {language === 'es' ? 'Aprobar' : 'Approve'}
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleRejectAttendance(item.id)}
+                            >
+                              {language === 'es' ? 'Rechazar' : 'Reject'}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
