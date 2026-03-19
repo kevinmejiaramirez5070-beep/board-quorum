@@ -181,6 +181,12 @@ const PublicVoting = () => {
   }
 
   if (voting.status !== 'active') {
+    const meetingId = voting.meeting_id;
+    const backToMeeting =
+      meetingId
+        ? `${window.location.origin}/public/meeting/${meetingId}/attendance`
+        : null;
+
     return (
       <div className="public-voting-page">
         <div className="container">
@@ -188,10 +194,20 @@ const PublicVoting = () => {
             <Logo size="medium" showText={true} />
             <h1>{voting.title}</h1>
             <p className="status-message">
-              {language === 'es' 
-                ? 'Esta votación no está activa actualmente.' 
-                : 'This voting is not currently active.'}
+              {language === 'es'
+                ? 'Aún no puedes votar porque la votación no está habilitada. Revisa la reunión y espera a que el Admin active la votación cuando el quórum sea alcanzado.'
+                : 'You cannot vote yet because the voting is not enabled. Check the meeting and wait for the Admin to activate the voting once quorum is reached.'}
             </p>
+
+            {backToMeeting && (
+              <a
+                href={backToMeeting}
+                className="btn btn-secondary btn-large btn-block"
+                style={{ marginTop: '16px' }}
+              >
+                {language === 'es' ? 'Volver a la reunión' : 'Back to meeting'}
+              </a>
+            )}
           </div>
         </div>
       </div>

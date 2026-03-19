@@ -165,6 +165,7 @@ exports.getPublicVoting = async (req, res) => {
       title: voting.title,
       description: voting.description,
       status: voting.status,
+      meeting_id: voting.meeting_id,
       type: voting.type,
       options: voting.options || null // Opciones para votaciones múltiples
     });
