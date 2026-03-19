@@ -56,9 +56,21 @@ const CreateVoting = () => {
 
     try {
       const response = await votingService.create(meetingId, formData);
-      const votingId = response.data?.id || response.data;
-      
-      if (votingId) {
+
+      // Robustez: el backend retorna { id, message, votingLink }.
+      // Si por alguna razón `id` viene distinto, evitamos construir un link con [object Object].
+      const votingIdCandidate =
+        response.data?.id ??
+        response.data?.votingId ??
+        response.data?.data?.id;
+
+      const votingIdNumber =
+        typeof votingIdCandidate === 'string'
+          ? parseInt(votingIdCandidate, 10)
+          : votingIdCandidate;
+
+      if (Number.isFinite(Number(votingIdNumber))) {
+        const votingId = Number(votingIdNumber);
         // Generar el link público de votación
         const link = `${window.location.origin}/public/voting/${votingId}`;
         setVotingLink(link);
@@ -69,6 +81,8 @@ const CreateVoting = () => {
           ? `Votación creada exitosamente.\n\nLink de Votación:\n${link}\n\nComparte este link en la reunión de Google Meet para que los participantes puedan votar.`
           : `Voting created successfully.\n\nVoting Link:\n${link}\n\nShare this link in the Google Meet meeting so participants can vote.`;
         alert(message);
+      } else {
+        throw new Error(language === 'es' ? 'No se recibió un ID válido para la votación' : 'Invalid voting id received');
       }
       
       // No navegar automáticamente, dejar que el usuario vea el link

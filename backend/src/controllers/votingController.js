@@ -155,7 +155,13 @@ exports.getResults = async (req, res) => {
 // Endpoint público para obtener votación (sin autenticación)
 exports.getPublicVoting = async (req, res) => {
   try {
-    const voting = await Voting.findById(req.params.id);
+    const rawId = req.params.id;
+    const votingId = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+    if (!Number.isFinite(Number(votingId))) {
+      return res.status(400).json({ message: 'Voting id inválido' });
+    }
+
+    const voting = await Voting.findById(votingId);
     if (!voting) {
       return res.status(404).json({ message: 'Voting not found' });
     }
