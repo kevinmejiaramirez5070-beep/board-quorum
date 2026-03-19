@@ -111,15 +111,35 @@ class Client {
   }
 
   static async delete(id) {
-    // Hard delete: para que “Eliminar” realmente desaparezca del panel.
-    // Con las FKs (users/products/meetings/... con ON DELETE CASCADE),
-    // se eliminarán también los datos dependientes.
-    await db.execute(`DELETE FROM clients WHERE id = ?`, [id]);
+    // SEG-01: soft delete (papelera). La organización se marca como inactiva
+    // para que no aparezca en el login público, pero quede en el panel como "Eliminado".
+    await db.execute(
+      `UPDATE clients SET active = ${false}, updated_at = NOW() WHERE id = ?`,
+      [id]
+    );
   }
 
   /** Activar o desactivar cliente (toggle para admin) */
   static async setActive(id, active) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+
+    // Restaurar solo dentro de 30 días (SEG-01)
+    if (active) {
+      // ¿Está en papelera y dentro de los 30 días?
+      const condition = isPostgreSQL
+        ? 'active = false AND updated_at >= NOW() - INTERVAL \'30 days\''
+        : 'active = 0 AND updated_at >= NOW() - INTERVAL 30 DAY';
+
+      const [rows] = await db.execute(
+        `SELECT id FROM clients WHERE id = ? AND ${condition} LIMIT 1`,
+        [id]
+      );
+
+      if (!rows || rows.length === 0) {
+        throw new Error('Solo puedes restaurar una organización dentro de los últimos 30 días');
+      }
+    }
+
     const value = active ? (isPostgreSQL ? 'true' : '1') : (isPostgreSQL ? 'false' : '0');
     await db.execute(
       `UPDATE clients SET active = ${value}, updated_at = NOW() WHERE id = ?`,

@@ -32,6 +32,15 @@ const Organizations = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [togglingId, setTogglingId] = useState(null);
+  // SEG-01: protección para eliminar (3 capas)
+  const [seg01, setSeg01] = useState({
+    open: false,
+    step: 1, // 1=texto exacto, 2=advertencia final, 3=eliminando
+    org: null,
+    confirmText: '',
+    deleting: false,
+    localError: ''
+  });
 
   useEffect(() => {
     // Redirigir si no es admin master
@@ -212,15 +221,40 @@ const Organizations = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('confirmDeleteOrganization'))) {
+    const org = organizations.find(o => o.id === id);
+    if (!org) return;
+
+    setSeg01({
+      open: true,
+      step: 1,
+      org,
+      confirmText: '',
+      deleting: false,
+      localError: ''
+    });
+  };
+
+  const handleSeg01ConfirmText = () => {
+    if (!seg01?.org) return;
+    const expected = String(seg01.org.name || '').trim();
+    const actual = String(seg01.confirmText || '').trim();
+    if (expected.length === 0 || actual !== expected) {
+      setSeg01(prev => ({ ...prev, localError: language === 'es' ? 'Escribe el nombre EXACTO para continuar.' : 'Type the exact name to continue.' }));
       return;
     }
+    setSeg01(prev => ({ ...prev, step: 2, localError: '' }));
+  };
 
+  const handleSeg01FinalDelete = async () => {
+    if (!seg01?.org) return;
+    setSeg01(prev => ({ ...prev, deleting: true, localError: '' }));
     try {
-      await api.delete(`/clients/${id}`);
-      setSuccess(t('organizationDeletedSuccess'));
+      await api.delete(`/clients/${seg01.org.id}`);
+      setSeg01({ open: false, step: 1, org: null, confirmText: '', deleting: false, localError: '' });
+      setSuccess(language === 'es' ? 'Organización eliminada (papelera) exitosamente.' : 'Organization moved to trash successfully.');
       loadOrganizations();
     } catch (error) {
+      setSeg01(prev => ({ ...prev, deleting: false }));
       setError(error.response?.data?.message || t('errorDeletingOrganization'));
     }
   };
@@ -439,7 +473,7 @@ const Organizations = () => {
                             const getStatusLabel = (active) =>
                               active
                                 ? (language === 'es' ? 'ACTIVO' : 'ACTIVE')
-                                : (language === 'es' ? 'INACTIVO' : 'INACTIVE');
+                                : (language === 'es' ? 'ELIMINADO' : 'DELETED');
 
                             return (
                               <tr key={org.id}>
@@ -529,6 +563,143 @@ const Organizations = () => {
           </div>
         </div>
       </div>
+
+      {/* SEG-01 Modal: protección para eliminar */}
+      {seg01.open && seg01.org && (
+        <div
+          className="seg01-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 5000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            className="seg01-modal"
+            style={{
+              width: '100%',
+              maxWidth: '720px',
+              background: 'var(--surface)',
+              borderRadius: '14px',
+              border: '2px solid #dc2626',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+              padding: '22px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <h2 style={{ margin: 0, color: '#dc2626', fontSize: '18px' }}>
+                {language === 'es' ? 'SEG-01: Eliminar organización' : 'SEG-01: Delete organization'}
+              </h2>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSeg01({ open: false, step: 1, org: null, confirmText: '', deleting: false, localError: '' })}
+                disabled={seg01.deleting}
+              >
+                {language === 'es' ? 'Cerrar' : 'Close'}
+              </button>
+            </div>
+
+            {seg01.step === 1 && (
+              <div style={{ marginTop: '16px' }}>
+                <p style={{ margin: '10px 0', color: 'var(--text-primary)' }}>
+                  {language === 'es'
+                    ? 'Escribe el nombre exacto de la organización para habilitar el botón de eliminar.'
+                    : 'Type the exact organization name to enable deletion.'}
+                </p>
+
+                <div style={{ marginTop: '12px' }}>
+                  <label className="label" style={{ color: 'var(--text-primary)' }}>
+                    {language === 'es' ? 'Nombre exacto:' : 'Exact name:'}
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={seg01.confirmText}
+                    onChange={(e) => setSeg01(prev => ({ ...prev, confirmText: e.target.value, localError: '' }))}
+                    disabled={seg01.deleting}
+                    style={{ width: '100%', marginTop: '6px' }}
+                  />
+                  {seg01.localError && (
+                    <div className="alert alert-error" style={{ marginTop: '10px' }}>
+                      {seg01.localError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '18px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleSeg01ConfirmText}
+                    disabled={seg01.deleting}
+                  >
+                    {language === 'es' ? 'Continuar' : 'Continue'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {seg01.step === 2 && (
+              <div style={{ marginTop: '16px' }}>
+                <div
+                  style={{
+                    background: 'rgba(220,38,38,0.12)',
+                    border: '2px solid #dc2626',
+                    borderRadius: '12px',
+                    padding: '16px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '34px' }}>⚠️</span>
+                    <div>
+                      <h3 style={{ margin: 0, color: '#dc2626' }}>
+                        {language === 'es' ? 'Advertencia final' : 'Final warning'}
+                      </h3>
+                      <p style={{ margin: '6px 0 0', color: 'var(--text-primary)' }}>
+                        {language === 'es'
+                          ? 'Esta acción manda la organización a la papelera (soft delete). Se podrá restaurar dentro de 30 días.'
+                          : 'This action moves the organization to trash (soft delete). It can be restored within 30 days.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '18px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setSeg01(prev => ({ ...prev, step: 1, localError: '' }))}
+                    disabled={seg01.deleting}
+                  >
+                    {language === 'es' ? 'Volver' : 'Back'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleSeg01FinalDelete}
+                    disabled={seg01.deleting}
+                    style={{ minWidth: '160px' }}
+                  >
+                    {seg01.deleting
+                      ? (language === 'es' ? 'Eliminando...' : 'Deleting...')
+                      : (language === 'es' ? 'Eliminar a papelera' : 'Move to trash')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
