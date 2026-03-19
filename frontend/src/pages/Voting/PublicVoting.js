@@ -9,10 +9,12 @@ const PublicVoting = () => {
   const { votingId } = useParams();
   const { t, language } = useLanguage();
   const [voting, setVoting] = useState(null);
-  const [step, setStep] = useState('verify'); // 'verify', 'confirm', 'notFound', 'voted'
+  const [step, setStep] = useState('verify'); // 'verify', 'confirm', 'notFound', 'guest', 'voted'
   const [formData, setFormData] = useState({
     cedula: '',
-    option: ''
+    option: '',
+    guestName: '',
+    guestEmail: ''
   });
   const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,40 @@ const PublicVoting = () => {
 
   const handleRetry = () => {
     setStep('verify');
-    setFormData({ ...formData, cedula: '', option: '' });
+    setFormData({ ...formData, cedula: '', option: '', guestName: '', guestEmail: '' });
+  };
+
+  // PASO 6 (invitado): cuando no existe la cédula, permitir registrar un voto como invitado
+  const handleGuestVote = async () => {
+    if (!formData.guestName || !formData.option) {
+      alert(
+        language === 'es'
+          ? 'Ingresa tu nombre (invitado) y selecciona una opción'
+          : 'Enter your name (guest) and select an option'
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      await axios.post(`${baseURL}/votes/public/${votingId}`, {
+        name: formData.guestName,
+        email: formData.guestEmail || null,
+        option: formData.option
+      });
+
+      setVoted(true);
+      setStep('voted');
+    } catch (error) {
+      console.error('Error casting guest vote:', error);
+      const errorMessage =
+        error.response?.data?.message ||
+        (language === 'es' ? 'Error al registrar el voto como invitado' : 'Error casting guest vote');
+      alert(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -324,6 +359,98 @@ const PublicVoting = () => {
               >
                 {language === 'es' ? 'Reintentar' : 'Retry'}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setStep('guest')}
+                className="btn btn-warning btn-large btn-block"
+                style={{ marginTop: '12px', padding: '14px', fontSize: '16px', fontWeight: '700' }}
+              >
+                {language === 'es' ? 'Continuar como invitado' : 'Continue as guest'}
+              </button>
+            </div>
+          )}
+
+          {/* PASO INVITADO */}
+          {step === 'guest' && (
+            <div className="guest-section">
+              <div className="confirmation-card">
+                <h3>{language === 'es' ? 'Flujo de invitado' : 'Guest flow'}</h3>
+                <p style={{ color: '#666', marginTop: '8px' }}>
+                  {language === 'es'
+                    ? 'Registra tu voto como invitado. (Si perteneces a la organización, intenta con tu cédula.)'
+                    : 'Register your vote as a guest. (If you are part of the organization, try with your ID.)'}
+                </p>
+
+                <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <div className="form-group" style={{ marginBottom: '14px' }}>
+                    <label className="label">{language === 'es' ? 'Nombre' : 'Name'} *</label>
+                    <input
+                      type="text"
+                      name="guestName"
+                      value={formData.guestName}
+                      onChange={handleChange}
+                      className="input"
+                      placeholder={language === 'es' ? 'Ej: Juan Invitado' : 'e.g. John Guest'}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '14px' }}>
+                    <label className="label">{language === 'es' ? 'Email (opcional)' : 'Email (optional)'}</label>
+                    <input
+                      type="email"
+                      name="guestEmail"
+                      value={formData.guestEmail}
+                      onChange={handleChange}
+                      className="input"
+                      placeholder={language === 'es' ? 'tu@email.com' : 'you@email.com'}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">{language === 'es' ? 'Tu Voto' : 'Your Vote'} *</label>
+                    <div className="options-group">
+                      {options.map((option, index) => (
+                        <label key={index} className="option-radio">
+                          <input
+                            type="radio"
+                            name="option"
+                            value={option}
+                            checked={formData.option === option}
+                            onChange={handleChange}
+                          />
+                          <span className="radio-label">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                    <button
+                      onClick={handleRetry}
+                      className="btn btn-secondary"
+                      disabled={submitting}
+                    >
+                      {language === 'es' ? 'Volver' : 'Back'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGuestVote}
+                      className="btn btn-primary btn-large"
+                      disabled={submitting || !formData.option}
+                    >
+                      {submitting
+                        ? language === 'es'
+                          ? 'Registrando...'
+                          : 'Registering...'
+                        : language === 'es'
+                        ? 'Confirmar Voto'
+                        : 'Confirm Vote'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import './Logo.css';
 
-const Logo = ({ variant = 'default', size = 'medium', showText = true }) => {
+const Logo = ({ variant = 'default', size = 'medium', showText = true, showShort = false }) => {
   const { theme } = useTheme();
   const [imageError, setImageError] = useState(false);
   const [currentLogoPath, setCurrentLogoPath] = useState('');
@@ -60,7 +60,7 @@ const Logo = ({ variant = 'default', size = 'medium', showText = true }) => {
       {showText && (
         <div className="logo-text">
           <span className="logo-main">BOARD QUORUM</span>
-          <span className="logo-short">BQ</span>
+          {showShort && <span className="logo-short">BQ</span>}
         </div>
       )}
     </div>

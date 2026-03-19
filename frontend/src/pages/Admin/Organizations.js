@@ -11,6 +11,8 @@ const Organizations = () => {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Org de prueba que NO queremos mostrar en el panel admin master
+  const TEST_ORG_NAMES = ['kelvin', 'kevin meija', 'tumaco'];
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -44,11 +46,12 @@ const Organizations = () => {
     try {
       setError('');
       const response = await api.get('/clients');
-      if (response.data) {
-        setOrganizations(response.data);
-      } else {
-        setOrganizations([]);
-      }
+      const list = Array.isArray(response.data) ? response.data : [];
+      const filtered = list.filter((org) => {
+        const name = (org?.name || '').trim().toLowerCase();
+        return !TEST_ORG_NAMES.includes(name);
+      });
+      setOrganizations(filtered);
     } catch (error) {
       console.error('Error loading organizations:', error);
       const errorMessage = error.response?.data?.message || error.message || t('errorLoadingOrganizations');
