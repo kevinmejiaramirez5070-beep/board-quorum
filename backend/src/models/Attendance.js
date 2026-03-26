@@ -70,17 +70,31 @@ class Attendance {
   }
 
   /**
-   * Cuenta miembros presentes que suman al quórum (BUG-04, BUG-02B).
-   * - Principales: cuentan 1 cada uno si están presentes y cuenta_quorum.
-   * - Suplentes: cuentan SOLO si el principal NO está en la lista de presentes.
-   *   Si solo el suplente asiste → cuenta 1. Si ambos asisten → solo cuenta el principal (suplente no suma).
-   *   Requiere principal_id asignado para que el suplente cuente cuando va solo.
-   * - Junta de Vigilancia: máximo 1 voto institucional (no 3 individuales).
+   * Cuenta miembros presentes que suman al quórum (BUG-04, BUG-JV).
+   * - Principales: 1 cada uno (cuenta_quorum, no pendiente de aprobación).
+   * - Suplentes: cuentan solo si el principal del cargo NO está presente.
+   *   - Si tiene principal_id: el principal con ese id no debe estar en asistencia presente.
+   *   - Si principal_id es NULL (datos históricos): no debe haber ningún principal presente
+   *     con el mismo rol_organico (mismo órgano/cargo).
+   * - JV: máximo 1 voto institucional (LEAST(1, COUNT)).
    */
   static async countPresentWithVote(meetingId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const cuentaQuorumCondition = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
-    const leastFn = isPostgreSQL ? 'LEAST' : 'LEAST';
+    const pendingOkA = isPostgreSQL
+      ? '(COALESCE(a.pending_approval, false) = false)'
+      : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
+    const pendingOkA2 = isPostgreSQL
+      ? '(COALESCE(a2.pending_approval, false) = false)'
+      : '(a2.pending_approval IS NULL OR a2.pending_approval = 0)';
+    const pendingOkSub = isPostgreSQL
+      ? '(COALESCE(pending_approval, false) = false)'
+      : '(pending_approval IS NULL OR pending_approval = 0)';
+
+    const isPrincipal = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'principal' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'PRINCIPAL')`;
+    const isSuplente = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'suplente' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'SUPLENTE')`;
+    const isJv = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'junta_vigilancia' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'JUNTA_DE_VIGILANCIA')`;
+    const principalPred = `(LOWER(TRIM(COALESCE(mp.member_type, ''))) = 'principal' OR UPPER(TRIM(COALESCE(mp.tipo_participante, ''))) = 'PRINCIPAL')`;
 
     const sql = `
       SELECT
@@ -89,25 +103,54 @@ class Attendance {
           FROM attendance a
           JOIN members m ON a.member_id = m.id
           WHERE a.meeting_id = ?
+            AND ${pendingOkA}
             AND a.status = 'present'
             AND a.member_id IS NOT NULL
             AND ${cuentaQuorumCondition}
+            AND NOT (${isJv})
             AND (
-              (m.member_type = 'principal' OR m.tipo_participante = 'PRINCIPAL')
-              OR ((m.member_type = 'suplente' OR m.tipo_participante = 'SUPLENTE') AND m.principal_id IS NOT NULL AND m.principal_id NOT IN (
-                SELECT member_id FROM attendance
-                WHERE meeting_id = ? AND status = 'present' AND member_id IS NOT NULL
-              ))
+              ${isPrincipal}
+              OR (
+                ${isSuplente}
+                AND (
+                  (
+                    m.principal_id IS NOT NULL
+                    AND m.principal_id NOT IN (
+                      SELECT member_id FROM attendance
+                      WHERE meeting_id = ?
+                        AND status = 'present'
+                        AND member_id IS NOT NULL
+                        AND ${pendingOkSub}
+                    )
+                  )
+                  OR (
+                    m.principal_id IS NULL
+                    AND TRIM(COALESCE(m.rol_organico, '')) <> ''
+                    AND NOT EXISTS (
+                      SELECT 1
+                      FROM attendance a2
+                      JOIN members mp ON mp.id = a2.member_id
+                      WHERE a2.meeting_id = a.meeting_id
+                        AND ${pendingOkA2}
+                        AND a2.status = 'present'
+                        AND a2.member_id IS NOT NULL
+                        AND ${principalPred}
+                        AND UPPER(TRIM(COALESCE(mp.rol_organico, ''))) = UPPER(TRIM(COALESCE(m.rol_organico, '')))
+                    )
+                  )
+                )
+              )
             )
         ) sub1)
         +
-        (SELECT ${leastFn}(1, COUNT(*)) FROM attendance a
+        (SELECT LEAST(1, COUNT(*)) FROM attendance a
          JOIN members m ON a.member_id = m.id
          WHERE a.meeting_id = ?
+           AND ${pendingOkA}
            AND a.status = 'present'
            AND a.member_id IS NOT NULL
            AND ${cuentaQuorumCondition}
-           AND (m.member_type = 'junta_vigilancia' OR m.tipo_participante = 'JUNTA_DE_VIGILANCIA')) AS count
+           AND ${isJv}) AS count
     `;
     const [rows] = await db.execute(sql, [meetingId, meetingId, meetingId]);
     const count = rows[0]?.count ?? 0;

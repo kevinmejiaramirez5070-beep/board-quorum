@@ -115,6 +115,18 @@ FROM (VALUES
 ) AS t(doc, nom, rol, pos, mtype, tpart, rvot, cq, pv)
 WHERE NOT EXISTS (SELECT 1 FROM members m WHERE m.client_id = (SELECT id FROM clients WHERE subdomain = 'asocolci') AND m.numero_documento = t.doc);
 
+-- Enlazar suplentes al principal del mismo rol_organico (BUG-04 / datos completos)
+UPDATE members s
+SET principal_id = p.id
+FROM members p
+WHERE s.client_id = (SELECT id FROM clients WHERE subdomain = 'asocolci' LIMIT 1)
+  AND p.client_id = s.client_id
+  AND LOWER(TRIM(COALESCE(s.member_type, ''))) = 'suplente'
+  AND LOWER(TRIM(COALESCE(p.member_type, ''))) = 'principal'
+  AND UPPER(TRIM(COALESCE(s.rol_organico, ''))) = UPPER(TRIM(COALESCE(p.rol_organico, '')))
+  AND TRIM(COALESCE(s.rol_organico, '')) <> ''
+  AND s.principal_id IS NULL;
+
 -- ========== VERIFICACIÓN ==========
 SELECT 'CLIENTES' AS tabla, COUNT(*) AS total FROM clients
 UNION ALL
