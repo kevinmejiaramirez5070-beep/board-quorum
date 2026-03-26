@@ -214,11 +214,11 @@ const MeetingDetail = () => {
       // Header
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text(clientName, 12, 10);
+      doc.text(clientName, 12, 9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${meeting?.title || '-'} · ${meetingTypeLabel} · ${meetingDateLabel}`, 12, 15);
+      doc.text(`${meeting?.title || '-'} · ${meetingTypeLabel} · ${meetingDateLabel}`, 12, 14);
       doc.setLineWidth(0.2);
-      doc.line(10, 18, pageWidth - 10, 18);
+      doc.line(10, 20, pageWidth - 10, 20);
 
       // Footer
       doc.setLineWidth(0.2);
@@ -244,7 +244,7 @@ const MeetingDetail = () => {
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
+    const margin = 28;
     let yPos = margin;
     const lineHeight = 7;
 
@@ -402,7 +402,7 @@ const MeetingDetail = () => {
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
+      const margin = 28;
       let yPos = margin;
       const lineHeight = 7;
 
