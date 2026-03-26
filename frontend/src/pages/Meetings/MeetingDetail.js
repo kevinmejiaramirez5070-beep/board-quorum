@@ -181,6 +181,19 @@ const MeetingDetail = () => {
     }
   };
 
+  const handleInstallSession = async () => {
+    try {
+      setErrorMessage(null);
+      await meetingService.installSession(meetingIdParam);
+      await loadMeetingData();
+      alert(language === 'es' ? 'Sesión instalada correctamente.' : 'Session installed successfully.');
+    } catch (error) {
+      console.error('Error installing session:', error);
+      const msg = error.response?.data?.message || (language === 'es' ? 'Error al instalar la sesión' : 'Error installing session');
+      setErrorMessage(msg);
+    }
+  };
+
   // Generar PDF de asistencia
   const generateAttendancePDF = () => {
     if (!meeting || !attendance) return;
@@ -897,6 +910,43 @@ const MeetingDetail = () => {
               <div className="section-header">
                 <h2>{t('votings')}</h2>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        padding: '6px 10px',
+                        borderRadius: '999px',
+                        background: meeting?.session_installed ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                        color: meeting?.session_installed ? 'var(--success)' : 'var(--warning)',
+                        border: `1px solid ${meeting?.session_installed ? 'rgba(34,197,94,0.35)' : 'rgba(245,158,11,0.35)'}`
+                      }}
+                      title={language === 'es'
+                        ? (meeting?.session_installed ? 'La sesión ya está instalada' : 'Primero debes instalar la sesión para poder activar votaciones')
+                        : (meeting?.session_installed ? 'Session is installed' : 'You must install the session before activating votings')}
+                    >
+                      {meeting?.session_installed
+                        ? (language === 'es' ? 'Sesión instalada' : 'Session installed')
+                        : (language === 'es' ? 'Sesión NO instalada' : 'Session NOT installed')}
+                    </span>
+
+                    {!meeting?.session_installed && (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleInstallSession}
+                        disabled={!(quorum?.met)}
+                        title={
+                          quorum?.met
+                            ? (language === 'es' ? 'Instalar sesión (requiere quórum)' : 'Install session (requires quorum)')
+                            : (language === 'es'
+                                ? 'No puedes instalar la sesión sin quórum alcanzado'
+                                : 'You cannot install the session without quorum')
+                        }
+                        style={!(quorum?.met) ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                      >
+                        {language === 'es' ? 'Instalar sesión' : 'Install session'}
+                      </button>
+                    )}
+                  </div>
                   <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
                     {t('newVoting')}
                   </button>

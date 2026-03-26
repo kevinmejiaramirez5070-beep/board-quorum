@@ -33,6 +33,12 @@ const VotingResults = () => {
     if (!results) return;
 
     const { voting, results: voteResults, votes, totalVotes, majority, majorityValidation } = results;
+    if (!totalVotes || totalVotes === 0) {
+      alert(language === 'es'
+        ? 'No se puede generar el PDF porque no hay votos emitidos.'
+        : 'Cannot generate PDF because there are no votes cast.');
+      return;
+    }
     const doc = new jsPDF();
     
     // Configuración
@@ -179,6 +185,7 @@ const VotingResults = () => {
   
   // Verificar si el usuario puede generar reportes (admin, admin_master, authorized)
   const canGenerateReports = user?.role === 'admin' || user?.role === 'admin_master' || user?.role === 'authorized';
+  const canGeneratePdf = canGenerateReports && totalVotes > 0;
 
   return (
     <div className="voting-results">
@@ -293,7 +300,19 @@ const VotingResults = () => {
 
         <div className="results-actions">
           {canGenerateReports && (
-            <button className="btn btn-primary" onClick={generatePDF}>
+            <button
+              className="btn btn-primary"
+              onClick={generatePDF}
+              disabled={!canGeneratePdf}
+              title={
+                !canGeneratePdf
+                  ? (language === 'es'
+                      ? 'No se puede generar PDF sin votos emitidos'
+                      : 'Cannot generate PDF without votes cast')
+                  : undefined
+              }
+              style={!canGeneratePdf ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+            >
               📄 {language === 'es' ? 'Generar PDF' : 'Generate PDF'}
             </button>
           )}

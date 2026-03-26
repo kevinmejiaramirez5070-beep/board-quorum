@@ -100,11 +100,10 @@ class QuorumService {
    * @returns {number} - Mayoría simple requerida (mitad + 1)
    */
   static calculateSimpleMajority(votesEmitted) {
-    if (votesEmitted === 0) {
-      return 0;
-    }
+    const emitted = Number(votesEmitted) || 0;
     // Mayoría simple = floor(votos_emitidos / 2) + 1
-    return Math.floor(votesEmitted / 2) + 1;
+    // Si no hay votos emitidos, la mayoría requerida sería 1 (pero la decisión NO puede aprobarse sin votos).
+    return Math.floor(emitted / 2) + 1;
   }
 
   /**
@@ -114,18 +113,32 @@ class QuorumService {
    * @returns {Object} - { approved: boolean, majority: number, affirmative: number, message: string }
    */
   static validateSimpleMajority(affirmativeVotes, totalVotesEmitted) {
-    const majority = this.calculateSimpleMajority(totalVotesEmitted);
-    const approved = affirmativeVotes >= majority;
+    const total = Number(totalVotesEmitted) || 0;
+    const affirmative = Number(affirmativeVotes) || 0;
+
+    // Regla legal: con 0 votos emitidos no se puede certificar una aprobación.
+    if (total === 0) {
+      return {
+        approved: false,
+        majority: 1,
+        affirmative,
+        total,
+        message: 'Sin votos emitidos. No es posible aprobar una decisión ni generar un acta válida.'
+      };
+    }
+
+    const majority = this.calculateSimpleMajority(total);
+    const approved = affirmative >= majority;
 
     const message = approved
-      ? `Decisión APROBADA: ${affirmativeVotes} votos afirmativos (mayoría requerida: ${majority})`
-      : `Decisión RECHAZADA: ${affirmativeVotes} votos afirmativos (mayoría requerida: ${majority})`;
+      ? `Decisión APROBADA: ${affirmative} votos afirmativos (mayoría requerida: ${majority})`
+      : `Decisión RECHAZADA: ${affirmative} votos afirmativos (mayoría requerida: ${majority})`;
 
     return {
       approved,
       majority,
-      affirmative: affirmativeVotes,
-      total: totalVotesEmitted,
+      affirmative,
+      total,
       message
     };
   }
