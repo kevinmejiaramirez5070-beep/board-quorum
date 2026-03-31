@@ -365,6 +365,8 @@ const MeetingDetail = () => {
   };
 
   const isAdminForApproval = user?.role === 'admin' || user?.role === 'admin_master';
+  const canAuthorizedLive = user?.role === 'authorized' || user?.role === 'admin_master';
+  const canAdminPrep = user?.role === 'admin' || user?.role === 'admin_master';
 
   const handleApproveAttendance = async (attendanceId) => {
     try {
@@ -648,16 +650,17 @@ const MeetingDetail = () => {
           )}
         </div>
 
-        {/* Botón para generar reporte completo */}
-        <div style={{ marginBottom: '24px', textAlign: 'right' }}>
-          <button 
-            className="btn btn-primary"
-            onClick={generateFullMeetingReport}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '16px' }}
-          >
-            📊 {language === 'es' ? 'Generar Reporte Completo' : 'Generate Full Report'}
-          </button>
-        </div>
+        {canAuthorizedLive && (
+          <div style={{ marginBottom: '24px', textAlign: 'right' }}>
+            <button 
+              className="btn btn-primary"
+              onClick={generateFullMeetingReport}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '16px' }}
+            >
+              📊 {language === 'es' ? 'Generar Reporte Completo' : 'Generate Full Report'}
+            </button>
+          </div>
+        )}
 
         {/* Sección de Links Importantes */}
         {(meeting.google_meet_link || votingLink || attendanceLink) && (
@@ -778,14 +781,16 @@ const MeetingDetail = () => {
                     {language === 'es' ? 'Actualización automática cada 5 segundos' : 'Auto-updating every 5 seconds'}
                   </span>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-quorum-projection"
-                  onClick={() => setShowQuorumProjection(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  🖥️ {language === 'es' ? 'Proyectar en pantalla completa' : 'Project full screen'}
-                </button>
+                {canAuthorizedLive && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-quorum-projection"
+                    onClick={() => setShowQuorumProjection(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    🖥️ {language === 'es' ? 'Proyectar en pantalla completa' : 'Project full screen'}
+                  </button>
+                )}
               </div>
             </div>
             <div className="quorum-stats">
@@ -887,13 +892,15 @@ const MeetingDetail = () => {
               <div className="section-header">
                 <h2>{language === 'es' ? 'Lista de Asistencia' : 'Attendance List'}</h2>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={generateAttendancePDF}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    📄 {language === 'es' ? 'Generar PDF Asistencia' : 'Generate Attendance PDF'}
-                  </button>
+                  {canAuthorizedLive && (
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={generateAttendancePDF}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      📄 {language === 'es' ? 'Generar PDF Asistencia' : 'Generate Attendance PDF'}
+                    </button>
+                  )}
                   <button 
                     className="btn btn-primary"
                     onClick={() => navigate(`/meetings/${id}/attendance/register`)}
@@ -975,7 +982,7 @@ const MeetingDetail = () => {
                         : (language === 'es' ? 'Sesión NO instalada' : 'Session NOT installed')}
                     </span>
 
-                    {!meeting?.session_installed && (
+                    {!meeting?.session_installed && canAuthorizedLive && (
                       <button
                         className="btn btn-secondary"
                         onClick={handleInstallSession}
@@ -993,9 +1000,11 @@ const MeetingDetail = () => {
                       </button>
                     )}
                   </div>
-                  <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
-                    {t('newVoting')}
-                  </button>
+                  {canAdminPrep && (
+                    <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
+                      {t('newVoting')}
+                    </button>
+                  )}
                 </div>
               </div>
               {votings.length === 0 ? (
@@ -1019,7 +1028,7 @@ const MeetingDetail = () => {
                       </div>
                       {voting.description && <p>{voting.description}</p>}
                       <div className="voting-actions">
-                        {voting.status === 'pending' && (
+                        {voting.status === 'pending' && canAuthorizedLive && (
                           <button 
                             className="btn btn-primary"
                             onClick={() => handleActivateVoting(voting.id)}

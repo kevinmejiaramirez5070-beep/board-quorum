@@ -147,7 +147,7 @@ const MeetingsList = () => {
               <div className="empty-icon">📋</div>
               <h2>{t('noMeetings')}</h2>
               <p>{t('createFirstMeeting')}</p>
-              {user?.role === 'admin' && (
+              {(user?.role === 'admin' || user?.role === 'admin_master') && (
                 <Link to="/meetings/new" className="btn btn-primary btn-large">
                   {t('createFirstMeetingBtn')}
                 </Link>

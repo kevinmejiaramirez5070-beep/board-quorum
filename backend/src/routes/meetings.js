@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { auth, isAdmin, isAdminOrAuthorized } = require('../middleware/auth');
+const { auth, isAdmin, isAuthorizedLive } = require('../middleware/auth');
 const meetingController = require('../controllers/meetingController');
 const joinRequestController = require('../controllers/joinRequestController');
 
@@ -16,8 +16,8 @@ router.post('/', auth, isAdmin, meetingController.createMeeting);
 router.put('/:id', auth, isAdmin, meetingController.updateMeeting);
 router.delete('/:id', auth, isAdmin, meetingController.deleteMeeting);
 
-// Admin y Authorized pueden instalar sesión (durante la reunión)
-router.post('/:id/install-session', auth, isAdminOrAuthorized, meetingController.installSession);
+// Solo Autorizado (y admin_master) instala sesión en vivo
+router.post('/:id/install-session', auth, isAuthorizedLive, meetingController.installSession);
 
 // Rutas de solicitudes de unión
 router.post('/:meetingId/join-request', auth, joinRequestController.requestToJoin);

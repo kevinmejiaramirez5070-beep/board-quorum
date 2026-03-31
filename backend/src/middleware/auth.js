@@ -48,6 +48,14 @@ const isAdminOrAuthorized = (req, res, next) => {
   next();
 };
 
+// Solo Autorizado o Admin Master: acciones en vivo (activar votación, instalar sesión, etc.)
+const isAuthorizedLive = (req, res, next) => {
+  if (req.user.role !== 'authorized' && req.user.role !== 'admin_master') {
+    return res.status(403).json({ message: 'Authorized live role required' });
+  }
+  next();
+};
+
 // Legacy: Mantener compatibilidad
 const isMember = (req, res, next) => {
   if (req.user.role !== 'member' && req.user.role !== 'admin' && req.user.role !== 'admin_master') {
@@ -69,6 +77,7 @@ module.exports = {
   isAdmin, 
   isAuthorized, 
   isAdminOrAuthorized,
+  isAuthorizedLive,
   isMember, 
   isAdminOrMember 
 };

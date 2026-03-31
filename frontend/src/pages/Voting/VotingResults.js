@@ -222,7 +222,7 @@ const VotingResults = () => {
   const maxVotes = Math.max(...voteResults.map(r => r.votes), 0);
   
   // Verificar si el usuario puede generar reportes (admin, admin_master, authorized)
-  const canGenerateReports = user?.role === 'admin' || user?.role === 'admin_master' || user?.role === 'authorized';
+  const canGenerateReports = user?.role === 'authorized' || user?.role === 'admin_master';
   const canGeneratePdf = canGenerateReports && totalVotes > 0;
 
   return (
