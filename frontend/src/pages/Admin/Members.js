@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { memberService } from '../../services/memberService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +9,7 @@ import './Members.css';
 const Members = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [members, setMembers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +35,20 @@ const Members = () => {
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
+    if (!user) return;
+    if (user.role === 'authorized' || user.role === 'member') {
+      setLoading(false);
+      navigate('/products', { replace: true });
+      return;
+    }
+    if (user.role !== 'admin' && user.role !== 'admin_master') {
+      setLoading(false);
+      navigate('/products', { replace: true });
+      return;
+    }
     loadMembers();
     loadProducts();
-  }, []);
+  }, [user, navigate]);
 
   const loadMembers = async () => {
     try {

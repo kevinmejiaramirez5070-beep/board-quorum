@@ -29,14 +29,14 @@ const Dashboard = () => {
   const [recentMeetings, setRecentMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Determinar si es admin master
   const isAdminMaster = user?.role === 'admin_master';
+  const isClientAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (user) {
       loadDashboardData();
     }
-  }, [user]);
+  }, [user, isAdminMaster]);
 
   const loadDashboardData = async () => {
     try {
@@ -49,16 +49,16 @@ const Dashboard = () => {
         
         setPlatformStats(platformStatsResponse.data);
         setActiveMeetings(activeMeetingsResponse.data || []);
-      } else {
-        // Admin normal: cargar datos específicos del cliente
+      } else if (user?.role === 'admin') {
+        // Admin cliente (oficina): reuniones + total miembros
         const [meetingsResponse, membersResponse] = await Promise.all([
           meetingService.getAll(),
           memberService.getAll()
         ]);
-        
+
         const meetings = meetingsResponse.data;
         const members = membersResponse.data;
-        
+
         const now = new Date();
         const active = meetings.filter(m => m.status === 'active');
         const completed = meetings.filter(m => m.status === 'completed');
@@ -70,6 +70,25 @@ const Dashboard = () => {
           completedMeetings: completed.length,
           upcomingMeetings: upcoming.length,
           totalMembers: members.length
+        });
+
+        setRecentMeetings(meetings.slice(0, 5));
+      } else {
+        // Autorizado (y otros no–admin del cliente): sin panel de miembros ni conteo expuesto
+        const meetingsResponse = await meetingService.getAll();
+        const meetings = meetingsResponse.data;
+
+        const now = new Date();
+        const active = meetings.filter(m => m.status === 'active');
+        const completed = meetings.filter(m => m.status === 'completed');
+        const upcoming = meetings.filter(m => new Date(m.date) > now && m.status === 'scheduled');
+
+        setStats({
+          totalMeetings: meetings.length,
+          activeMeetings: active.length,
+          completedMeetings: completed.length,
+          upcomingMeetings: upcoming.length,
+          totalMembers: 0
         });
 
         setRecentMeetings(meetings.slice(0, 5));
@@ -251,13 +270,15 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="stat-card stat-members">
-            <div className="stat-icon">👥</div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.totalMembers}</div>
-              <div className="stat-label">{language === 'es' ? 'TOTAL MIEMBROS' : 'TOTAL MEMBERS'}</div>
+          {isClientAdmin && (
+            <div className="stat-card stat-members">
+              <div className="stat-icon">👥</div>
+              <div className="stat-content">
+                <div className="stat-value">{stats.totalMembers}</div>
+                <div className="stat-label">{language === 'es' ? 'TOTAL MIEMBROS' : 'TOTAL MEMBERS'}</div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="dashboard-sections">

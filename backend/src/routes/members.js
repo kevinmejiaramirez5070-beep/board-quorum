@@ -3,8 +3,8 @@ const router = express.Router();
 const { auth, isAdmin, isAuthorized } = require('../middleware/auth');
 const memberController = require('../controllers/memberController');
 
-// Solo admin puede gestionar miembros (authorized NO puede editar)
-// Authorized puede ver miembros para generar enlaces, pero no editarlos
+// Solo admin puede crear/editar/borrar miembros.
+// GET listado: admin + authorized (el Autorizado NO tiene UI de /admin/members; el GET sirve p. ej. registrar asistencia interna).
 router.get('/', auth, isAuthorized, memberController.getAllMembers);
 router.get('/:id', auth, isAuthorized, memberController.getMember);
 // Solo admin puede crear/editar/eliminar miembros

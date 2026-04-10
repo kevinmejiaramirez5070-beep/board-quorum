@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BQ · Reporte Prueba #5 — 21 Mar 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--cyan:#00C6FF;--blue:#0072FF;--black:#0A0A0A;--card:#1a2332;--gold:#D4AF37;--green:#10B981;--red:#EF4444;--amber:#F59E0B;--gray:#9CA3AF;--purple:#8B5CF6;--border:rgba(0,198,255,0.2);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--black);color:#e2e8f0;min-height:100vh;line-height:1.65;}
+
+.header{background:linear-gradient(135deg,#0A0A0A 0%,#0d1f35 100%);border-bottom:1px solid var(--border);padding:40px 60px 32px;position:relative;overflow:hidden;}
+.header::before{content:'';position:absolute;top:-60px;right:-60px;width:300px;height:300px;background:radial-gradient(circle,rgba(0,198,255,0.08) 0%,transparent 70%);border-radius:50%;}
+.header-top{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+.bq-logo{width:44px;height:44px;background:linear-gradient(135deg,var(--cyan),var(--blue));border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--black);flex-shrink:0;}
+.bq-brand{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;color:var(--cyan);text-transform:uppercase;}
+.header h1{font-family:'Syne',sans-serif;font-size:2.2em;font-weight:800;color:#fff;line-height:1.15;margin-bottom:8px;}
+.header h1 span{color:var(--cyan);}
+.header-meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:12px;}
+.meta-chip{font-size:12px;color:var(--gray);display:flex;align-items:center;gap:6px;}
+.meta-chip strong{color:#cbd5e1;}
+
+.tabs-wrapper{background:#0d1520;border-bottom:1px solid var(--border);padding:0 60px;}
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:16px 22px;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all 0.2s;display:flex;align-items:center;gap:8px;background:none;border-left:none;border-right:none;border-top:none;}
+.tab:hover{color:#cbd5e1;}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+.tb{font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;line-height:1.4;}
+.tb-red{background:var(--red);color:#fff;}
+.tb-green{background:var(--green);color:#fff;}
+.tb-gold{background:var(--gold);color:var(--black);}
+.tb-amber{background:var(--amber);color:var(--black);}
+.tb-purple{background:var(--purple);color:#fff;}
+
+.content{padding:48px 60px;max-width:1100px;width:100%;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:24px;}
+.card.green-b{border-color:rgba(16,185,129,0.35);}
+.card.red-b{border-color:rgba(239,68,68,0.3);}
+.card.amber-b{border-color:rgba(245,158,11,0.3);}
+.card.gold-b{border-color:rgba(212,175,55,0.4);}
+.card.cyan-b{border-color:rgba(0,198,255,0.35);}
+.card.purple-b{border-color:rgba(139,92,246,0.35);}
+.card-title{font-family:'Syne',sans-serif;font-size:1.05em;font-weight:700;color:var(--cyan);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+
+.section-title{font-family:'Syne',sans-serif;font-size:1.5em;font-weight:800;color:#fff;margin-bottom:8px;}
+.section-sub{color:var(--gray);font-size:14px;margin-bottom:32px;line-height:1.6;}
+.section-sub strong{color:#e2e8f0;}
+
+.gratitude{background:linear-gradient(135deg,rgba(212,175,55,0.08),rgba(212,175,55,0.03));border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:28px 32px;margin-bottom:32px;}
+.gratitude p{font-size:14.5px;line-height:1.8;color:#cbd5e1;margin-bottom:10px;}
+.gratitude p:last-child{margin-bottom:0;}
+.gratitude strong{color:var(--gold);}
+
+.hito-box{background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.04));border:2px solid rgba(16,185,129,0.4);border-radius:16px;padding:32px;margin-bottom:28px;text-align:center;}
+.hito-icon{font-size:3em;margin-bottom:10px;}
+.hito-title{font-family:'Syne',sans-serif;font-size:1.6em;font-weight:800;color:var(--green);margin-bottom:8px;}
+.hito-sub{font-size:13.5px;color:#94a3b8;line-height:1.7;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:24px;}
+.stat-box{background:#0d1520;border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;}
+.stat-num{font-family:'Syne',sans-serif;font-size:2.2em;font-weight:800;line-height:1;margin-bottom:5px;}
+.stat-lbl{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:0.08em;}
+.c-cyan{color:var(--cyan);}.c-green{color:var(--green);}.c-red{color:var(--red);}.c-amber{color:var(--amber);}.c-gold{color:var(--gold);}.c-purple{color:var(--purple);}
+
+.data-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+.data-table th{background:linear-gradient(135deg,var(--cyan),var(--blue));color:var(--black);padding:11px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;}
+.data-table th:first-child{border-radius:8px 0 0 0;}
+.data-table th:last-child{border-radius:0 8px 0 0;}
+.data-table td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+.data-table tr:hover td{background:rgba(0,198,255,0.03);}
+.ok{color:var(--green);font-weight:600;}.err{color:var(--red);font-weight:600;}.warn{color:var(--amber);font-weight:600;}
+
+.bug-card{background:#0d1520;border-radius:12px;padding:20px 24px;margin-bottom:14px;border-left:4px solid transparent;}
+.bug-card.red{border-left-color:var(--red);}
+.bug-card.amber{border-left-color:var(--amber);}
+.bug-card.green{border-left-color:var(--green);}
+.bug-card.cyan{border-left-color:var(--cyan);}
+.bug-card.purple{border-left-color:var(--purple);}
+.bug-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.bug-id{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:3px 10px;border-radius:6px;white-space:nowrap;flex-shrink:0;}
+.bid-red{color:var(--red);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);}
+.bid-amber{color:var(--amber);background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);}
+.bid-green{color:var(--green);background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);}
+.bid-cyan{color:var(--cyan);background:rgba(0,198,255,0.08);border:1px solid rgba(0,198,255,0.2);}
+.bid-purple{color:var(--purple);background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);}
+.bug-title{font-weight:700;color:#fff;font-size:14px;}
+.bug-row{display:grid;grid-template-columns:80px 1fr;gap:8px;font-size:13px;margin-bottom:8px;align-items:start;}
+.bug-label{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray);padding-top:2px;}
+.bug-val{color:#94a3b8;line-height:1.6;}
+.bug-val strong{color:#e2e8f0;}
+
+.algo{background:#060d18;border:1px solid rgba(0,198,255,0.2);border-radius:10px;padding:18px 22px;margin:12px 0;font-family:'DM Mono',monospace;font-size:12.5px;color:var(--cyan);line-height:1.9;}
+.algo-title{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;}
+.ak{color:var(--amber);}.av{color:var(--green);}.ac{color:var(--gray);}
+
+.callout{border-radius:10px;padding:14px 18px;margin:14px 0;display:flex;gap:12px;align-items:flex-start;font-size:13.5px;line-height:1.65;}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:2px;}
+.callout.info{background:rgba(0,198,255,0.06);border:1px solid rgba(0,198,255,0.2);color:#94a3b8;}
+.callout.warn{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);color:#94a3b8;}
+.callout.success{background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);color:#94a3b8;}
+.callout.danger{background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);color:#94a3b8;}
+.callout strong{color:#e2e8f0;}
+
+.plabel{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:14px;margin-top:4px;}
+.pl-crit{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+.pl-high{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.25);}
+.pl-ok{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.25);}
+.pl-purple{background:rgba(139,92,246,0.12);color:var(--purple);border:1px solid rgba(139,92,246,0.25);}
+
+.spec-list{list-style:none;padding:0;}
+.spec-list li{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13.5px;color:#94a3b8;line-height:1.6;}
+.spec-list li:last-child{border-bottom:none;}
+.spec-list li strong{color:#e2e8f0;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:7px;}
+.d-cyan{background:var(--cyan);}.d-green{background:var(--green);}.d-red{background:var(--red);}.d-amber{background:var(--amber);}.d-gold{background:var(--gold);}.d-purple{background:var(--purple);}
+
+.comp-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.comp-table th{background:rgba(0,198,255,0.08);color:var(--cyan);padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;border-bottom:1px solid var(--border);}
+.comp-table th:first-child{text-align:left;}
+.comp-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;vertical-align:middle;}
+.comp-table td:first-child{text-align:left;color:#cbd5e1;font-weight:600;font-size:13px;}
+.comp-table tr:last-child td{border-bottom:none;}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.p-green{background:rgba(16,185,129,0.15);color:var(--green);}
+.p-red{background:rgba(239,68,68,0.1);color:var(--red);}
+.p-amber{background:rgba(245,158,11,0.12);color:var(--amber);}
+.p-cyan{background:rgba(0,198,255,0.1);color:var(--cyan);}
+.p-gold{background:rgba(212,175,55,0.12);color:var(--gold);}
+
+.user-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+.user-card{background:#0d1520;border-radius:14px;padding:22px;}
+.user-card h4{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:3px;}
+.user-card .user-sub{font-size:11.5px;color:var(--gray);margin-bottom:14px;font-family:'DM Mono',monospace;}
+.user-card ul{list-style:none;padding:0;}
+.user-card ul li{font-size:13px;color:#94a3b8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;line-height:1.5;}
+.user-card ul li:last-child{border-bottom:none;}
+
+.ck-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ck-item{background:#0d1520;border-radius:8px;padding:12px 16px;font-size:13px;color:#94a3b8;display:flex;gap:10px;align-items:flex-start;line-height:1.5;}
+.ck-item strong{color:#e2e8f0;}
+
+.road-item{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:flex-start;}
+.road-item:last-child{border-bottom:none;}
+.road-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:var(--black);flex-shrink:0;margin-top:2px;}
+.road-body{flex:1;}
+.road-title{font-weight:700;color:#e2e8f0;font-size:14px;margin-bottom:3px;}
+.road-desc{font-size:13px;color:#94a3b8;line-height:1.6;}
+
+code{background:rgba(0,198,255,0.08);padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;color:var(--cyan);}
+
+.footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--gray);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.footer strong{color:var(--cyan);}
+
+@media(max-width:768px){
+  .header,.tabs-wrapper,.content{padding-left:20px;padding-right:20px;}
+  .header h1{font-size:1.6em;}
+  .user-grid,.ck-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="bq-logo">BQ</div>
+    <div class="bq-brand">Board Quorum · Motor de Gobernanza</div>
+  </div>
+  <h1>Reporte <span>Prueba #5</span><br>Votaciones · Invitados · Usuarios · Ruta</h1>
+  <div class="header-meta">
+    <span class="meta-chip">📅 <strong>21 marzo 2026 · 8:33–8:51 AM</strong></span>
+    <span class="meta-chip">🏢 <strong>ASOCOLCI</strong></span>
+    <span class="meta-chip">👤 <strong>Para: Ing. Andrés Suárez Soto</strong></span>
+    <span class="meta-chip">✍️ <strong>De: Javier Castilla Robles</strong></span>
+  </div>
+</div>
+
+<div class="tabs-wrapper">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab(0)">👋 Contexto</button>
+    <button class="tab" onclick="showTab(1)">✅ Avances <span class="tb tb-green">6</span></button>
+    <button class="tab" onclick="showTab(2)">🏆 Hito — TOTAL 20</button>
+    <button class="tab" onclick="showTab(3)">🔴 Pendientes <span class="tb tb-red">6</span></button>
+    <button class="tab" onclick="showTab(4)">🗳️ Votaciones <span class="tb tb-red">2 BUGS</span></button>
+    <button class="tab" onclick="showTab(5)">👥 Usuarios <span class="tb tb-green">GUÍA</span></button>
+    <button class="tab" onclick="showTab(6)">📈 Comparativo</button>
+    <button class="tab" onclick="showTab(7)">🏗️ Infraestructura <span class="tb tb-gold">ACCIÓN</span></button>
+    <button class="tab" onclick="showTab(8)">🗺️ JD → AGD</button>
+    <button class="tab" onclick="showTab(9)">⏭️ Siguiente Paso</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- PANEL 0 -->
+<div class="panel active" id="panel-0">
+  <div class="gratitude">
+    <p>Andrés, <strong>gracias. De verdad.</strong></p>
+    <p>La Prueba #5 fue la más completa hasta ahora. <strong>El flujo de invitados funcionó de punta a punta</strong> — 6 pasos encadenados, todos correctos. <strong>TOTAL = 20</strong> por primera vez. El Dashboard Modo Proyección muestra números exactos. El módulo de votaciones ya crea y genera IDs válidos.</p>
+    <p>Aparecieron 2 bugs nuevos en votaciones — uno tiene implicación legal directa. Están documentados con causa y fix exacto en la pestaña Votaciones. <strong>Estamos en la recta final del Módulo JD.</strong></p>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-box"><div class="stat-num c-green">6</div><div class="stat-lbl">Avances confirmados</div></div>
+    <div class="stat-box"><div class="stat-num c-red">6</div><div class="stat-lbl">Pendientes activos</div></div>
+    <div class="stat-box"><div class="stat-num c-red">2</div><div class="stat-lbl">Bugs nuevos críticos</div></div>
+    <div class="stat-box"><div class="stat-num c-cyan">63%</div><div class="stat-lbl">Progreso acumulado</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🧪 Escenario de la prueba</div>
+    <table class="data-table">
+      <thead><tr><th>Qué se probó</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td>8 asistentes — JD, JV, Contabilidad, Revisoría, Invitado</td><td class="ok">✅ Correcto</td></tr>
+        <tr><td>Bloqueo duplicado — CC 52263663 reintentó ingreso</td><td class="ok">✅ Bloqueado</td></tr>
+        <tr><td>Flujo invitado — CC 999999999 (no existe en BD)</td><td class="ok">✅ Completo 6 pasos</td></tr>
+        <tr><td>Creación de votación</td><td class="ok">✅ Funciona</td></tr>
+        <tr><td>Activación de votación</td><td class="err">❌ Bug VOT-SESION</td></tr>
+        <tr><td>Resultados con 0 votos</td><td class="err">❌ Bug VOT-LOGICA</td></tr>
+        <tr><td>Dashboard Modo Proyección</td><td class="ok">✅ Perfecto — 8/20 · 40%</td></tr>
+        <tr><td>PDF Reporte completo</td><td class="ok">✅ Generado correctamente</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PANEL 1 -->
+<div class="panel" id="panel-1">
+  <div class="section-title">Avances Confirmados</div>
+  <p class="section-sub">6 ítems cerrados. Formato: qué era → qué es ahora.</p>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">BUG-01 ✅ CERRADO</span><span class="bug-title">TOTAL = 20 — denominador correcto</span></div>
+    <div class="bug-row"><span class="bug-label">Era</span><span class="bug-val">TOTAL = 19 desde P#3 · porcentaje 37% incorrecto</span></div>
+    <div class="bug-row"><span class="bug-label">Ahora</span><span class="bug-val"><strong>8/20 · 40%</strong> · Proyección: "7 votos (35% de 20 eligibles)" ✅</span></div>
+  </div>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">BUG-UX01 ✅ CERRADO</span><span class="bug-title">Flujo invitados — 6 pasos encadenados, todos correctos</span></div>
+    <div class="bug-row"><span class="bug-label">Era</span><span class="bug-val">Cédula desconocida → pantalla en blanco</span></div>
+    <div class="bug-row"><span class="bug-label">Ahora</span><span class="bug-val">CC no encontrada → "Cédula No Encontrada" → 4 opciones de rol → formulario datos → "Pendiente revisión admin" → panel admin con Aprobar/Rechazar → PDF con rol "INVITADO" ✅</span></div>
+  </div>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">VOT-URL ✅ CERRADO</span><span class="bug-title">Link votación genera ID válido</span></div>
+    <div class="bug-row"><span class="bug-label">Era</span><span class="bug-val"><code>/public/voting/[object Object]</code></span></div>
+    <div class="bug-row"><span class="bug-label">Ahora</span><span class="bug-val"><code>/meetings/37/voting/11/results</code> — ID 11 generado correctamente ✅</span></div>
+  </div>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">DUPLIC ✅ ESTABLE</span><span class="bug-title">Bloqueo duplicados — 3ª prueba consecutiva sin fallo</span></div>
+    <div class="bug-row"><span class="bug-label">Test</span><span class="bug-val">CC 52263663 reintentó → "Ya registraste tu asistencia para esta reunión" ✅</span></div>
+  </div>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">PROYEC ✅</span><span class="bug-title">Dashboard Modo Proyección — datos perfectos</span></div>
+    <div class="bug-row"><span class="bug-label">Muestra</span><span class="bug-val">SÍ verde · QUÓRUM ALCANZADO · 8 votan / 7 mínimos · 35% de 20 eligibles · Total 8/20 ✅</span></div>
+  </div>
+
+  <div class="bug-card green">
+    <div class="bug-header"><span class="bug-id bid-green">PDF ✅</span><span class="bug-title">Reporte completo — 14 asistentes, roles correctos, Invitado incluido</span></div>
+    <div class="bug-row"><span class="bug-label">Contiene</span><span class="bug-val">PRESIDENCIA · VICEPRESIDENCIA · TESORERIA ×2 · FISCALIA ×2 · VOCALES ×2 · JV ×3 · CONTABILIDAD · REVISORIA · INVITADO · 8/20 · 40%</span></div>
+  </div>
+</div>
+
+<!-- PANEL 2 -->
+<div class="panel" id="panel-2">
+  <div class="section-title">Hito — TOTAL = 20</div>
+  <p class="section-sub">Bug más persistente del proyecto. Cerrado definitivamente en P#5.</p>
+
+  <div class="hito-box">
+    <div class="hito-icon">🎯</div>
+    <div class="hito-title">TOTAL = 20 — POR FIN CORRECTO</div>
+    <div class="hito-sub">21 marzo 2026 · 8:44 AM · BUG-01 cerrado después de 3 pruebas con denominador incorrecto</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box"><div class="stat-num c-green">8</div><div class="stat-lbl">Votan quórum</div></div>
+    <div class="stat-box"><div class="stat-num c-green">20</div><div class="stat-lbl">Total ✅ correcto</div></div>
+    <div class="stat-box"><div class="stat-num c-cyan">40%</div><div class="stat-lbl">Porcentaje exacto</div></div>
+    <div class="stat-box"><div class="stat-num c-green">14</div><div class="stat-lbl">Asistentes totales</div></div>
+  </div>
+
+  <div class="card green-b">
+    <div class="card-title">✅ Impacto del fix</div>
+    <table class="data-table">
+      <thead><tr><th>Métrica</th><th>Antes (P#3–P#4)</th><th>Ahora (P#5)</th></tr></thead>
+      <tbody>
+        <tr><td>Denominador</td><td class="err">19 ❌</td><td class="ok">20 ✅</td></tr>
+        <tr><td>Porcentaje quórum mínimo</td><td class="err">37% (7/19) ❌</td><td class="ok">35% (7/20) ✅</td></tr>
+        <tr><td>Certificación de Quórum válida legalmente</td><td class="err">No</td><td class="ok">Sí ✅</td></tr>
+        <tr><td>Modo Proyección — números</td><td class="warn">Incorrectos</td><td class="ok">Perfectos ✅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card amber-b">
+    <div class="card-title">⚠️ Lo que aún falta en el motor</div>
+    <p style="color:#94a3b8;font-size:14px;line-height:1.7">Denominador correcto ✅. Pero el conteo de elegibles aún no aplica regla de suplencias (BUG-04) ni regla JV institucional (BUG-JV). En P#5 el resultado fue correcto por coincidencia — en producción real puede inflarse.</p>
+  </div>
+</div>
+
+<!-- PANEL 3 -->
+<div class="panel" id="panel-3">
+  <div class="section-title">Pendientes</div>
+  <p class="section-sub">6 ítems activos. Formato: causa → fix exacto.</p>
+
+  <span class="plabel pl-crit">🔴 Críticos — Votaciones</span>
+
+  <div class="bug-card red">
+    <div class="bug-header"><span class="bug-id bid-red">VOT-SESION 🔴</span><span class="bug-title">Activar votación → "La sesión no ha sido instalada formalmente"</span></div>
+    <div class="bug-row"><span class="bug-label">Causa</span><span class="bug-val">El sistema verifica un campo <code>sesion_instalada</code> (o equivalente) antes de activar votaciones. Ese campo no se setea en ningún punto del flujo actual.</span></div>
+    <div class="bug-row"><span class="bug-label">Fix</span><span class="bug-val">Identificar el campo en el backend. Exponer en UI un botón <strong>"Instalar Sesión"</strong> que se habilite cuando <code>quorum_alcanzado === true</code>. Sin esto el módulo de votaciones es inaccesible.</span></div>
+  </div>
+
+  <div class="bug-card red">
+    <div class="bug-header"><span class="bug-id bid-red">VOT-LOGICA 🔴 LEGAL</span><span class="bug-title">0 votos emitidos → resultado "APROBADA" → PDF generado</span></div>
+    <div class="bug-row"><span class="bug-label">Causa</span><span class="bug-val">La función de mayoría no valida <code>votos_emitidos === 0</code> antes de calcular. Retorna 0 como mayoría requerida y aprueba automáticamente.</span></div>
+    <div class="bug-row"><span class="bug-label">Fix</span><span class="bug-val">Ver código en pestaña Votaciones. Además bloquear botón "Generar PDF" si no hay votos emitidos.</span></div>
+    <div class="callout danger" style="margin-top:10px;">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>Riesgo legal:</strong> El PDF generado en esta prueba certifica "APROBADA" con 0 votos y timestamp digital. Si se presenta como evidencia institucional, es un documento inválido con apariencia oficial.</div>
+    </div>
+  </div>
+
+  <span class="plabel pl-crit" style="margin-top:8px;">🔴 Críticos — Motor de Quórum</span>
+
+  <div class="bug-card red">
+    <div class="bug-header"><span class="bug-id bid-red">BUG-04 🔴</span><span class="bug-title">Regla de suplencias no implementada</span></div>
+    <div class="bug-row"><span class="bug-label">Riesgo</span><span class="bug-val">Si solo el suplente asiste (principal ausente), el sistema no lo suma al quórum. Resultado correcto en pruebas fue coincidencia, no lógica implementada.</span></div>
+    <div class="bug-row"><span class="bug-label">Algoritmo</span><span class="bug-val"><code>SI principal.presente → quórum+1, suplente no suma</code> · <code>SI solo suplente.presente → quórum+1</code></span></div>
+  </div>
+
+  <div class="bug-card red">
+    <div class="bug-header"><span class="bug-id bid-red">BUG-JV 🔴</span><span class="bug-title">JV cuenta 3 votos — debe contar 1 (órgano unitario)</span></div>
+    <div class="bug-row"><span class="bug-label">Riesgo</span><span class="bug-val">Hoy había 3 miembros JV presentes. El motor puede estar contando 3 votos al quórum en lugar de 1.</span></div>
+    <div class="bug-row"><span class="bug-label">Regla</span><span class="bug-val">MAX 1 voto institucional JV. Fundamento: Estatuto ASOCOLCI Art. 24 y Art. 33.</span></div>
+  </div>
+
+  <span class="plabel pl-high" style="margin-top:8px;">🟡 Secundarios</span>
+
+  <div class="bug-card amber">
+    <div class="bug-header"><span class="bug-id bid-amber">CFG-03</span><span class="bug-title">Organizaciones de prueba en el panel</span></div>
+    <div class="bug-row"><span class="bug-label">Fix</span><span class="bug-val">Eliminar registros de prueba (kelvin, kevin mejia, TUMACO). Solo debe quedar ASOCOLCI.</span></div>
+  </div>
+
+  <div class="bug-card amber">
+    <div class="bug-header"><span class="bug-id bid-amber">SEG-01</span><span class="bug-title">Protección borrado de organizaciones — estado no confirmado</span></div>
+    <div class="bug-row"><span class="bug-label">Pendiente</span><span class="bug-val">No se ejecutó la prueba del ícono 🗑️ en P#5. Validar: confirmación por texto + advertencia visual + soft delete 30 días.</span></div>
+  </div>
+
+  <div class="bug-card amber">
+    <div class="bug-header"><span class="bug-id bid-amber">DIS-PDF 🆕</span><span class="bug-title">PDFs generados sin branding del cliente ni del producto</span></div>
+    <div class="bug-row"><span class="bug-label">Problema</span><span class="bug-val">Los PDFs actuales (asistencia, quórum, votación) salen como exports genéricos. No tienen cabecera de la organización ni pie de página del producto.</span></div>
+    <div class="bug-row"><span class="bug-label">Diseño</span><span class="bug-val"><strong>Header:</strong> razón social cliente + nombre reunión + fecha + tipo (datos tomados de la organización configurada). <strong>Footer:</strong> "Generado por BOARD QUORUM · © Pivot Consulting · [timestamp] · Pág X de Y".</span></div>
+    <div class="bug-row"><span class="bug-label">Por qué</span><span class="bug-val">Un PDF sin identificación pierde peso probatorio. Para un Revisor Fiscal, un auditor o un juez, el documento debe ser trazable al cliente y al sistema que lo generó.</span></div>
+  </div>
+</div>
+
+<!-- PANEL 4 -->
+<div class="panel" id="panel-4">
+  <div class="section-title">Módulo Votaciones — Estado P#5</div>
+  <p class="section-sub">Primera prueba real del módulo. Creación funciona. Dos bugs críticos bloquean el flujo completo.</p>
+
+  <div class="card">
+    <div class="card-title">📊 Estado actual</div>
+    <table class="data-table">
+      <thead><tr><th>Función</th><th>Estado</th><th>Nota</th></tr></thead>
+      <tbody>
+        <tr><td>Crear votación (título, opciones, tipo)</td><td class="ok">✅ Funciona</td><td style="color:#64748b;font-size:12px;">ID 11 generado</td></tr>
+        <tr><td>Link con ID válido</td><td class="ok">✅ Funciona</td><td style="color:#64748b;font-size:12px;">VOT-URL cerrado</td></tr>
+        <tr><td>Estado "PENDIENTE" visible en panel</td><td class="ok">✅ Funciona</td><td></td></tr>
+        <tr><td>Activar votación</td><td class="err">❌ Bug VOT-SESION</td><td style="color:#64748b;font-size:12px;">Sesión no instalada</td></tr>
+        <tr><td>Formulario de voto público</td><td class="warn">⚠️ No probado</td><td style="color:#64748b;font-size:12px;">Bloqueado por VOT-SESION</td></tr>
+        <tr><td>Dashboard resultados tiempo real</td><td class="warn">⚠️ No probado</td><td></td></tr>
+        <tr><td>Lógica mayoría simple</td><td class="err">❌ Bug VOT-LOGICA</td><td style="color:#64748b;font-size:12px;">0 votos = APROBADA</td></tr>
+        <tr><td>PDF resultado votación</td><td class="err">❌ Bug VOT-LOGICA</td><td style="color:#64748b;font-size:12px;">Generó PDF con 0 votos</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card red-b">
+    <div class="card-title" style="color:var(--red);">🔴 VOT-SESION — Fix requerido</div>
+    <div class="bug-row" style="margin-bottom:10px;"><span class="bug-label">Error</span><span class="bug-val">"La sesión no ha sido instalada formalmente. No se pueden realizar votaciones sin una sesión válida."</span></div>
+    <div class="bug-row"><span class="bug-label">Fix</span><span class="bug-val">Encontrar la condición de instalación en el backend y exponer el paso en la UI. Propuesta: botón <strong>"Instalar Sesión"</strong> activo cuando <code>quorum_alcanzado === true</code>.</span></div>
+  </div>
+
+  <div class="card red-b">
+    <div class="card-title" style="color:var(--red);">🔴 VOT-LOGICA — Fix requerido</div>
+    <div class="algo">
+      <div class="algo-title">// bug actual</div>
+      votos_emitidos = <span style="color:var(--red);">0</span><br>
+      mayoria = Math.floor(<span style="color:var(--red);">0</span>/2) + 1 <span class="ac">// retorna 0 en lugar de 1 — bug</span><br>
+      resultado = <span style="color:var(--red);">"APROBADA"</span> <span class="ac">// ❌</span><br><br>
+      <div class="algo-title">// fix</div>
+      <span class="ak">if</span> (votos_emitidos === <span style="color:var(--red);">0</span>) <span class="ak">return</span> { resultado: <span class="av">"SIN VOTOS EMITIDOS"</span>, mayoria: <span class="av">null</span> }<br>
+      mayoria = Math.floor(votos_emitidos / <span class="ak">2</span>) + <span class="ak">1</span><br>
+      resultado = votos_afavor >= mayoria ? <span class="av">"APROBADA"</span> : <span style="color:var(--red);">"NO APROBADA"</span>
+    </div>
+    <div class="callout danger" style="margin-top:10px;">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>Bloquear también el botón "Generar PDF"</strong> cuando <code>votos_emitidos === 0</code>. El PDF de esta prueba ya fue generado con "APROBADA" y 0 votos — no puede repetirse en producción.</div>
+    </div>
+  </div>
+
+  <div class="card cyan-b">
+    <div class="card-title">📋 Checklist post-corrección</div>
+    <div class="ck-grid">
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Botón "Instalar Sesión" aparece con quórum alcanzado</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Activar votación no retorna error de sesión</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Link abre formulario de voto correcto</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Cédula valida elegibilidad (solo JD/JV)</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Opciones DE ACUERDO / EN DESACUERDO / ABSTENCIÓN</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Bloqueo doble voto funciona</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Dashboard actualiza en tiempo real</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Mayoría = floor(emitidos/2)+1 correcto</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Resultado APROBADA/NO APROBADA correcto</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>PDF bloqueado si votos_emitidos = 0</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>PDF generado con branding (DIS-PDF)</div></div>
+      <div class="ck-item"><span style="color:var(--cyan);">□</span><div>Suplente con principal presente no puede votar</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 5 -->
+<div class="panel" id="panel-5">
+  <div class="section-title">Usuarios — Matriz de permisos</div>
+  <p class="section-sub">Las 5 pruebas realizadas hasta hoy se ejecutaron con ADMIN MASTER (<code>admin@boardquorum.com</code>). Los dos usuarios del cliente ASOCOLCI <strong>deben probarse</strong> según esta matriz. En el repo: <code>guia/USUARIOS_Y_ROLES.md</code> (roles en BD, checklist y SQL de ejemplo).</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div><strong>Riesgo de entrega:</strong> Un permiso mal configurado puede darle a Nohora acceso que no debe tener, o negarle a la Secretaría de JD funciones que necesita en vivo durante la reunión.</div>
+  </div>
+
+  <div class="user-grid">
+    <div class="user-card" style="border:1px solid rgba(0,198,255,0.3);">
+      <h4 style="color:var(--cyan);">⭐ ADMIN-ASOCOLCI</h4>
+      <div class="user-sub">Nohora Idali Páez Menjura · CC 52283818 · Horario de oficina</div>
+      <ul>
+        <li><span style="color:var(--green);">✓</span> CRUD completo de miembros</li>
+        <li><span style="color:var(--green);">✓</span> Crear reuniones ANTES del evento</li>
+        <li><span style="color:var(--green);">✓</span> Preparar votaciones según orden del día</li>
+        <li><span style="color:var(--green);">✓</span> Ver configuración completa ASOCOLCI</li>
+        <li><span style="color:var(--green);">✓</span> Aprobar / rechazar invitados externos</li>
+        <li><span style="color:var(--red);">✗</span> NO gestiona votaciones en vivo</li>
+        <li><span style="color:var(--red);">✗</span> NO ve otras organizaciones</li>
+      </ul>
+    </div>
+    <div class="user-card" style="border:1px solid rgba(0,114,255,0.4);">
+      <h4 style="color:#4d9fff;">🎯 AUTORIZADO-ASOCOLCI</h4>
+      <div class="user-sub">Secretaría JD · Miembro de Junta Directiva designado</div>
+      <ul>
+        <li><span style="color:var(--green);">✓</span> Copiar enlace asistencia al chat de Meet</li>
+        <li><span style="color:var(--green);">✓</span> Ver dashboard quórum en tiempo real</li>
+        <li><span style="color:var(--green);">✓</span> Proyectar pantalla completa</li>
+        <li><span style="color:var(--green);">✓</span> Instalar sesión formalmente</li>
+        <li><span style="color:var(--green);">✓</span> Activar votaciones en vivo</li>
+        <li><span style="color:var(--green);">✓</span> Generar PDFs (asistencia, quórum, votación)</li>
+        <li><span style="color:var(--red);">✗</span> NO puede editar miembros</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card gold-b">
+    <div class="card-title">🖥️ Setup de Autorizado-Asocolci en reunión</div>
+    <div class="ck-grid">
+      <div class="ck-item" style="border:1px solid rgba(212,175,55,0.2);"><span style="color:var(--gold);font-size:16px;">🎥</span><div><strong>Google Meet</strong> — donde están todos. Aquí pega los enlaces de asistencia y votación en el chat.</div></div>
+      <div class="ck-item" style="border:1px solid rgba(0,198,255,0.2);"><span style="color:var(--cyan);font-size:16px;">📊</span><div><strong>Board Quorum</strong> — monitorea quórum, activa votaciones, proyecta resultados, genera PDFs para el acta.</div></div>
+    </div>
+  </div>
+
+  <div class="card purple-b">
+    <div class="card-title" style="color:var(--purple);">🧪 Pruebas requeridas antes de entrega al cliente</div>
+    <ul class="spec-list">
+      <li><span class="dot d-purple"></span><div>Crear Admin-Asocolci y verificar CRUD de miembros + creación de reuniones</div></li>
+      <li><span class="dot d-purple"></span><div>Verificar que Admin-Asocolci <strong>NO</strong> ve otras organizaciones — solo ASOCOLCI</div></li>
+      <li><span class="dot d-purple"></span><div>Crear Autorizado-Asocolci y verificar gestión de quórum y votaciones en vivo</div></li>
+      <li><span class="dot d-purple"></span><div>Verificar que Autorizado-Asocolci <strong>NO</strong> ve el panel de configuración de miembros</div></li>
+      <li><span class="dot d-purple"></span><div>Prueba de flujo completo con Autorizado-Asocolci: enlace → quórum → instalar sesión → votación → proyectar → PDF</div></li>
+      <li><span class="dot d-purple"></span><div>Confirmar que Admin Master (Javier) no es visible para los usuarios del cliente</div></li>
+    </ul>
+  </div>
+</div>
+
+<!-- PANEL 6 -->
+<div class="panel" id="panel-6">
+  <div class="section-title">Comparativo — 5 Pruebas</div>
+  <p class="section-sub">Evolución completa desde P#1 (28 feb) hasta P#5 (21 mar).</p>
+
+  <div class="card">
+    <div class="card-title">📈 Todos los indicadores</div>
+    <table class="comp-table">
+      <thead>
+        <tr><th>Indicador</th><th>P#1<br><small>28 Feb</small></th><th>P#2<br><small>6 Mar</small></th><th>P#3<br><small>7 Mar</small></th><th>P#4<br><small>15 Mar</small></th><th>P#5<br><small>21 Mar</small></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Ingreso rápido</td><td><span class="pill p-red">Lento</span></td><td><span class="pill p-red">Muy lento</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td></tr>
+        <tr><td>Roles visibles (cargo real)</td><td><span class="pill p-red">"member"</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td></tr>
+        <tr><td>Duplicados bloqueados</td><td><span class="pill p-red">No</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅ ×2</span></td><td><span class="pill p-green">✅ Estable</span></td></tr>
+        <tr><td>Tipo Reunión dropdown</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅</span></td></tr>
+        <tr><td>TOTAL elegibles</td><td><span class="pill p-red">12</span></td><td><span class="pill p-red">0</span></td><td><span class="pill p-amber">19 ⚠️</span></td><td><span class="pill p-amber">19 ⚠️</span></td><td><span class="pill p-green">✅ 20</span></td></tr>
+        <tr><td>Porcentaje quórum</td><td><span class="pill p-red">undef</span></td><td><span class="pill p-red">0%</span></td><td><span class="pill p-amber">26% ⚠️</span></td><td><span class="pill p-amber">37% ⚠️</span></td><td><span class="pill p-green">✅ 35%</span></td></tr>
+        <tr><td>Quórum detectado</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-green">✅ 1ª vez</span></td><td><span class="pill p-green">✅ 8/20</span></td></tr>
+        <tr><td>Dashboard Proyección</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-green">✅</span></td><td><span class="pill p-green">✅ Perfecto</span></td></tr>
+        <tr><td>Flujo Invitados completo</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-amber">Parcial</span></td><td><span class="pill p-green">✅ 6 pasos</span></td></tr>
+        <tr><td>Votación — creación</td><td><span class="pill p-red">No existe</span></td><td><span class="pill p-red">No existe</span></td><td><span class="pill p-amber">Visible</span></td><td><span class="pill p-amber">Bug URL</span></td><td><span class="pill p-green">✅ Crea</span></td></tr>
+        <tr><td>Votación — activación</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">❌ VOT-SESION</span></td></tr>
+        <tr><td>Lógica mayoría</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">❌ VOT-LOGICA</span></td></tr>
+        <tr><td>Regla suplencias (BUG-04)</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td></tr>
+        <tr><td>Regla JV institucional</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td></tr>
+        <tr><td>PDFs con branding (DIS-PDF)</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No ← nuevo</span></td></tr>
+        <tr><td>Usuarios cliente validados</td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td><td><span class="pill p-red">No</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card green-b">
+    <div class="card-title">📊 Progreso acumulado — 5 pruebas</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-num c-green">12</div><div class="stat-lbl">Cerrados</div></div>
+      <div class="stat-box"><div class="stat-num c-red">7</div><div class="stat-lbl">Pendientes</div></div>
+      <div class="stat-box"><div class="stat-num c-cyan">63%</div><div class="stat-lbl">Progreso</div></div>
+      <div class="stat-box"><div class="stat-num c-amber">2</div><div class="stat-lbl">Bugs nuevos hoy</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 7 -->
+<div class="panel" id="panel-7">
+  <div class="section-title">Infraestructura — Transferencia de Cuenta</div>
+  <p class="section-sub">El 19 de marzo ASOCOLCI eligió nueva JD y JV. La BD se actualiza en los próximos días con los nuevos miembros. <strong>Las próximas reuniones serán sesiones reales — no pruebas.</strong> BQ debe estar en producción, bajo ownership formal, antes de esa primera sesión real.</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚡</span>
+    <div><strong>Por qué ahora:</strong> Operar sesiones reales de Junta Directiva con infraestructura en cuenta de desarrollo es un riesgo operacional. Si algo falla en Vercel o BD y la cuenta no es del producto, la capacidad de respuesta es limitada.</div>
+  </div>
+
+  <div class="card gold-b">
+    <div class="card-title">🔧 Acción Requerida — Transferencia de Cuenta</div>
+    <div style="background:rgba(212,175,55,0.05);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:20px 24px;font-size:14px;color:#cbd5e1;line-height:1.85;font-style:italic;">
+      "Andrés, un tema que quiero dejar sobre la mesa.<br><br>
+      Quiero que tanto Vercel como la base de datos queden asociados a una cuenta a mi nombre — correo <strong style="color:var(--cyan);font-style:normal;">bq@pivotconsulting.com.co</strong>. El plan puede seguir siendo gratuito por ahora, la intensidad de datos es baja. Si en algún momento se requiere plan pago, asumo hasta <strong style="font-style:normal;color:var(--green);">$10 USD mensuales</strong>.<br><br>
+      El acceso completo lo tendrás tú como siempre, como el profesional a cargo del desarrollo.<br><br>
+      Confírmame qué necesitas de mi parte para hacer la transición sin afectar la operación. 🤝"
+    </div>
+  </div>
+
+  <div class="card cyan-b">
+    <div class="card-title">📋 Checklist de migración</div>
+    <table class="data-table">
+      <thead><tr><th>Elemento</th><th>Acción</th><th>Condición</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Vercel</strong></td><td>Transferir proyecto a <code>bq@pivotconsulting.com.co</code></td><td>Plan Hobby (gratuito) suficiente hoy</td></tr>
+        <tr><td><strong>Base de datos</strong></td><td>Asociar instancia BD al mismo correo</td><td>Sin downtime — Andrés confirma pasos exactos</td></tr>
+        <tr><td><strong>Dominio</strong></td><td>¿Dominio propio o se mantiene <code>vercel.app</code>?</td><td>Ningún enlace activo de ASOCOLCI debe romperse</td></tr>
+        <tr><td><strong>Acceso Andrés</strong></td><td>Mantener como colaborador con permisos completos</td><td>Sin cambio en su flujo de trabajo</td></tr>
+        <tr><td><strong>Tope de gasto</strong></td><td>Plan pago solo si la operación lo requiere</td><td>Máximo <strong>$10 USD/mes</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PANEL 8 -->
+<div class="panel" id="panel-8">
+  <div class="section-title">Hoja de Ruta — JD → AGD</div>
+  <p class="section-sub">El 19 de marzo ASOCOLCI eligió nueva JD y JV. Esto activa producción del Módulo JD y abre la Fase 2: Asamblea General de Delegados.</p>
+
+  <div class="hito-box" style="background:linear-gradient(135deg,rgba(212,175,55,0.1),rgba(212,175,55,0.04));border-color:rgba(212,175,55,0.5);">
+    <div class="hito-icon">🗳️</div>
+    <div class="hito-title" style="color:var(--gold);">ASAMBLEA GENERAL — 19 MARZO 2026</div>
+    <div class="hito-sub">Nueva JD y JV elegidas · Paso cero: actualizar BD con nuevos miembros<br><strong style="color:#cbd5e1;">El motor aplica las mismas reglas — solo cambian los datos en la tabla</strong></div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">⚙️</span>
+    <div><strong>Actualizar BD ≠ cambiar la arquitectura.</strong> El motor es agnóstico a quién ocupa cada cargo — le importa el rol, no la persona. Cuando llegue el cliente 2, el motor ya existe. Solo se carga su BD con sus propias reglas.</div>
+  </div>
+
+  <div class="card green-b">
+    <div class="card-title">📋 FASE 1 — Módulo JD · Recta Final</div>
+    <div class="road-item"><div class="road-num" style="background:var(--amber);">0</div><div class="road-body"><div class="road-title">Actualizar BD — nuevos miembros JD + JV + Contabilidad + Revisoría</div><div class="road-desc">Principales y suplentes elegidos el 19 mar. Paso previo obligatorio antes de la primera reunión real.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">1</div><div class="road-body"><div class="road-title">Cerrar VOT-SESION + VOT-LOGICA</div><div class="road-desc">Fix documentado en pestaña Votaciones. VOT-LOGICA tiene riesgo legal — prioridad máxima.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">2</div><div class="road-body"><div class="road-title">BUG-04 (suplencias) + BUG-JV (voto institucional)</div><div class="road-desc">Motor legalmente correcto. Sin esto el quórum puede inflarse en producción real.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--cyan);">3</div><div class="road-body"><div class="road-title">DIS-PDF — Branding en todos los PDFs</div><div class="road-desc">Header con datos del cliente. Footer con BOARD QUORUM + © Pivot Consulting + timestamp + paginación.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--purple);">4</div><div class="road-body"><div class="road-title">Crear y probar usuarios Admin-Asocolci + Autorizado-Asocolci</div><div class="road-desc">Ver checklist completo en pestaña Usuarios. Nunca probados hasta hoy.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--gold);">5</div><div class="road-body"><div class="road-title">Prueba #6 — Simulacro completo con usuarios reales</div><div class="road-desc">Nohora crea reunión. Autorizado gestiona en vivo. Votaciones con votos reales. 3 PDFs con branding. <strong>Si pasa: Módulo JD → producción.</strong></div></div></div>
+  </div>
+
+  <div class="card amber-b">
+    <div class="card-title">🚀 FASE 2 — Módulo AGD · Asamblea General de Delegados</div>
+    <table class="data-table">
+      <thead><tr><th>Característica</th><th>JD</th><th>AGD</th></tr></thead>
+      <tbody>
+        <tr><td>Volumen de participantes</td><td>20 elegibles fijos</td><td>Alto · delegados variables</td></tr>
+        <tr><td>Carga de BD</td><td>Manual uno a uno</td><td>Importación masiva CSV/Excel requerida</td></tr>
+        <tr><td>Suplencias</td><td>Simples</td><td>Avanzadas · núcleo familiar / sector</td></tr>
+        <tr><td>Lógica de quórum</td><td>35% de 20 fijos</td><td>Ordinario + momento siguiente</td></tr>
+        <tr><td>Frecuencia</td><td>Variable · reuniones según necesidad</td><td>2 ordinarias/año · máximo 3–4</td></tr>
+        <tr><td>Complejidad</td><td class="warn">Media</td><td class="warn">Media — dinámica diferente, volumen comparable</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success" style="margin-top:16px;">
+      <span class="callout-icon">✅</span>
+      <div><strong>Lo que fluye de Fase 1:</strong> motor quórum · votaciones · flujo invitados · usuarios · generación PDFs. AGD es una extensión — no un rediseño. Con lo construido en JD, el módulo AGD fluirá positivamente.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 9 -->
+<div class="panel" id="panel-9">
+  <div class="section-title">Siguiente Paso</div>
+  <p class="section-sub">9 ítems ordenados por prioridad. Cada uno con condición de cierre clara.</p>
+
+  <div class="card gold-b">
+    <div class="card-title">🗺️ Orden de trabajo</div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">1</div><div class="road-body"><div class="road-title">VOT-LOGICA <span style="font-size:11px;color:var(--red);font-weight:700;margin-left:6px;">⚠️ RIESGO LEGAL</span></div><div class="road-desc"><code>IF votos_emitidos === 0 → resultado = "SIN VOTOS" · bloquear PDF</code>. El PDF de esta prueba dice "APROBADA" con 0 votos.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">2</div><div class="road-body"><div class="road-title">VOT-SESION</div><div class="road-desc">Identificar <code>sesion_instalada</code> en backend · exponer en UI como botón "Instalar Sesión" activo cuando quórum alcanzado.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">3</div><div class="road-body"><div class="road-title">BUG-04 — Regla suplencias</div><div class="road-desc"><code>SI principal.presente → quórum+1, suplente no suma · SI solo suplente → quórum+1</code></div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--red);">4</div><div class="road-body"><div class="road-title">BUG-JV — JV = MAX 1 voto institucional</div><div class="road-desc">Estatuto ASOCOLCI Art. 24 y Art. 33. Sin importar cuántos miembros JV presentes.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--cyan);">5</div><div class="road-body"><div class="road-title">DIS-PDF — Branding en todos los PDFs</div><div class="road-desc">Header: razón social + nombre reunión + fecha + tipo. Footer: "Generado por BOARD QUORUM · © Pivot Consulting · timestamp · Pág X de Y".</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--purple);">6</div><div class="road-body"><div class="road-title">Usuarios — Admin-Asocolci + Autorizado-Asocolci</div><div class="road-desc">Crear, configurar permisos y probar flujo completo. Ver checklist en pestaña Usuarios.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--amber);">7</div><div class="road-body"><div class="road-title">CFG-03 + SEG-01</div><div class="road-desc">Eliminar organizaciones de prueba. Validar protección de borrado con 3 capas.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--amber);">8</div><div class="road-body"><div class="road-title">Infraestructura — Migración a bq@pivotconsulting.com.co</div><div class="road-desc">Vercel + BD. Confirmar pasos para migración sin downtime.</div></div></div>
+    <div class="road-item"><div class="road-num" style="background:var(--gold);">9</div><div class="road-body"><div class="road-title">Prueba #6 — Simulacro completo</div><div class="road-desc">Nohora crea reunión. Autorizado-Asocolci gestiona en vivo. Votaciones reales. 3 PDFs con branding. <strong>Si pasa: Módulo JD → producción.</strong></div></div></div>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-icon">🎯</span>
+    <div><strong>Meta Prueba #6:</strong> Primera simulación completa con usuarios reales de ASOCOLCI. Si pasa, BQ está listo para ser usado en una reunión real de Junta Directiva.</div>
+  </div>
+
+  <div class="footer">
+    <div><strong>BOARD QUORUM</strong> · Reporte Prueba #5 · 21 Mar 2026</div>
+    <div>Preparado por: Javier Castilla Robles · Para: Ing. Andrés Suárez Soto</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(i) {
+  document.querySelectorAll('.panel').forEach(function(p,j){ p.classList.toggle('active', i===j); });
+  document.querySelectorAll('.tab').forEach(function(t,j){ t.classList.toggle('active', i===j); });
+}
+</script>
+</body>
+</html>
