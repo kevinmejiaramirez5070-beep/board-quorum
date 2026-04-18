@@ -68,10 +68,17 @@ const Header = () => {
               <>
                 {isAuthenticated && (
                   <>
-                    {/* Admin Master: Solo ver organizaciones y administración (nivel multi-cliente) */}
+                    {/* Admin Master: organizaciones (nivel global) + acceso a cliente activo si lo hay */}
                     {user?.role === 'admin_master' ? (
                       <>
                         <Link to="/admin/organizations">{t('organizations')}</Link>
+                        {/* Si hay cliente activo (entró a una org), mostrar también Reuniones y Miembros */}
+                        {client && (
+                          <>
+                            <Link to="/products">{t('meetings')}</Link>
+                            <Link to="/admin/members">{t('members')}</Link>
+                          </>
+                        )}
                         <Link to="/admin">{t('administration')}</Link>
                       </>
                     ) : (
