@@ -53,16 +53,16 @@ const Contact = () => {
 
         <div className="contact-content" style={{ gridTemplateColumns: '0.6fr 3fr' }}>
           <div className="contact-info">
-            <h2>{t('contactPivot') || 'Pivot Consulting'}</h2>
+            <h2>Board Quorum</h2>
             <div className="info-item">
               <strong>{t('email')}:</strong>
-              <a href="mailto:contacto@pivotconsulting.com.co">contacto@pivotconsulting.com.co</a>
+              <a href="mailto:bq@pivotconsulting.com.co">bq@pivotconsulting.com.co</a>
             </div>
             <div className="info-item">
               <strong>{t('website') || 'Sitio Web'}:</strong>
-              <a href="https://pivotconsulting.com.co" target="_blank" rel="noopener noreferrer">
-                pivotconsulting.com.co
-              </a>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                (próximamente dominio propio)
+              </span>
             </div>
             <div className="info-item">
               <p className="info-description">

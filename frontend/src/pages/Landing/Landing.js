@@ -187,16 +187,16 @@ const Landing = () => {
           </p>
           <div className="contact-content">
             <div className="contact-info">
-              <h3>Pivot Consulting</h3>
+              <h3>Board Quorum</h3>
               <div className="info-item">
                 <strong>{t('email')}:</strong>
                 <a href="mailto:bq@pivotconsulting.com.co">bq@pivotconsulting.com.co</a>
               </div>
               <div className="info-item">
                 <strong>Sitio Web:</strong>
-                <a href="https://pivotconsulting.com.co" target="_blank" rel="noopener noreferrer">
-                  pivotconsulting.com.co
-                </a>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  (próximamente dominio propio)
+                </span>
               </div>
             </div>
             <form 
@@ -306,8 +306,7 @@ const Landing = () => {
               <span className="footer-tagline">{t('platformTagline')}</span>
             </div>
             <div className="footer-info">
-              <p>{t('developedBy')} <strong>Pivot Consulting</strong></p>
-              <p>pivotconsulting.com.co</p>
+              <p><strong>Board Quorum</strong> · Plataforma de gobernanza para su organización</p>
             </div>
           </div>
         </div>

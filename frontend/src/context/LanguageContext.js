@@ -80,7 +80,7 @@ export const LanguageProvider = ({ children }) => {
       loginTitle: 'Iniciar Sesión',
       loginSubtitle: 'Accede a tu plataforma BOARD QUORUM',
       noAccount: '¿No tienes cuenta?',
-      contactPivot: 'Contacta a Pivot Consulting',
+      contactPivot: 'Contacta a Board Quorum',
       // Dashboard
       adminPanel: 'Panel de Administración',
       adminSubtitle: 'Gestión y estadísticas de BOARD QUORUM',
@@ -280,7 +280,7 @@ export const LanguageProvider = ({ children }) => {
       loginTitle: 'Log In',
       loginSubtitle: 'Access your BOARD QUORUM platform',
       noAccount: "Don't have an account?",
-      contactPivot: 'Contact Pivot Consulting',
+      contactPivot: 'Contact Board Quorum',
       // Dashboard
       adminPanel: 'Administration Panel',
       adminSubtitle: 'BOARD QUORUM management and statistics',
