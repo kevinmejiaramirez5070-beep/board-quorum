@@ -998,46 +998,100 @@ const MeetingDetail = () => {
             <div className="votings-section">
               <div className="section-header">
                 <h2>{t('votings')}</h2>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+
+                {/* ── Barra de flujo: Instalar sesión → Nueva Votación ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+
+                  {/* Paso 1: Instalar Sesión */}
+                  {meeting?.session_installed ? (
+                    /* Estado: sesión ya instalada */
                     <span
                       style={{
-                        fontSize: '12px',
-                        padding: '6px 10px',
-                        borderRadius: '999px',
-                        background: meeting?.session_installed ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
-                        color: meeting?.session_installed ? 'var(--success)' : 'var(--warning)',
-                        border: `1px solid ${meeting?.session_installed ? 'rgba(34,197,94,0.35)' : 'rgba(245,158,11,0.35)'}`
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                        background: 'rgba(34,197,94,0.12)',
+                        color: '#16a34a',
+                        border: '2px solid rgba(34,197,94,0.4)',
+                        fontWeight: 700,
+                        fontSize: '15px'
                       }}
-                      title={language === 'es'
-                        ? (meeting?.session_installed ? 'La sesión ya está instalada' : 'Primero debes instalar la sesión para poder activar votaciones')
-                        : (meeting?.session_installed ? 'Session is installed' : 'You must install the session before activating votings')}
                     >
-                      {meeting?.session_installed
-                        ? (language === 'es' ? 'Sesión instalada' : 'Session installed')
-                        : (language === 'es' ? 'Sesión NO instalada' : 'Session NOT installed')}
+                      ✅ {language === 'es' ? 'Sesión Instalada' : 'Session Installed'}
                     </span>
+                  ) : canAuthorizedLive ? (
+                    /* Botón prominente para instalar */
+                    <button
+                      onClick={handleInstallSession}
+                      disabled={!(quorum?.met)}
+                      title={
+                        quorum?.met
+                          ? (language === 'es' ? 'Instalar la sesión para habilitar votaciones' : 'Install session to enable votings')
+                          : (language === 'es' ? 'Requiere quórum alcanzado antes de instalar sesión' : 'Quorum must be reached before installing session')
+                      }
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 24px',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: quorum?.met ? 'pointer' : 'not-allowed',
+                        background: quorum?.met ? 'linear-gradient(135deg,#16a34a,#22c55e)' : 'rgba(100,100,100,0.2)',
+                        color: quorum?.met ? '#fff' : 'var(--text-secondary)',
+                        opacity: quorum?.met ? 1 : 0.65,
+                        boxShadow: quorum?.met ? '0 2px 10px rgba(22,163,74,0.35)' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      🔓 {language === 'es' ? 'Instalar Sesión' : 'Install Session'}
+                      {!quorum?.met && (
+                        <span style={{ fontSize: '12px', fontWeight: 400, opacity: 0.85 }}>
+                          ({language === 'es' ? 'sin quórum' : 'no quorum'})
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    /* Observador: solo muestra estado */
+                    <span
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: 'rgba(245,158,11,0.12)',
+                        color: 'var(--warning)',
+                        border: '1px solid rgba(245,158,11,0.35)',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ⚠️ {language === 'es' ? 'Sesión no instalada' : 'Session not installed'}
+                    </span>
+                  )}
 
-                    {!meeting?.session_installed && canAuthorizedLive && (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={handleInstallSession}
-                        disabled={!(quorum?.met)}
-                        title={
-                          quorum?.met
-                            ? (language === 'es' ? 'Instalar sesión (requiere quórum)' : 'Install session (requires quorum)')
-                            : (language === 'es'
-                                ? 'No puedes instalar la sesión sin quórum alcanzado'
-                                : 'You cannot install the session without quorum')
-                        }
-                        style={!(quorum?.met) ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
-                      >
-                        {language === 'es' ? 'Instalar sesión' : 'Install session'}
-                      </button>
-                    )}
-                  </div>
+                  {/* Separador visual */}
+                  {(meeting?.session_installed || !canAuthorizedLive) && canAdminPrep && (
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>→</span>
+                  )}
+
+                  {/* Paso 2: Nueva Votación — solo habilitado si sesión está instalada */}
                   {canAdminPrep && (
-                    <button className="btn btn-primary" onClick={() => navigate(`/meetings/${meetingId || id}/votings/new`)}>
+                    <button
+                      className={meeting?.session_installed ? 'btn btn-primary' : 'btn btn-secondary'}
+                      onClick={() => {
+                        if (!meeting?.session_installed) return;
+                        navigate(`/meetings/${meetingId || id}/votings/new`);
+                      }}
+                      disabled={!meeting?.session_installed}
+                      title={
+                        meeting?.session_installed
+                          ? (language === 'es' ? 'Crear nueva votación' : 'Create new voting')
+                          : (language === 'es' ? 'Debes instalar la sesión primero' : 'You must install the session first')
+                      }
+                      style={!meeting?.session_installed ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                    >
                       {t('newVoting')}
                     </button>
                   )}
