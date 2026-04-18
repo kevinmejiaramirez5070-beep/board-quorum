@@ -2,11 +2,26 @@ const Attendance = require('../models/Attendance');
 const Meeting = require('../models/Meeting');
 const Member = require('../models/Member');
 
+/** Junta Directiva ASOCOLCI — preview.html / cliente 11 abr 2026: mínimo fijo, NO % sobre 20 personas */
+const JD_QUORUM_MIN = 7;
+const JD_VOTING_SLOTS = 12;
+
 /**
  * Servicio para validar quórum y calcular mayorías según las reglas de ASOCOLCI
  */
 
 class QuorumService {
+  /**
+   * Normaliza tipo de reunión. Si viene vacío (muchos creates antiguos sin campo type),
+   * se asume Junta Directiva — era la causa del bug 8/11 (floor(20/2)+1).
+   */
+  static normalizeMeetingType(type) {
+    if (type == null || String(type).trim() === '') return 'junta_directiva';
+    const t = String(type).toLowerCase().trim().replace(/-/g, '_');
+    if (t === 'junta directiva' || t === 'juntadirectiva') return 'junta_directiva';
+    return t;
+  }
+
   /**
    * Calcula el quórum requerido según el tipo de reunión
    * @param {string} meetingType - Tipo de reunión: 'junta_directiva' o 'asamblea'
@@ -14,18 +29,22 @@ class QuorumService {
    * @returns {number} - Quórum requerido
    */
   static calculateRequiredQuorum(meetingType, totalMembers = null) {
-    if (meetingType === 'junta_directiva') {
-      // Junta Directiva: 11 JD + 1 JV = 12 votos posibles
-      // Quórum = (12 / 2) + 1 = 7
-      return 7;
-    } else if (meetingType === 'asamblea') {
-      // Asamblea: floor(N/2) + 1
+    const mt = this.normalizeMeetingType(meetingType);
+    if (mt === 'junta_directiva') {
+      return JD_QUORUM_MIN;
+    }
+    if (mt === 'asamblea') {
       if (!totalMembers || totalMembers === 0) {
         throw new Error('Total de miembros requerido para calcular quórum de asamblea');
       }
       return Math.floor(totalMembers / 2) + 1;
     }
-    // Por defecto, mayoría simple
+    if (mt === 'comite' || mt === 'consejo') {
+      if (totalMembers && totalMembers > 0) {
+        return Math.floor(totalMembers / 2) + 1;
+      }
+      return JD_QUORUM_MIN;
+    }
     return totalMembers ? Math.floor(totalMembers / 2) + 1 : 1;
   }
 
@@ -47,16 +66,28 @@ class QuorumService {
    * @returns {Promise<Object>} - { valid: boolean, present: number, required: number, message: string }
    */
   static async validateQuorumForInstallation(meetingId, meetingType, totalMembers = null) {
+    const mt = this.normalizeMeetingType(meetingType);
     const present = await this.countPresentWithVote(meetingId);
-    const required = this.calculateRequiredQuorum(meetingType, totalMembers);
-    
+
+    let totalForAssembly = totalMembers;
+    if (mt === 'asamblea' && (totalForAssembly == null || totalForAssembly === 0)) {
+      const meeting = await Meeting.findById(meetingId, null);
+      if (meeting) {
+        totalForAssembly = await Member.countEligibleForQuorum(meeting.client_id, meeting.product_id ?? null);
+        if (totalForAssembly === 0) {
+          totalForAssembly = await Member.countEligibleForQuorum(meeting.client_id, null);
+        }
+      }
+    }
+
+    const required = this.calculateRequiredQuorum(mt, totalForAssembly);
     const valid = present >= required;
-    
+
     let message = '';
-    if (meetingType === 'junta_directiva') {
-      message = valid 
-        ? `Quórum válido: ${present} presentes (mínimo requerido: ${required})`
-        : `Quórum insuficiente: ${present} presentes (mínimo requerido: ${required}). Para iniciar una sesión de Junta Directiva se requieren mínimo 7 miembros presentes, entre principales o suplentes que actúen como principales, incluyendo el voto institucional de la Junta de Vigilancia.`;
+    if (mt === 'junta_directiva') {
+      message = valid
+        ? `Quórum válido: ${present} votos computables (mínimo ${required} para Junta Directiva, ${JD_VOTING_SLOTS} cargos con voto).`
+        : `Quórum insuficiente: ${present} votos computables (mínimo requerido: ${required}). Para Junta Directiva se requieren mínimo 7 miembros presentes, entre principales o suplentes que actúen como principales, incluyendo el voto institucional de la Junta de Vigilancia.`;
     } else {
       message = valid
         ? `Quórum válido: ${present} presentes (mínimo requerido: ${required})`
@@ -80,7 +111,6 @@ class QuorumService {
    * @returns {Promise<Object>} - { valid: boolean, present: number, required: number, message: string }
    */
   static async validateQuorumForVoting(meetingId, meetingType, totalMembers = null, sessionInstalled = false) {
-    // Primero verificar que la sesión esté instalada
     if (!sessionInstalled) {
       return {
         valid: false,
@@ -90,7 +120,6 @@ class QuorumService {
       };
     }
 
-    // Para votar, se requiere el mismo quórum que para instalar la sesión
     return await this.validateQuorumForInstallation(meetingId, meetingType, totalMembers);
   }
 
@@ -153,14 +182,40 @@ class QuorumService {
       throw new Error('Meeting not found');
     }
 
+    const mt = this.normalizeMeetingType(meeting.type);
     const present = await this.countPresentWithVote(meetingId);
-    let total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
-    if (total === 0) {
-      total = await Member.countEligibleForQuorum(clientId, null);
+
+    let total;
+    let required;
+    let percentage;
+    let valid;
+    let organLabel;
+
+    if (mt === 'asamblea') {
+      total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
+      if (total === 0) total = await Member.countEligibleForQuorum(clientId, null);
+      required = this.calculateRequiredQuorum('asamblea', total);
+      valid = total > 0 && present >= required;
+      percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+      organLabel = 'Asamblea General';
+    } else if (mt === 'junta_directiva') {
+      total = JD_VOTING_SLOTS;
+      required = JD_QUORUM_MIN;
+      valid = present >= required;
+      percentage = Math.round((present / JD_VOTING_SLOTS) * 100);
+      organLabel = 'Junta Directiva';
+    } else {
+      total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
+      if (total === 0) total = await Member.countEligibleForQuorum(clientId, null);
+      required = this.calculateRequiredQuorum(mt, total);
+      valid = total > 0 && present >= required;
+      percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+      organLabel = mt === 'comite' ? 'Comité' : mt === 'consejo' ? 'Consejo' : mt;
     }
-    const required = this.calculateRequiredQuorum(meeting.type, total);
-    const valid = total > 0 && present >= required;
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    const message = valid
+      ? `Quórum válido: ${present} presentes (mínimo requerido: ${required})`
+      : `Quórum insuficiente: ${present} presentes (mínimo requerido: ${required})`;
 
     return {
       present,
@@ -170,9 +225,10 @@ class QuorumService {
       valid,
       met: valid,
       type: meeting.type,
-      message: valid
-        ? `Quórum válido: ${present} presentes (mínimo requerido: ${required})`
-        : `Quórum insuficiente: ${present} presentes (mínimo requerido: ${required})`
+      typeNormalized: mt,
+      organLabel,
+      quorumRule: mt === 'junta_directiva' ? 'jd_fixed_min_7_of_12_slots' : mt === 'asamblea' ? 'assembly_majority' : 'collegial',
+      message
     };
   }
 }

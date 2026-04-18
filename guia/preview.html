@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BQ · Fix Quórum JD — ASOCOLCI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0A0A;--card:#111c2d;--card2:#0d1520;--cyan:#00C6FF;--blue:#0072FF;--green:#10B981;--red:#EF4444;--amber:#F59E0B;--gray:#9CA3AF;--border:rgba(0,198,255,0.15);--gbg:rgba(16,185,129,0.08);--gbr:rgba(16,185,129,0.3);--rbg:rgba(239,68,68,0.08);--rbr:rgba(239,68,68,0.3);--abg:rgba(245,158,11,0.08);--abr:rgba(245,158,11,0.3);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e2e8f0;min-height:100vh;}
+
+.hdr{background:linear-gradient(135deg,#0A0A0A,#0d1f35);border-bottom:2px solid var(--rbr);padding:28px 52px 22px;}
+.hdr-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.logo{width:38px;height:38px;background:linear-gradient(135deg,var(--cyan),var(--blue));border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#000;}
+.brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;}
+.hdr h1{font-family:'Syne',sans-serif;font-size:1.75em;font-weight:800;color:#fff;line-height:1.2;}
+.hdr h1 em{color:var(--red);font-style:normal;}
+.meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--gray);}
+.meta strong{color:#cbd5e1;}
+.urgente{display:inline-block;margin-top:10px;background:var(--rbg);border:1px solid var(--rbr);color:var(--red);font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;}
+
+.tabs-bar{background:#0d1520;border-bottom:1px solid var(--border);padding:0 52px;display:flex;overflow-x:auto;}
+.tabs-bar::-webkit-scrollbar{display:none;}
+.tb{padding:13px 20px;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none;transition:color .2s;}
+.tb:hover{color:#cbd5e1;}
+.tb.on{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+.body{padding:36px 52px;max-width:1020px;width:100%;}
+.pnl{display:none;}.pnl.on{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:18px;}
+.card.rb{border-color:var(--rbr);}.card.gb{border-color:var(--gbr);}.card.ab{border-color:var(--abr);}.card.cb{border-color:rgba(0,198,255,0.3);}
+.ct{font-family:'Syne',sans-serif;font-size:.95em;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.ct.r{color:var(--red);}.ct.g{color:var(--green);}.ct.a{color:var(--amber);}.ct.c{color:var(--cyan);}
+
+.stitle{font-family:'Syne',sans-serif;font-size:1.3em;font-weight:800;color:#fff;margin-bottom:5px;}
+.ssub{color:var(--gray);font-size:13.5px;margin-bottom:26px;line-height:1.6;}
+
+/* COMPARATIVO */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.cmp-box{border-radius:12px;padding:20px 22px;text-align:center;}
+.cmp-box.e{background:var(--rbg);border:2px solid var(--rbr);}
+.cmp-box.c{background:var(--gbg);border:2px solid var(--gbr);}
+.cmp-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.cmp-lbl.r{color:var(--red);}.cmp-lbl.g{color:var(--green);}
+.cmp-n{font-family:'Syne',sans-serif;font-size:2.6em;font-weight:800;line-height:1;margin-bottom:6px;}
+.cmp-n.r{color:var(--red);}.cmp-n.g{color:var(--green);}
+.cmp-res{font-size:13px;font-weight:700;}
+.cmp-res.r{color:var(--red);}.cmp-res.g{color:var(--green);}
+.cmp-sub{font-size:11px;color:var(--gray);margin-top:6px;line-height:1.5;}
+
+/* FRASE */
+.frase{background:var(--gbg);border-left:4px solid var(--green);border-radius:0 10px 10px 0;padding:16px 20px;font-size:14px;color:#e2e8f0;line-height:1.75;margin:14px 0;}
+.frase-err{background:var(--rbg);border-left:4px solid var(--red);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;color:#fca5a5;line-height:1.7;margin:12px 0;}
+.frase-warn{background:var(--abg);border-left:4px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;font-size:14px;color:#e2e8f0;line-height:1.75;margin:14px 0;}
+
+/* LISTAS */
+.bl{list-style:none;padding:0;}
+.bl li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13.5px;color:#94a3b8;line-height:1.6;}
+.bl li:last-child{border-bottom:none;}
+.bl li strong{color:#e2e8f0;}
+.dg{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:6px;}
+.dr{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:6px;}
+.da{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:6px;}
+.dc{width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0;margin-top:6px;}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.st{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 12px;text-align:center;}
+.st-n{font-family:'Syne',sans-serif;font-size:2em;font-weight:800;line-height:1;margin-bottom:4px;}
+.st-l{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;line-height:1.4;}
+
+/* CÓDIGO */
+.code{background:#060d18;border:1px solid rgba(0,198,255,0.25);border-radius:10px;padding:20px 24px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:2;overflow-x:auto;margin:12px 0;}
+.code-lbl{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.k{color:var(--amber);}.v{color:var(--green);}.cm{color:#374151;}.fn{color:var(--cyan);}.er{color:var(--red);}
+
+/* DOS COLUMNAS */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+
+/* VALIDACIONES */
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.vitem{background:var(--card2);border-radius:8px;padding:12px 14px;font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start;line-height:1.5;}
+.vitem strong{color:#e2e8f0;}
+
+/* PENDIENTES */
+.pi{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:flex-start;}
+.pi:last-child{border-bottom:none;}
+.pin{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;color:#000;flex-shrink:0;margin-top:2px;}
+.pi-t{font-weight:700;color:#e2e8f0;font-size:13.5px;margin-bottom:2px;}
+.pi-d{font-size:12.5px;color:#64748b;line-height:1.55;}
+
+.callout{border-radius:10px;padding:13px 16px;margin:12px 0;display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.65;}
+.callout.ok{background:var(--gbg);border:1px solid var(--gbr);color:#6ee7b7;}
+.callout strong{color:#fff;}
+
+code{background:rgba(0,198,255,0.08);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--cyan);}
+
+.footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--border);color:var(--gray);font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.footer strong{color:var(--cyan);}
+
+@media(max-width:768px){
+  .hdr,.tabs-bar,.body{padding-left:18px;padding-right:18px;}
+  .cmp,.two,.stats,.vgrid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">BQ</div>
+    <div class="brand">Board Quorum · Fix Urgente</div>
+  </div>
+  <h1>Bug Quórum — <em>Junta Directiva ASOCOLCI</em></h1>
+  <div class="meta">
+    <span>📅 <strong>11 abril 2026</strong></span>
+    <span>👤 <strong>Para: Ing. Andrés Suárez Soto</strong></span>
+    <span>✍️ <strong>De: Javier Castilla Robles</strong></span>
+  </div>
+  <div class="urgente">⚠️ Bloquea sesiones válidas — corrección urgente</div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tb on" onclick="show(0,this)">🔴 Hallazgo Crítico</button>
+  <button class="tb" onclick="show(1,this)">🔵 Reglas de Oro</button>
+  <button class="tb" onclick="show(2,this)">🟢 Regla Técnica</button>
+  <button class="tb" onclick="show(3,this)">🟡 Pendientes</button>
+</div>
+
+<div class="body">
+
+<!-- P0: HALLAZGO -->
+<div class="pnl on" id="p0">
+  <div class="stitle">Hallazgo Crítico</div>
+  <p class="ssub">El sistema aplica lógica de Asamblea General a Junta Directiva. Con 8 cargos válidamente ocupados y computables — que superan el mínimo de 7 — el sistema dice que no hay quórum.</p>
+
+  <div class="cmp">
+    <div class="cmp-box e">
+      <div class="cmp-lbl r">🔴 Hoy — Error</div>
+      <div class="cmp-n r">8/11</div>
+      <div class="cmp-res r">❌ NO QUÓRUM</div>
+      <div class="cmp-sub">Exige 11 mínimos<br>55% de 20 personas</div>
+    </div>
+    <div class="cmp-box c">
+      <div class="cmp-lbl g">🟢 Correcto — Regla JD</div>
+      <div class="cmp-n g">8/7</div>
+      <div class="cmp-res g">✅ SÍ QUÓRUM</div>
+      <div class="cmp-sub">Debe exigir 7 mínimos<br>12 cargos posibles</div>
+    </div>
+  </div>
+
+  <div class="frase-err"><strong>Este error bloquea sesiones válidas de Junta Directiva.</strong> Con 8 computables la sesión tiene quórum — el sistema lo niega incorrectamente.</div>
+
+  <div class="stats">
+    <div class="st"><div class="st-n" style="color:var(--red)">20</div><div class="st-l">Personas en BD<br><span style="color:var(--red);">❌ No usar</span></div></div>
+    <div class="st"><div class="st-n" style="color:var(--green)">12</div><div class="st-l">Cargos con voto<br><span style="color:var(--green);">✅ Base correcta</span></div></div>
+    <div class="st"><div class="st-n" style="color:var(--green)">7</div><div class="st-l">Quórum mínimo JD<br><span style="color:var(--green);">✅ Fijo — no %</span></div></div>
+    <div class="st"><div class="st-n" style="color:var(--cyan)">8</div><div class="st-l">Computables hoy<br><span style="color:var(--cyan);">✅ Hay quórum</span></div></div>
+  </div>
+
+  <div class="card rb">
+    <div class="ct r">🔴 Por qué falla</div>
+    <ul class="bl">
+      <li><span class="dr"></span><div>Usa <strong>20 personas</strong> como universo — eso es lógica de Asamblea General</div></li>
+      <li><span class="dr"></span><div>Aplica <strong>55% × 20 = 11</strong> mínimos — fórmula incorrecta para JD</div></li>
+      <li><span class="dr"></span><div>Para JD el universo es <strong>12 cargos</strong> y el mínimo es <strong>7 fijo</strong></div></li>
+      <li><span class="dr"></span><div>El quórum se calcula por <strong>cargos válidamente ocupados</strong>, no por número bruto de asistentes</div></li>
+      <li><span class="dr"></span><div>El dashboard muestra "· · ORGANIZACIÓN" — el tipo de órgano no se está leyendo</div></li>
+    </ul>
+  </div>
+</div>
+
+<!-- P1: REGLAS DE ORO -->
+<div class="pnl" id="p1">
+  <div class="stitle">Reglas de Oro</div>
+  <p class="ssub">Sin ambigüedad. Aplicar exactamente así.</p>
+
+  <div class="frase">"Para instalar una sesión de Junta Directiva se requieren mínimo <strong>7 miembros presentes</strong>, entre principales o suplentes que actúen como principales, incluyendo el <strong>voto institucional de la Junta de Vigilancia</strong>."</div>
+
+  <div class="two">
+    <div class="card gb">
+      <div class="ct g">✅ SÍ CUENTAN</div>
+      <ul class="bl">
+        <li><span class="dg"></span><div><strong>Principal presente</strong> → +1 voto</div></li>
+        <li><span class="dg"></span><div><strong>Suplente actuando</strong> → +1 voto<br><span style="font-size:12px;color:#6b7280;">Solo si el principal NO está</span></div></li>
+        <li><span class="dg"></span><div><strong>Junta de Vigilancia</strong> → +1 voto total<br><span style="font-size:12px;color:#6b7280;">1 solo, sin importar cuántos miembros JV</span></div></li>
+      </ul>
+    </div>
+    <div class="card rb">
+      <div class="ct r">❌ NO CUENTAN</div>
+      <ul class="bl">
+        <li><span class="dr"></span><div><strong>Revisor Fiscal</strong></div></li>
+        <li><span class="dr"></span><div><strong>Contabilidad</strong></div></li>
+        <li><span class="dr"></span><div><strong>Invitados externos</strong></div></li>
+        <li><span class="dr"></span><div><strong>Suplente</strong> si el principal está presente</div></li>
+        <li><span class="dr"></span><div><strong>JV como 3 votos</strong> — es 1 institucional</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">⚠️ Suplencias — Crítico</div>
+    <ul class="bl">
+      <li><span class="da"></span><div>Cada cargo tiene <strong>su propio suplente específico.</strong> No existen suplencias cruzadas.</div></li>
+      <li><span class="da"></span><div>El suplente de <strong>Tesorería NO reemplaza Fiscalía.</strong></div></li>
+      <li><span class="da"></span><div>El suplente del vocal Pérez <strong>NO reemplaza al vocal Penagos.</strong></div></li>
+    </ul>
+    <div class="frase-warn" style="margin-top:14px;">👉 <strong>"El voto pertenece al CARGO, no a la persona."</strong></div>
+  </div>
+</div>
+
+<!-- P2: REGLA TÉCNICA -->
+<div class="pnl" id="p2">
+  <div class="stitle">Regla Técnica</div>
+  <p class="ssub">Copiar e implementar. El quórum se calcula por cargos válidamente ocupados, no por personas ni por asistentes brutos.</p>
+
+  <div class="card gb">
+    <div class="ct g">✅ Código correcto</div>
+    <div class="code">
+      <div class="code-lbl">// constantes — Junta Directiva ASOCOLCI</div>
+      <span class="k">const</span> TIPO_ORGANO = <span class="v">"JUNTA_DIRECTIVA"</span><br>
+      <span class="k">const</span> TOTAL_CARGOS_CON_VOTO = <span class="v">12</span> <span class="cm">// 11 JD + 1 JV institucional</span><br>
+      <span class="k">const</span> QUORUM_MINIMO = <span class="v">7</span> <span class="cm">// fijo — NO porcentaje</span><br><br>
+      <span class="fn">function</span> calcularQuorum(<span class="k">cargos</span>, <span class="k">JV_tiene_al_menos_un_presente</span>) {<br>
+      &nbsp;&nbsp;<span class="k">let</span> quorum = <span class="v">0</span><br><br>
+      &nbsp;&nbsp;<span class="cm">// contar cargos válidamente ocupados — no personas</span><br>
+      &nbsp;&nbsp;<span class="k">for</span> (<span class="k">const</span> cargo <span class="k">of</span> cargos) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">if</span> (cargo.principal_presente === <span class="v">true</span>) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quorum += <span class="v">1</span> <span class="cm">// principal suma</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;} <span class="k">else if</span> (<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cargo.principal_presente === <span class="v">false</span> &&<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cargo.suplente_presente === <span class="v">true</span> &&<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cargo.suplente_es_del_mismo_cargo === <span class="v">true</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quorum += <span class="v">1</span> <span class="cm">// suplente válido del mismo cargo</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// máximo 1 voto por cargo — nunca ambos</span><br>
+      &nbsp;&nbsp;}<br><br>
+      &nbsp;&nbsp;<span class="k">if</span> (JV_tiene_al_menos_un_presente === <span class="v">true</span>) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;quorum += <span class="v">1</span> <span class="cm">// 1 voto institucional — NO 1 por miembro</span><br>
+      &nbsp;&nbsp;}<br><br>
+      &nbsp;&nbsp;<span class="k">return</span> quorum<br>
+      }<br><br>
+      <span class="fn">function</span> validarQuorum(<span class="k">q</span>, <span class="k">tipo_organo</span>) {<br>
+      &nbsp;&nbsp;<span class="k">if</span> (tipo_organo !== TIPO_ORGANO) <span class="k">throw new</span> Error(<span class="v">"Tipo de órgano incorrecto para esta regla"</span>)<br>
+      &nbsp;&nbsp;<span class="k">return</span> q >= QUORUM_MINIMO <span class="cm">// >= 7</span><br>
+      }
+    </div>
+  </div>
+
+  <div class="card rb">
+    <div class="ct r">🔴 Error actual — eliminar</div>
+    <div class="code">
+      <div class="code-lbl">// ❌ no usar — lógica de Asamblea</div>
+      <span class="er">quorum_minimo = Math.ceil(20 * 0.55)</span> <span class="cm">// da 11 → INCORRECTO</span><br>
+      <span class="er">quorum_minimo = Math.ceil(total_personas * 0.55)</span><br><br>
+      <div class="code-lbl">// ✅ usar esto</div>
+      <span class="v">quorum_minimo = 7</span> <span class="cm">// fijo para JD ASOCOLCI</span>
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">⚠️ Validaciones obligatorias</div>
+    <div class="vgrid">
+      <div class="vitem"><span class="da" style="margin-top:5px;flex-shrink:0;"></span><div>1 cargo = <strong>máximo 1 voto</strong> — nunca principal + suplente</div></div>
+      <div class="vitem"><span class="da" style="margin-top:5px;flex-shrink:0;"></span><div><strong>Sin suplencias cruzadas</strong> — suplente reemplaza solo su cargo y debe validarse <code>suplente_es_del_mismo_cargo = true</code></div></div>
+      <div class="vitem"><span class="da" style="margin-top:5px;flex-shrink:0;"></span><div>JV = <strong>1 voto total</strong> — no 1 por miembro presente</div></div>
+      <div class="vitem"><span class="da" style="margin-top:5px;flex-shrink:0;"></span><div>Revisor Fiscal y Contabilidad: <code>CUENTA_QUORUM = false</code></div></div>
+      <div class="vitem"><span class="da" style="margin-top:5px;flex-shrink:0;"></span><div><strong>Tipo de órgano obligatorio</strong> — validar <code>tipo_organo = "JUNTA_DIRECTIVA"</code> antes de calcular quórum</div></div>
+    </div>
+  </div>
+
+  <div class="card cb">
+    <div class="ct c">🖥️ UI — qué mostrar</div>
+    <div class="two" style="margin-bottom:0;">
+      <div>
+        <p style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">✅ MOSTRAR</p>
+        <ul class="bl">
+          <li><span class="dg"></span><div>Tipo de órgano: <strong>Junta Directiva</strong></div></li>
+          <li><span class="dg"></span><div>Cargos válidamente ocupados y computables: <strong>X</strong></div></li>
+          <li><span class="dg"></span><div>Quórum mínimo: <strong>7</strong></div></li>
+          <li><span class="dg"></span><div>Estado: <strong>ALCANZADO / NO ALCANZADO</strong></div></li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">❌ NO MOSTRAR</p>
+        <ul class="bl">
+          <li><span class="dr"></span><div style="text-decoration:line-through;color:var(--red);">55%</div></li>
+          <li><span class="dr"></span><div style="text-decoration:line-through;color:var(--red);">20 elegibles</div></li>
+          <li><span class="dr"></span><div style="text-decoration:line-through;color:var(--red);">11 mínimos</div></li>
+          <li><span class="dr"></span><div style="text-decoration:line-through;color:var(--red);">"· · ORGANIZACIÓN"</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P3: PENDIENTES -->
+<div class="pnl" id="p3">
+  <div class="stitle">Pendientes</div>
+  <p class="ssub">Ordenados por prioridad. Basado en prueba 11 abril 2026.</p>
+
+  <div class="card rb">
+    <div class="ct r">🔴 Urgentes — antes de producción</div>
+    <div class="pi">
+      <div class="pin" style="background:var(--red);">1</div>
+      <div><div class="pi-t">Corregir motor de quórum</div><div class="pi-d">Cambiar <code>55% de 20</code> por <code>QUORUM_MINIMO = 7</code>. Ver pestaña Regla Técnica.</div></div>
+    </div>
+    <div class="pi">
+      <div class="pin" style="background:var(--red);">2</div>
+      <div><div class="pi-t">Leer tipo de órgano (JD vs Asamblea)</div><div class="pi-d">El dashboard muestra "· · ORGANIZACIÓN". El sistema debe leer <code>tipo_organo</code> y aplicar reglas correctas.</div></div>
+    </div>
+    <div class="pi">
+      <div class="pin" style="background:var(--red);">3</div>
+      <div><div class="pi-t">Implementar suplencias por cargo</div><div class="pi-d">Suplente válido solo para su cargo específico. Sin suplencias cruzadas. Validar <code>cargo.suplente_id</code>.</div></div>
+    </div>
+    <div class="pi" style="border-bottom:none;">
+      <div class="pin" style="background:var(--red);">4</div>
+      <div><div class="pi-t">JV = 1 voto institucional</div><div class="pi-d">Verificar que <code>JV_presente ? 1 : 0</code> está implementado. No sumar 1 por cada miembro de JV.</div></div>
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">🟡 Antes de entrega al cliente</div>
+    <div class="pi">
+      <div class="pin" style="background:var(--amber);">5</div>
+      <div><div class="pi-t">Seguridad botón de borrado</div><div class="pi-d">Confirmación con texto escrito + soft delete 30 días. Probado en esta sesión — no tiene protección suficiente.</div></div>
+    </div>
+    <div class="pi">
+      <div class="pin" style="background:var(--amber);">6</div>
+      <div><div class="pi-t">Módulo edición de miembros JD</div><div class="pi-d">Nueva JD elegida el 19 mar. Necesita flujo directo de edición en panel Admin-Asocolci — no solo vía "pendiente de validación".</div></div>
+    </div>
+    <div class="pi" style="border-bottom:none;">
+      <div class="pin" style="background:var(--amber);">7</div>
+      <div><div class="pi-t">VOT-SESION + VOT-LOGICA</div><div class="pi-d">Pendientes de Prueba #5: activación bloqueada + 0 votos = APROBADA. Fix documentado en reporte anterior.</div></div>
+    </div>
+  </div>
+
+  <div class="callout ok">
+    <span style="font-size:15px;flex-shrink:0;">✅</span>
+    <div><strong>Funciona bien hoy:</strong> Branding en PDFs · Flujo invitados completo · Sistema Aprobar/Rechazar pendientes · Bloqueo duplicados · Registro nuevos miembros post-asamblea.</div>
+  </div>
+
+  <div class="footer">
+    <div><strong>BOARD QUORUM</strong> · Fix Quórum JD · 11 Abr 2026</div>
+    <div>Javier Castilla Robles → Ing. Andrés Suárez Soto</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function show(i,btn){
+  for(var j=0;j<4;j++){var p=document.getElementById('p'+j);if(p)p.className=(i===j)?'pnl on':'pnl';}
+  document.querySelectorAll('.tb').forEach(function(t){t.className='tb';});
+  if(btn)btn.className='tb on';
+}
+</script>
+</body>
+</html>

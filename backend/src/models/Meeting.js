@@ -45,7 +45,7 @@ class Meeting {
       const [rows, fields] = await db.execute(
         `INSERT INTO meetings (client_id, product_id, title, description, date, location, type, status, google_meet_link, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())${returningClause}`,
-        [client_id, product_id || null, title, description, date, location, type || null, status || 'scheduled', google_meet_link]
+        [client_id, product_id || null, title, description, date, location, type || 'junta_directiva', status || 'scheduled', google_meet_link]
       );
       
       console.log('Meeting.create - rows:', rows);

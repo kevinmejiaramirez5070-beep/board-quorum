@@ -18,6 +18,7 @@ const CreateMeeting = () => {
     description: '',
     date: '',
     location: '',
+    type: 'junta_directiva',
     product_id: productId ? parseInt(productId) : null,
     status: 'scheduled'
   });
@@ -137,6 +138,27 @@ const CreateMeeting = () => {
               required
               placeholder={language === 'es' ? 'Ej: Junta Directiva - Enero 2025' : 'Ex: Board Meeting - January 2025'}
             />
+          </div>
+
+          <div className="form-group">
+            <label className="label">{language === 'es' ? 'Tipo de reunión' : 'Meeting type'} *</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="input"
+              required
+            >
+              <option value="junta_directiva">{t('boardMeeting')}</option>
+              <option value="asamblea">{t('assembly')}</option>
+              <option value="comite">{t('committee')}</option>
+              <option value="consejo">{t('council')}</option>
+            </select>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+              {language === 'es'
+                ? 'Junta Directiva: quórum fijo 7 sobre 12 cargos con voto (regla ASOCOLCI). Asamblea: quórum según total de delegados elegibles.'
+                : 'Board meeting: fixed quorum of 7 of 12 voting seats (ASOCOLCI). Assembly: quorum from eligible delegates.'}
+            </p>
           </div>
 
           <div className="form-group">

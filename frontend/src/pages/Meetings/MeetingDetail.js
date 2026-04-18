@@ -774,7 +774,14 @@ const MeetingDetail = () => {
             className={`quorum-card ${quorum.met ? 'quorum-met' : 'quorum-not-met'}`}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ margin: 0 }}>{t('quorum')}</h3>
+              <div>
+                <h3 style={{ margin: 0 }}>{t('quorum')}</h3>
+                {quorum.organLabel && (
+                  <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {quorum.organLabel}
+                  </p>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 {meeting.status === 'active' && (
                   <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
@@ -796,15 +803,31 @@ const MeetingDetail = () => {
             <div className="quorum-stats">
               <div className="stat">
                 <span className="stat-value">{quorum.present}</span>
-                <span className="stat-label">{language === 'es' ? 'Presentes' : 'Present'}</span>
+                <span className="stat-label">
+                  {quorum.quorumRule === 'jd_fixed_min_7_of_12_slots'
+                    ? (language === 'es' ? 'Votos computables' : 'Countable votes')
+                    : (language === 'es' ? 'Presentes' : 'Present')}
+                </span>
+              </div>
+              <div className="stat">
+                <span className="stat-value">{quorum.required ?? '-'}</span>
+                <span className="stat-label">{language === 'es' ? 'Mínimo requerido' : 'Minimum required'}</span>
               </div>
               <div className="stat">
                 <span className="stat-value">{quorum.total}</span>
-                <span className="stat-label">{language === 'es' ? 'Total' : 'Total'}</span>
+                <span className="stat-label">
+                  {quorum.quorumRule === 'jd_fixed_min_7_of_12_slots'
+                    ? (language === 'es' ? 'Cargos con voto (JD)' : 'JD voting seats')
+                    : (language === 'es' ? 'Elegibles' : 'Eligible')}
+                </span>
               </div>
               <div className="stat">
                 <span className="stat-value">{(quorum.percentage ?? (quorum.total > 0 ? Math.round((quorum.present / quorum.total) * 100) : 0))}%</span>
-                <span className="stat-label">{language === 'es' ? 'Porcentaje' : 'Percentage'}</span>
+                <span className="stat-label">
+                  {quorum.quorumRule === 'jd_fixed_min_7_of_12_slots'
+                    ? (language === 'es' ? 'Sobre 12 cargos' : 'Of 12 seats')
+                    : (language === 'es' ? 'Porcentaje' : 'Percentage')}
+                </span>
               </div>
             </div>
             <div className={`quorum-status ${quorum.met ? 'met' : 'not-met'}`}>
@@ -828,7 +851,16 @@ const MeetingDetail = () => {
                 ✕ {language === 'es' ? 'Salir de proyección' : 'Exit projection'}
               </button>
               <header className="quorum-projection-header">
-                BOARD QUORUM · {meeting?.type === 'junta_directiva' ? (language === 'es' ? 'JUNTA DIRECTIVA' : 'BOARD OF DIRECTORS') : (meeting?.type === 'asamblea' ? (language === 'es' ? 'ASAMBLEA GENERAL' : 'GENERAL ASSEMBLY') : (meeting?.type || '').toUpperCase())} · {(client?.name || '').toUpperCase() || 'ORGANIZACIÓN'}
+                BOARD QUORUM ·{' '}
+                {(quorum.organLabel
+                  ? quorum.organLabel
+                  : meeting?.type === 'junta_directiva'
+                    ? (language === 'es' ? 'Junta Directiva' : 'BOARD OF DIRECTORS')
+                    : meeting?.type === 'asamblea'
+                      ? (language === 'es' ? 'Asamblea General' : 'GENERAL ASSEMBLY')
+                      : (meeting?.type || (language === 'es' ? 'Reunión' : 'Meeting'))
+                ).toUpperCase()}{' '}
+                · {(client?.name || '').toUpperCase() || (language === 'es' ? 'ORGANIZACIÓN' : 'ORGANIZATION')}
               </header>
               <div className={`quorum-projection-result ${quorum.met ? 'met' : 'not-met'}`}>
                 <div className="quorum-projection-badge">
@@ -857,9 +889,13 @@ const MeetingDetail = () => {
                   </span>
                 </div>
                 <div className="quorum-projection-row">
-                  <span className="quorum-projection-label">{language === 'es' ? 'Quórum mínimo:' : 'Minimum quorum:'}</span>
+                  <span className="quorum-projection-label">{language === 'es' ? 'Regla de quórum:' : 'Quorum rule:'}</span>
                   <span className="quorum-projection-value">
-                    {quorum.required ?? '-'} {language === 'es' ? 'votos' : 'votes'} ({quorum.total > 0 ? Math.round(((quorum.required ?? 0) / quorum.total) * 100) : 0}% {language === 'es' ? 'de' : 'of'} {quorum.total} {language === 'es' ? 'elegibles' : 'eligible'})
+                    {quorum.quorumRule === 'jd_fixed_min_7_of_12_slots'
+                      ? (language === 'es'
+                        ? `Mínimo fijo ${quorum.required ?? 7} sobre ${quorum.total ?? 12} cargos con voto (no aplica % sobre personas en BD).`
+                        : `Fixed minimum ${quorum.required ?? 7} of ${quorum.total ?? 12} voting seats.`)
+                      : `${quorum.required ?? '-'} ${language === 'es' ? 'votos' : 'votes'} (${quorum.total > 0 ? Math.round(((quorum.required ?? 0) / quorum.total) * 100) : 0}% ${language === 'es' ? 'de' : 'of'} ${quorum.total} ${language === 'es' ? 'elegibles' : 'eligible'})`}
                   </span>
                 </div>
                 <div className="quorum-projection-row">
