@@ -1,8 +1,31 @@
 const express = require('express');
 const cors = require('cors');
+const db = require('./config/database');
 require('dotenv').config();
 
 const app = express();
+
+// ── Migración automática: roles que NUNCA cuentan para quórum en JD ──────────
+// CONTABILIDAD y REVISORIA son asesores/observadores — 1 miembro = 1 voto solo aplica
+// a los cargos electivos. Corrije datos históricos mal ingresados al arrancar el server.
+async function fixNonVotingRoles() {
+  try {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const falseVal = isPostgreSQL ? 'false' : '0';
+    const [result] = await db.execute(
+      `UPDATE members
+          SET cuenta_quorum = ${falseVal}, puede_votar = ${falseVal}
+        WHERE UPPER(TRIM(COALESCE(rol_organico, ''))) IN ('CONTABILIDAD', 'REVISORIA')
+          AND (cuenta_quorum != ${falseVal} OR puede_votar != ${falseVal})`
+    );
+    const affected = isPostgreSQL ? (result?.rowCount ?? 0) : (result?.affectedRows ?? 0);
+    if (affected > 0) {
+      console.log(`✅ [migration] Corregidos ${affected} miembro(s) con rol CONTABILIDAD/REVISORIA → cuenta_quorum=false, puede_votar=false`);
+    }
+  } catch (err) {
+    console.error('⚠️  [migration] fixNonVotingRoles falló (no crítico):', err.message);
+  }
+}
 
 // Middleware
 app.use(cors({
@@ -66,8 +89,9 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 BOARD QUORUM API running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  await fixNonVotingRoles();
 });
 

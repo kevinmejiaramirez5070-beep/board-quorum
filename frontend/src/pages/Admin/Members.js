@@ -70,12 +70,23 @@ const Members = () => {
     }
   };
 
+  // Roles que NUNCA cuentan para quórum ni pueden votar en JD
+  const NON_VOTING_ROLES = ['CONTABILIDAD', 'REVISORIA'];
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
+    const updated = { ...formData, [name]: type === 'checkbox' ? checked : value };
+
+    // Auto-ajuste: CONTABILIDAD y REVISORIA no cuentan para quórum ni votan
+    if (name === 'rol_organico') {
+      const isNonVoting = NON_VOTING_ROLES.includes(value?.toUpperCase()?.trim());
+      if (isNonVoting) {
+        updated.cuenta_quorum = false;
+        updated.puede_votar = false;
+      }
+    }
+
+    setFormData(updated);
   };
 
   const handleSubmit = async (e) => {
@@ -277,6 +288,13 @@ const Members = () => {
                       <option value="CONTABILIDAD">{language === 'es' ? 'Contabilidad' : 'Accounting'}</option>
                       <option value="REVISORIA">{language === 'es' ? 'Revisoria' : 'Auditing'}</option>
                     </select>
+                    {NON_VOTING_ROLES.includes(formData.rol_organico?.toUpperCase()?.trim()) && (
+                      <small style={{ color: 'var(--warning, #d97706)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                        ⚠️ {language === 'es'
+                          ? 'Este rol es asesor/observador — no cuenta para quórum ni puede votar en Junta Directiva.'
+                          : 'This role is an advisor/observer — does not count for quorum or voting in Board meetings.'}
+                      </small>
+                    )}
                   </div>
 
                   <div className="form-group">
