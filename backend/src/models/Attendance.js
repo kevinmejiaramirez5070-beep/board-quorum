@@ -70,91 +70,119 @@ class Attendance {
   }
 
   /**
-   * Cuenta miembros presentes que suman al quórum (BUG-04, BUG-JV).
-   * - Principales: 1 cada uno (cuenta_quorum, no pendiente de aprobación).
-   * - Suplentes: cuentan solo si el principal del cargo NO está presente.
-   *   - Si tiene principal_id: el principal con ese id no debe estar en asistencia presente.
-   *   - Si principal_id es NULL (datos históricos): no debe haber ningún principal presente
-   *     con el mismo rol_organico (mismo órgano/cargo).
-   * - JV: máximo 1 voto institucional (LEAST(1, COUNT)).
+   * Cuenta votos computables para quórum (reglas ASOCOLCI).
+   *
+   * Reglas:
+   *  1. JV (junta_vigilancia): suma exactamente 1 si hay al menos 1 presente, sin importar cuántos asistan.
+   *  2. Suplente: suma 1 SOLO si su principal NO está presente.
+   *     Detección de suplente (en orden):
+   *       a) member_type = 'suplente'
+   *       b) tipo_participante = 'SUPLENTE'
+   *       c) position contiene la palabra 'SUPLENTE' (cubre datos históricos sin tipo_participante)
+   *     Detección de que el principal está presente (en orden):
+   *       a) principal_id apunta a un miembro que también está presente
+   *       b) Fallback rol_organico: hay algún principal presente con mismo rol_organico
+   *       c) Fallback posición: hay algún no-suplente presente cuyo position comparte la
+   *          palabra base del cargo (ej: "TESORERO SUPLENTE" → busca presente con "TESORERO")
+   *  3. Principal (cualquier otro): suma 1.
+   *  Solo se cuentan miembros con cuenta_quorum=true y sin pending_approval.
    */
   static async countPresentWithVote(meetingId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
-    const cuentaQuorumCondition = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
-    const pendingOkA = isPostgreSQL
-      ? '(COALESCE(a.pending_approval, false) = false)'
+    const cuentaQuorumCond = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
+    const pendingOkCond = isPostgreSQL
+      ? 'COALESCE(a.pending_approval, false) = false'
       : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
-    const pendingOkA2 = isPostgreSQL
-      ? '(COALESCE(a2.pending_approval, false) = false)'
-      : '(a2.pending_approval IS NULL OR a2.pending_approval = 0)';
-    const pendingOkSub = isPostgreSQL
-      ? '(COALESCE(pending_approval, false) = false)'
-      : '(pending_approval IS NULL OR pending_approval = 0)';
 
-    const isPrincipal = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'principal' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'PRINCIPAL')`;
-    const isSuplente = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'suplente' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'SUPLENTE')`;
-    const isJv = `(LOWER(TRIM(COALESCE(m.member_type, ''))) = 'junta_vigilancia' OR UPPER(TRIM(COALESCE(m.tipo_participante, ''))) = 'JUNTA_DE_VIGILANCIA')`;
-    const principalPred = `(LOWER(TRIM(COALESCE(mp.member_type, ''))) = 'principal' OR UPPER(TRIM(COALESCE(mp.tipo_participante, ''))) = 'PRINCIPAL')`;
+    const [rows] = await db.execute(
+      `SELECT a.member_id,
+              m.member_type,
+              m.tipo_participante,
+              m.principal_id,
+              m.rol_organico,
+              m.position
+       FROM attendance a
+       JOIN members m ON a.member_id = m.id
+       WHERE a.meeting_id = ?
+         AND a.status = 'present'
+         AND a.member_id IS NOT NULL
+         AND ${cuentaQuorumCond}
+         AND ${pendingOkCond}`,
+      [meetingId]
+    );
 
-    const sql = `
-      SELECT
-        (SELECT COUNT(*) FROM (
-          SELECT 1
-          FROM attendance a
-          JOIN members m ON a.member_id = m.id
-          WHERE a.meeting_id = ?
-            AND ${pendingOkA}
-            AND a.status = 'present'
-            AND a.member_id IS NOT NULL
-            AND ${cuentaQuorumCondition}
-            AND NOT (${isJv})
-            AND (
-              ${isPrincipal}
-              OR (
-                ${isSuplente}
-                AND (
-                  (
-                    m.principal_id IS NOT NULL
-                    AND m.principal_id NOT IN (
-                      SELECT member_id FROM attendance
-                      WHERE meeting_id = ?
-                        AND status = 'present'
-                        AND member_id IS NOT NULL
-                        AND ${pendingOkSub}
-                    )
-                  )
-                  OR (
-                    m.principal_id IS NULL
-                    AND TRIM(COALESCE(m.rol_organico, '')) <> ''
-                    AND NOT EXISTS (
-                      SELECT 1
-                      FROM attendance a2
-                      JOIN members mp ON mp.id = a2.member_id
-                      WHERE a2.meeting_id = a.meeting_id
-                        AND ${pendingOkA2}
-                        AND a2.status = 'present'
-                        AND a2.member_id IS NOT NULL
-                        AND ${principalPred}
-                        AND UPPER(TRIM(COALESCE(mp.rol_organico, ''))) = UPPER(TRIM(COALESCE(m.rol_organico, '')))
-                    )
-                  )
-                )
-              )
-            )
-        ) sub1)
-        +
-        (SELECT LEAST(1, COUNT(*)) FROM attendance a
-         JOIN members m ON a.member_id = m.id
-         WHERE a.meeting_id = ?
-           AND ${pendingOkA}
-           AND a.status = 'present'
-           AND a.member_id IS NOT NULL
-           AND ${cuentaQuorumCondition}
-           AND ${isJv}) AS count
-    `;
-    const [rows] = await db.execute(sql, [meetingId, meetingId, meetingId]);
-    const count = rows[0]?.count ?? 0;
-    return typeof count === 'string' ? parseInt(count, 10) : count;
+    if (!rows || rows.length === 0) return 0;
+
+    const norm = (s) => String(s || '').toUpperCase().trim();
+
+    const isJvRow = (r) => {
+      const mt = String(r.member_type || '').toLowerCase().trim();
+      const tp = norm(r.tipo_participante);
+      return mt === 'junta_vigilancia' || tp === 'JUNTA_DE_VIGILANCIA';
+    };
+
+    const isSuplenteRow = (r) => {
+      const mt = String(r.member_type || '').toLowerCase().trim();
+      const tp = norm(r.tipo_participante);
+      const pos = norm(r.position);
+      // Detección por member_type, tipo_participante, o por la palabra SUPLENTE en position
+      return mt === 'suplente' || tp === 'SUPLENTE' || /\bSUPLENTE\b/.test(pos);
+    };
+
+    const presentIds = new Set(rows.map(r => Number(r.member_id)));
+
+    let votes = 0;
+    let jvPresent = false;
+
+    for (const row of rows) {
+      if (isJvRow(row)) {
+        jvPresent = true;
+        continue;
+      }
+
+      if (isSuplenteRow(row)) {
+        // a) principal_id directo: si ese miembro está presente → no cuenta
+        if (row.principal_id && presentIds.has(Number(row.principal_id))) {
+          continue;
+        }
+
+        // b) Fallback rol_organico: si hay un principal presente con mismo rol_organico
+        if (norm(row.rol_organico)) {
+          const principalPresentByOrg = rows.some(r =>
+            !isJvRow(r) && !isSuplenteRow(r) &&
+            norm(r.rol_organico) === norm(row.rol_organico)
+          );
+          if (principalPresentByOrg) continue;
+        }
+
+        // c) Fallback posición: "TESORERO SUPLENTE" → palabras base ["TESORERO"]
+        //    busca si hay un no-suplente presente cuyo position comparte esa palabra
+        const posBase = norm(row.position)
+          .replace(/\bSUPLENTE\b/g, '')
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 3); // descarta preposiciones / palabras cortas
+
+        if (posBase.length > 0) {
+          const principalPresentByPos = rows.some(r => {
+            if (isJvRow(r) || isSuplenteRow(r)) return false;
+            const rPos = norm(r.position);
+            const rOrg = norm(r.rol_organico);
+            return posBase.some(w => rPos.includes(w) || rOrg.includes(w));
+          });
+          if (principalPresentByPos) continue;
+        }
+
+        // El principal no está presente → el suplente sí suma
+        votes++;
+      } else {
+        // Principal u otro tipo con cuenta_quorum: suma 1
+        votes++;
+      }
+    }
+
+    if (jvPresent) votes += 1;
+    return votes;
   }
 
   static async countByStatus(meetingId, status) {
