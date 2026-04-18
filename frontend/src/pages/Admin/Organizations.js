@@ -595,47 +595,61 @@ const Organizations = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <h2 style={{ margin: 0, color: '#dc2626', fontSize: '18px' }}>
-                {language === 'es' ? 'SEG-01: Eliminar organización' : 'SEG-01: Delete organization'}
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>🗑️</span>
+                <h2 style={{ margin: 0, color: '#dc2626', fontSize: '18px' }}>
+                  {language === 'es'
+                    ? `¿Eliminar "${seg01.org?.name}"?`
+                    : `Delete "${seg01.org?.name}"?`}
+                </h2>
+              </div>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => setSeg01({ open: false, step: 1, org: null, confirmText: '', deleting: false, localError: '' })}
                 disabled={seg01.deleting}
               >
-                {language === 'es' ? 'Cerrar' : 'Close'}
+                ✕
               </button>
             </div>
 
             {seg01.step === 1 && (
-              <div style={{ marginTop: '16px' }}>
-                <p style={{ margin: '10px 0', color: 'var(--text-primary)' }}>
+              <div style={{ marginTop: '18px' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                   {language === 'es'
-                    ? 'Escribe el nombre exacto de la organización para habilitar el botón de eliminar.'
-                    : 'Type the exact organization name to enable deletion.'}
+                    ? 'Esta acción no se puede deshacer fácilmente. Para confirmar, escribe el nombre exacto de la organización:'
+                    : 'This action cannot be easily undone. To confirm, type the exact organization name:'}
+                </p>
+                <p style={{ margin: '0 0 14px', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)', background: 'rgba(220,38,38,0.07)', display: 'inline-block', padding: '4px 12px', borderRadius: '6px', letterSpacing: '0.03em' }}>
+                  {seg01.org?.name}
                 </p>
 
-                <div style={{ marginTop: '12px' }}>
-                  <label className="label" style={{ color: 'var(--text-primary)' }}>
-                    {language === 'es' ? 'Nombre exacto:' : 'Exact name:'}
-                  </label>
+                <div>
                   <input
                     type="text"
                     className="input"
+                    placeholder={seg01.org?.name}
                     value={seg01.confirmText}
                     onChange={(e) => setSeg01(prev => ({ ...prev, confirmText: e.target.value, localError: '' }))}
                     disabled={seg01.deleting}
-                    style={{ width: '100%', marginTop: '6px' }}
+                    style={{ width: '100%' }}
                   />
                   {seg01.localError && (
-                    <div className="alert alert-error" style={{ marginTop: '10px' }}>
+                    <div className="alert alert-error" style={{ marginTop: '8px' }}>
                       {seg01.localError}
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', marginTop: '18px', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '18px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setSeg01({ open: false, step: 1, org: null, confirmText: '', deleting: false, localError: '' })}
+                    disabled={seg01.deleting}
+                  >
+                    {language === 'es' ? 'Cancelar' : 'Cancel'}
+                  </button>
                   <button
                     type="button"
                     className="btn btn-danger"
