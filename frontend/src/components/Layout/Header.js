@@ -76,9 +76,9 @@ const Header = () => {
                       </>
                     ) : (
                       <>
-                        {/* Reuniones: admin y autorizado. Miembros: solo admin oficina (informe BQ P#5 — Autorizado no ve panel de configuración) */}
+                        {/* Reuniones: admin y autorizado. Miembros: admin + admin_master (Autorizado no ve panel de configuración) */}
                         <Link to="/products">{t('meetings')}</Link>
-                        {user?.role === 'admin' && (
+                        {(user?.role === 'admin' || user?.role === 'admin_master') && (
                           <Link to="/admin/members">{t('members')}</Link>
                         )}
                         <Link to="/admin">{t('administration')}</Link>
