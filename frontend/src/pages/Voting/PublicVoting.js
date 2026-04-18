@@ -44,8 +44,8 @@ const PublicVoting = () => {
     if (voting?.type === 'multiple' && voting?.options && Array.isArray(voting.options)) {
       return voting.options;
     }
-    // Opciones por defecto para votación simple
-    return ['Sí', 'No', 'Abstención'];
+    // Opciones por defecto para votación ordinaria
+    return ['A favor', 'En contra', 'Abstención'];
   };
 
   const handleChange = (e) => {

@@ -241,9 +241,8 @@ const CreateVoting = () => {
                 onChange={handleChange}
                 className="input"
               >
-                <option value="simple">{language === 'es' ? 'Simple (Sí/No/Abstención)' : 'Simple (Yes/No/Abstention)'}</option>
-                <option value="multiple">{language === 'es' ? 'Múltiple opciones' : 'Multiple options'}</option>
-                <option value="weighted">{language === 'es' ? 'Ponderada' : 'Weighted'}</option>
+                <option value="simple">{language === 'es' ? 'Ordinaria (A favor / En contra / Abstención)' : 'Ordinary (In favor / Against / Abstention)'}</option>
+                <option value="multiple">{language === 'es' ? 'Selección múltiple (Opción A / B / C + Abstención)' : 'Multiple choice (Option A / B / C + Abstention)'}</option>
               </select>
             </div>
 
