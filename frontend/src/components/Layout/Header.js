@@ -28,6 +28,16 @@ const Header = () => {
   // Mostrar nombre de organización si hay cliente (incluso sin logo) y NO es admin_master
   const showOrgName = isAuthenticated && !isLandingPage && !isAdminMaster && client?.name;
 
+  // Para admin_master: client siempre es null (ver AuthContext) pero puede navegar
+  // dentro de una org via ?client=X en la URL. Detectamos si está en contexto de cliente
+  // por la ruta actual (no es la pantalla de organizaciones ni el dashboard raíz).
+  const adminMasterInClientContext = isAdminMaster && (
+    location.pathname.startsWith('/products') ||
+    location.pathname.startsWith('/meetings') ||
+    location.pathname.startsWith('/admin/members') ||
+    new URLSearchParams(location.search).has('client')
+  );
+
   return (
     <header className="header">
       <div className="container">
@@ -68,12 +78,12 @@ const Header = () => {
               <>
                 {isAuthenticated && (
                   <>
-                    {/* Admin Master: organizaciones (nivel global) + acceso a cliente activo si lo hay */}
+                    {/* Admin Master: organizaciones (nivel global) + cliente activo detectado por URL */}
                     {user?.role === 'admin_master' ? (
                       <>
                         <Link to="/admin/organizations">{t('organizations')}</Link>
-                        {/* Si hay cliente activo (entró a una org), mostrar también Reuniones y Miembros */}
-                        {client && (
+                        {/* Reuniones y Miembros visibles cuando admin_master está dentro de una org */}
+                        {adminMasterInClientContext && (
                           <>
                             <Link to="/products">{t('meetings')}</Link>
                             <Link to="/admin/members">{t('members')}</Link>
