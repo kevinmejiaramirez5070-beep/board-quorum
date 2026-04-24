@@ -10,9 +10,11 @@ const PublicVoting = ({ meetingMode = false }) => {
   const { votingId, meetingId } = useParams();
   const { t, language } = useLanguage();
   const [voting, setVoting] = useState(null);
+  // step: 'verify' | 'confirm' | 'notFound' | 'blocked' | 'voted'
   const [step, setStep] = useState('verify');
   const [formData, setFormData] = useState({ cedula: '', option: '' });
   const [memberData, setMemberData] = useState(null);
+  const [blockInfo, setBlockInfo] = useState(null); // { status, cargo, message }
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState(null);
@@ -70,23 +72,32 @@ const PublicVoting = ({ meetingMode = false }) => {
     setSubmitting(true);
     setInlineError(null);
     try {
-      const response = await api.post(`/votes/verify/${votingId}`, { cedula: formData.cedula });
+      const activeVotingId = voting?.id || votingId;
+      const response = await api.post(`/votes/verify/${activeVotingId}`, { cedula: formData.cedula });
+      const { status, member, cargo } = response.data;
 
-      if (response.data.found && !response.data.alreadyVoted) {
-        setMemberData(response.data.member);
+      if (status === 'OK' || status === 'SUPLENTE_ACTUANDO') {
+        setMemberData({ ...member, isSuplenteActuando: status === 'SUPLENTE_ACTUANDO' });
         setStep('confirm');
-      } else if (response.data.alreadyVoted) {
-        setInlineError(language === 'es' ? 'Ya has votado en esta votación.' : 'You have already voted.');
       } else {
-        setStep('notFound');
+        // Cualquier otro status OK con found=true y no blocked → confirmar
+        if (response.data.found && !response.data.blocked) {
+          setMemberData(member);
+          setStep('confirm');
+        }
       }
     } catch (error) {
-      if (error.response?.status === 404 && error.response?.data?.found === false) {
+      const data = error.response?.data || {};
+      const status = data.status;
+      const cargo = data.cargo;
+
+      if (status === 'NOT_FOUND' || (error.response?.status === 404 && data.found === false)) {
         setStep('notFound');
-      } else if (error.response?.status === 400 && error.response?.data?.alreadyVoted) {
-        setInlineError(language === 'es' ? 'Ya has votado en esta votación.' : 'You have already voted.');
+      } else if (['NO_VOTE', 'SUPLENTE_SIN_VOTO', 'JV_VOTED', 'JV_VOZ', 'ALREADY_VOTED'].includes(status)) {
+        setBlockInfo({ status, cargo, message: getBlockMessage(status, cargo) });
+        setStep('blocked');
       } else {
-        setInlineError(error.response?.data?.message || (language === 'es' ? 'Error al verificar la cédula.' : 'Error verifying ID.'));
+        setInlineError(data.message || (language === 'es' ? 'Error al verificar la cédula.' : 'Error verifying ID.'));
       }
     } finally {
       setSubmitting(false);
@@ -103,19 +114,48 @@ const PublicVoting = ({ meetingMode = false }) => {
     setSubmitting(true);
     setInlineError(null);
     try {
-      await api.post(`/votes/confirm/${votingId}`, {
+      const activeVotingId = voting?.id || votingId;
+      await api.post(`/votes/confirm/${activeVotingId}`, {
         cedula: formData.cedula,
         option: formData.option,
         confirmado: true
       });
       setStep('voted');
     } catch (error) {
-      const msg = error.response?.data?.message;
-      // VOT-SUPLENCIAS / VOT-JV-VOTO: mensajes claros de bloqueo
-      setInlineError(msg || (language === 'es' ? 'Error al confirmar el voto.' : 'Error confirming vote.'));
+      const data = error.response?.data || {};
+      const status = data.status;
+      // Si el backend detecta en confirmVote un bloqueo tardío, mostrarlo correctamente
+      if (['NO_VOTE', 'SUPLENTE_SIN_VOTO', 'JV_VOTED', 'JV_VOZ'].includes(status)) {
+        setBlockInfo({ status, cargo: data.cargo, message: getBlockMessage(status, data.cargo) });
+        setStep('blocked');
+      } else {
+        setInlineError(data.message || (language === 'es' ? 'Error al confirmar el voto.' : 'Error confirming vote.'));
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Mensajes por status code — tomados literalmente del BQ_ESPECIFICACION_v2
+  const getBlockMessage = (status, cargo) => {
+    const c = cargo || 'Tu cargo';
+    const msgs = {
+      es: {
+        NO_VOTE: `Tu cargo (${c}) no tiene voto en las sesiones de Junta Directiva. Tu asistencia ya fue registrada.`,
+        SUPLENTE_SIN_VOTO: `El cargo ${c} ya tiene voto registrado por el miembro principal. Tu asistencia quedó registrada con voz.`,
+        JV_VOTED: 'El voto de la Junta de Vigilancia ya fue registrado por el representante designado. Tu presencia queda registrada.',
+        JV_VOZ: 'El voto de la Junta de Vigilancia ya fue registrado por el representante designado. Tu presencia queda registrada.',
+        ALREADY_VOTED: 'Ya has votado en esta votación.',
+      },
+      en: {
+        NO_VOTE: `Your role (${c}) does not have voting rights in Board of Directors sessions. Your attendance has been recorded.`,
+        SUPLENTE_SIN_VOTO: `The ${c} position already has a vote registered by the principal member. Your attendance is recorded with voice only.`,
+        JV_VOTED: 'The Oversight Board vote has already been cast by the designated representative. Your presence is recorded.',
+        JV_VOZ: 'The Oversight Board vote has already been cast by the designated representative. Your presence is recorded.',
+        ALREADY_VOTED: 'You have already voted in this voting.',
+      }
+    };
+    return msgs[language]?.[status] || msgs.es[status] || 'No autorizado para votar.';
   };
 
   const handleRetry = () => {
@@ -123,6 +163,7 @@ const PublicVoting = ({ meetingMode = false }) => {
     setFormData({ cedula: '', option: '' });
     setInlineError(null);
     setMemberData(null);
+    setBlockInfo(null);
   };
 
   if (loading) {
@@ -257,6 +298,14 @@ const PublicVoting = ({ meetingMode = false }) => {
                   <p><strong>{language === 'es' ? 'CC' : 'ID'}:</strong> {memberData.numero_documento}</p>
                   <p><strong>{language === 'es' ? 'Cargo' : 'Position'}:</strong> {memberData.position}</p>
                 </div>
+                {/* Aviso especial si suplente está actuando como principal */}
+                {memberData.isSuplenteActuando && (
+                  <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '8px', fontSize: '13px', color: '#059669' }}>
+                    ✅ {language === 'es'
+                      ? `Estás actuando en reemplazo del principal de ${memberData.cargo || memberData.position}. Tu voto es válido y computa para esta votación.`
+                      : `You are acting as replacement for the principal of ${memberData.cargo || memberData.position}. Your vote is valid and counts.`}
+                  </div>
+                )}
 
                 <div style={{ marginTop: '20px', padding: '20px', backgroundColor: 'var(--surface, #f8f9fa)', borderRadius: '8px' }}>
                   <div className="form-group">
@@ -294,6 +343,31 @@ const PublicVoting = ({ meetingMode = false }) => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bloqueo por status específico: NO_VOTE, SUPLENTE_SIN_VOTO, JV_VOTED, ALREADY_VOTED */}
+          {step === 'blocked' && blockInfo && (
+            <div style={{ marginTop: '20px' }}>
+              <div style={{
+                padding: '24px',
+                background: 'rgba(239,68,68,0.06)',
+                border: '1.5px solid rgba(239,68,68,0.35)',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '36px', marginBottom: '10px' }}>
+                  {blockInfo.status === 'ALREADY_VOTED' ? '✓' : '🚫'}
+                </div>
+                <p style={{ color: '#e2e8f0', fontSize: '15px', fontWeight: 600, margin: '0 0 6px' }}>
+                  {blockInfo.status === 'ALREADY_VOTED'
+                    ? (language === 'es' ? 'Voto ya registrado' : 'Already voted')
+                    : (language === 'es' ? 'No es posible registrar su voto' : 'Unable to register your vote')}
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0, lineHeight: 1.6 }}>
+                  {blockInfo.message}
+                </p>
               </div>
             </div>
           )}

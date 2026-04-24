@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BQ · Especificación Técnica — Suplencias & JV · 18 Abril 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0A;--card:#111c2d;--card2:#0d1520;--code:#060d18;
+  --cyan:#00C6FF;--blue:#0072FF;
+  --green:#10B981;--gbg:rgba(16,185,129,0.08);--gbr:rgba(16,185,129,0.3);
+  --red:#EF4444;--rbg:rgba(239,68,68,0.08);--rbr:rgba(239,68,68,0.3);
+  --amber:#F59E0B;--abg:rgba(245,158,11,0.08);--abr:rgba(245,158,11,0.3);
+  --purple:#A78BFA;--pbg:rgba(167,139,250,0.08);--pbr:rgba(167,139,250,0.3);
+  --gray:#9CA3AF;--border:rgba(0,198,255,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e2e8f0;min-height:100vh;}
+
+.hdr{background:linear-gradient(135deg,#0A0A0A,#0d1f35);border-bottom:2px solid var(--pbr);padding:24px 52px 18px;}
+.hdr-top{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.logo{width:34px;height:34px;background:linear-gradient(135deg,var(--cyan),var(--blue));border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;color:#000;}
+.brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;}
+.hdr h1{font-family:'Syne',sans-serif;font-size:1.55em;font-weight:800;color:#fff;line-height:1.2;}
+.hdr h1 em{color:var(--purple);font-style:normal;}
+.meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--gray);}
+.meta strong{color:#cbd5e1;}
+.badge{display:inline-block;margin-top:7px;background:var(--pbg);border:1px solid var(--pbr);color:var(--purple);font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;}
+
+.tabs-bar{background:#0d1520;border-bottom:1px solid var(--border);padding:0 52px;display:flex;overflow-x:auto;}
+.tabs-bar::-webkit-scrollbar{display:none;}
+.tb{padding:13px 18px;font-size:12.5px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none;transition:color .2s;}
+.tb:hover{color:#cbd5e1;}
+.tb.on{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+.body{padding:32px 52px 52px;max-width:1040px;width:100%;}
+.pnl{display:none;}.pnl.on{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:14px;}
+.card.rb{border-color:var(--rbr);background:rgba(239,68,68,0.04);}
+.card.gb{border-color:var(--gbr);background:rgba(16,185,129,0.04);}
+.card.ab{border-color:var(--abr);}
+.card.cb{border-color:rgba(0,198,255,0.3);}
+.card.pb{border-color:var(--pbr);background:var(--pbg);}
+.ct{font-family:'Syne',sans-serif;font-size:.85em;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.ct.r{color:var(--red);}.ct.g{color:var(--green);}.ct.a{color:var(--amber);}.ct.c{color:var(--cyan);}.ct.p{color:var(--purple);}
+
+.stitle{font-family:'Syne',sans-serif;font-size:1.1em;font-weight:800;color:#fff;margin-bottom:14px;}
+
+/* REGLAS */
+.regla{background:var(--gbg);border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:14px 18px;font-size:13.5px;color:#e2e8f0;line-height:1.75;margin:10px 0;}
+.regla-norm{background:var(--pbg);border-left:4px solid var(--purple);border-radius:0 8px 8px 0;padding:13px 17px;font-size:13px;color:#ddd6fe;line-height:1.7;margin:10px 0;}
+
+/* CÓDIGO */
+.code{background:var(--code);border:1px solid rgba(0,198,255,0.18);border-radius:10px;padding:16px 20px;font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.9;overflow-x:auto;margin:10px 0;}
+.code.ok{border-color:var(--gbr);}
+.code.err{border-color:var(--rbr);}
+.code-lbl{font-size:9.5px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+.code-lbl.r{color:var(--red);}.code-lbl.g{color:var(--green);}.code-lbl.a{color:var(--amber);}
+.k{color:var(--amber);}.v{color:var(--green);}.cm{color:#374151;font-style:italic;}.fn{color:var(--cyan);}.er{color:var(--red);}
+
+/* DOS COLUMNAS */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+
+/* BULLETS */
+.bl{list-style:none;padding:0;}
+.bl li{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:#94a3b8;line-height:1.6;}
+.bl li:last-child{border-bottom:none;}
+.bl li strong{color:#e2e8f0;}
+.dg{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:7px;}
+.dr{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:7px;}
+.da{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:7px;}
+.dc{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0;margin-top:7px;}
+
+/* CASOS */
+.caso{background:var(--card2);border-radius:8px;padding:14px 16px;}
+.caso-t{font-family:'Syne',sans-serif;font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.caso-t.g{color:var(--green);}.caso-t.a{color:var(--amber);}.caso-t.r{color:var(--red);}
+.caso-body{font-size:12.5px;color:#94a3b8;line-height:1.6;}
+.caso-body strong{color:#e2e8f0;}
+.caso-res{font-family:'DM Mono',monospace;font-size:11px;margin-top:8px;padding:6px 10px;border-radius:5px;}
+.caso-res.ok{background:var(--gbg);color:var(--green);border:1px solid var(--gbr);}
+.caso-res.er{background:var(--rbg);color:var(--red);border:1px solid var(--rbr);}
+.caso-res.am{background:var(--abg);color:var(--amber);border:1px solid var(--abr);}
+
+/* UI MOCK */
+.mock{background:#0f172a;border:1px solid rgba(0,198,255,0.15);border-radius:10px;padding:18px;margin:10px 0;}
+.mock-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--cyan);margin-bottom:12px;}
+.mock-card{background:#1e293b;border-radius:7px;padding:12px 14px;margin-bottom:8px;border-left:3px solid;}
+.mock-card:last-child{margin-bottom:0;}
+.mock-card.ok{border-left-color:var(--green);}
+.mock-card.warn{border-left-color:var(--amber);}
+.mock-card.err{border-left-color:var(--red);}
+.mock-card.info{border-left-color:var(--cyan);}
+.mock-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.mock-label.ok{color:var(--green);}.mock-label.warn{color:var(--amber);}.mock-label.err{color:var(--red);}.mock-label.info{color:var(--cyan);}
+.mock-text{font-size:13px;color:#e2e8f0;line-height:1.6;}
+.mock-sub{font-size:11.5px;color:var(--gray);margin-top:4px;line-height:1.5;}
+
+/* RIESGO */
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
+.risk-item{border-radius:8px;padding:13px 15px;}
+.risk-item.r{background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.18);}
+.risk-item.a{background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.18);}
+.risk-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.risk-label.r{color:var(--red);}.risk-label.a{color:var(--amber);}
+.risk-title{font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:3px;}
+.risk-desc{font-size:12px;color:#64748b;line-height:1.5;}
+
+code{background:rgba(0,198,255,0.08);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);}
+
+@media(max-width:768px){
+  .hdr,.tabs-bar,.body{padding-left:18px;padding-right:18px;}
+  .two,.three,.risk-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">BQ</div>
+    <div class="brand">Board Quorum · Especificación Técnica</div>
+  </div>
+  <h1>BUG-04 + BUG-JV — <em>Suplencias & Junta de Vigilancia</em></h1>
+  <div class="meta">
+    <span>📅 <strong>18 abril 2026</strong></span>
+    <span>🏢 <strong>ASOCOLCI · Junta Directiva</strong></span>
+    <span>👤 <strong>Para: Ing. Andrés Suárez Soto</strong></span>
+    <span>✍️ <strong>De: Javier Castilla Robles</strong></span>
+  </div>
+  <div class="badge">🏗️ Lista para implementar — sin ambigüedad</div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tb on" onclick="show(0,this)">📋 Reglas</button>
+  <button class="tb" onclick="show(1,this)">🗄️ Modelo de Datos</button>
+  <button class="tb" onclick="show(2,this)">⚙️ Algoritmos + Votaciones</button>
+  <button class="tb" onclick="show(3,this)">🧪 Casos de Prueba</button>
+  <button class="tb" onclick="show(4,this)">🖥️ UI / UX</button>
+  <button class="tb" onclick="show(5,this)">⚠️ Riesgos</button>
+</div>
+
+<div class="body">
+
+<!-- TAB 0: REGLAS -->
+<div class="pnl on" id="p0">
+
+  <div class="card pb">
+    <div class="ct p">📜 Fundamento Normativo — No negociable</div>
+    <div class="regla-norm">
+      <strong>Art. 24°, literal d:</strong> "Participar con voz y <strong>un (1) voto</strong> en las sesiones de la Junta Directiva."<br>
+      <strong>Art. 33°:</strong> "Los miembros de la Junta de Vigilancia, con voz y <strong>un (1) voto institucional</strong>."<br><br>
+      La JV emite 1 voto como órgano. Nunca 1 por persona. Sin excepción.
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card gb">
+      <div class="ct g">✅ SUPLENCIAS — Qué hace el motor</div>
+      <ul class="bl">
+        <li><span class="dg"></span><div><strong>Principal presente</strong> → +1 quórum. Suplente: voz, sin voto.</div></li>
+        <li><span class="dg"></span><div><strong>Principal ausente + suplente presente</strong> → suplente asume. +1 quórum. Puede votar.</div></li>
+        <li><span class="dg"></span><div><strong>Ambos ausentes</strong> → cargo no computa.</div></li>
+        <li><span class="dg"></span><div><strong>1 cargo = máximo 1 voto.</strong> Nunca ambos.</div></li>
+        <li><span class="dg"></span><div><strong>Sin suplencias cruzadas.</strong> Suplente de Tesorería no reemplaza Fiscalía.</div></li>
+      </ul>
+    </div>
+    <div class="card rb">
+      <div class="ct r">❌ PROHIBIDO</div>
+      <ul class="bl">
+        <li><span class="dr"></span><div>Principal + suplente con voto simultáneo</div></li>
+        <li><span class="dr"></span><div>Suplente cruzado en cargo diferente</div></li>
+        <li><span class="dr"></span><div>JV contada como 2 o 3 votos individuales</div></li>
+        <li><span class="dr"></span><div>Invitado con voto en cualquier circunstancia</div></li>
+        <li><span class="dr"></span><div>Revisor Fiscal o Contador con voto</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">⚙️ JV — Los 3 casos posibles</div>
+    <div class="three">
+      <div class="caso">
+        <div class="caso-t g">Caso A — Presidente presente</div>
+        <div class="caso-body">Presidente JV actúa como representante automático. Emite el voto. Demás: solo voz.</div>
+        <div class="caso-res ok">JV = 1 voto. Automático.</div>
+      </div>
+      <div class="caso">
+        <div class="caso-t a">Caso B — Presidente ausente</div>
+        <div class="caso-body">Admin designa representante de los presentes. Solo ese vota. Demás: solo voz.</div>
+        <div class="caso-res am">JV = 1 voto. Admin designa.</div>
+      </div>
+      <div class="caso">
+        <div class="caso-t r">Caso C — Todos ausentes</div>
+        <div class="caso-body">JV no tiene presencia. No computa.</div>
+        <div class="caso-res er">JV = 0 votos.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="regla">
+    <strong>Principio central:</strong> El <code>eligible_voters_set</code> se calcula UNA SOLA VEZ por sesión. Quórum, asistencia, votaciones, PDF y dashboard consumen ese set. Ningún módulo recalcula por su cuenta.
+  </div>
+
+</div>
+
+<!-- TAB 1: MODELO DE DATOS -->
+<div class="pnl" id="p1">
+
+  <div class="card cb">
+    <div class="ct c">🗄️ Tabla members — Campos a agregar / confirmar</div>
+    <div class="code ok">
+      <div class="code-lbl g">// extender tabla existente — no reemplazar</div>
+      {<br>
+      &nbsp;&nbsp;<span class="k">member_id</span>: <span class="v">"uuid"</span>,<br>
+      &nbsp;&nbsp;<span class="k">nombre_completo</span>: <span class="v">"string"</span>,<br>
+      &nbsp;&nbsp;<span class="k">numero_documento</span>: <span class="v">"string"</span>, <span class="cm">// cédula — lookup en formulario público</span><br>
+      &nbsp;&nbsp;<span class="k">cargo_funcional</span>: <span class="v">"PRESIDENCIA | VICEPRESIDENCIA | TESORERIA | FISCALIA | VOCALES_NRO_X | JUNTA_DE_VIGILANCIA | CONTABILIDAD | REVISORIA"</span>,<br>
+      &nbsp;&nbsp;<span class="k">tipo_miembro</span>: <span class="v">"principal | suplente | jv | no_aplica"</span>,<br>
+      &nbsp;&nbsp;<span class="k">grupo_reemplazo</span>: <span class="v">"string"</span>, <span class="cm">// mismo valor para principal y su suplente: ej. "TESORERIA"</span><br>
+      &nbsp;&nbsp;<span class="k">principal_relacionado_id</span>: <span class="v">"uuid | null"</span>, <span class="cm">// null si es principal</span><br>
+      &nbsp;&nbsp;<span class="k">elegible_quorum</span>: <span class="v">true | false</span>, <span class="cm">// false: Revisor Fiscal, Contabilidad, invitados</span><br>
+      &nbsp;&nbsp;<span class="k">elegible_voto</span>: <span class="v">true | false</span>, <span class="cm">// misma regla</span><br>
+      &nbsp;&nbsp;<span class="k">organo</span>: <span class="v">"JD | JV | RF | CONTABILIDAD"</span><br>
+      }
+    </div>
+  </div>
+
+  <div class="card cb">
+    <div class="ct c">🗄️ Tabla session_members — Estado calculado por sesión (nueva)</div>
+    <div class="code ok">
+      <div class="code-lbl g">// creada/actualizada por el motor al registrar asistencia</div>
+      {<br>
+      &nbsp;&nbsp;<span class="k">session_id</span>: <span class="v">"uuid"</span>,<br>
+      &nbsp;&nbsp;<span class="k">member_id</span>: <span class="v">"uuid"</span>,<br>
+      &nbsp;&nbsp;<span class="k">presente</span>: <span class="v">true | false</span>,<br>
+      &nbsp;&nbsp;<span class="k">rol_en_sesion</span>: <span class="v">"principal | suplente_actuando | suplente_con_voz | jv_representante | jv_voz | no_voto"</span>,<br>
+      &nbsp;&nbsp;<span class="k">computa_quorum</span>: <span class="v">true | false</span>,<br>
+      &nbsp;&nbsp;<span class="k">puede_votar</span>: <span class="v">true | false</span><br>
+      }
+    </div>
+  </div>
+
+  <div class="card cb">
+    <div class="ct c">🗄️ Tabla jv_session — Control voto único JV (nueva)</div>
+    <div class="code ok">
+      <div class="code-lbl g">// 1 registro por sesión — impide doble voto JV</div>
+      {<br>
+      &nbsp;&nbsp;<span class="k">session_id</span>: <span class="v">"uuid"</span>,<br>
+      &nbsp;&nbsp;<span class="k">representante_jv_id</span>: <span class="v">"uuid | null"</span>,<br>
+      &nbsp;&nbsp;<span class="k">representante_designado_por</span>: <span class="v">"auto | admin"</span>,<br>
+      &nbsp;&nbsp;<span class="k">jv_voto_emitido</span>: <span class="v">false</span> <span class="cm">// se pone true cuando el representante vota → bloquea a los demás</span><br>
+      }
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">⚠️ Integridad — grupo_reemplazo</div>
+    <ul class="bl">
+      <li><span class="da"></span><div>El principal de TESORERÍA y su suplente deben tener <code>grupo_reemplazo = "TESORERIA"</code>. Igual para cada cargo.</div></li>
+      <li><span class="da"></span><div>Esta validación debe existir en el formulario de creación de miembros — no solo en el motor.</div></li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- TAB 2: ALGORITMOS + VOTACIONES -->
+<div class="pnl" id="p2">
+
+  <div class="stitle">Motor Principal</div>
+
+  <div class="card gb">
+    <div class="ct g">⚙️ calcularElegibilidad(session_id) — Función central</div>
+    <div class="code ok">
+      <div class="code-lbl g">// ejecutar al registrar asistencia o actualizar presentes</div>
+      <span class="fn">function</span> calcularElegibilidad(<span class="k">session_id</span>) {<br>
+      &nbsp;&nbsp;<span class="k">const</span> asistentes = getAsistentes(session_id)<br>
+      &nbsp;&nbsp;<span class="k">const</span> eligible_set = []<br><br>
+      &nbsp;&nbsp;<span class="cm">// 1. Suplencias — agrupar por grupo_reemplazo</span><br>
+      &nbsp;&nbsp;<span class="k">const</span> grupos = groupBy(asistentes.filter(m => m.organo === <span class="v">'JD'</span>), <span class="v">'grupo_reemplazo'</span>)<br>
+      &nbsp;&nbsp;<span class="k">for</span> (<span class="k">const</span> grupo <span class="k">of</span> grupos) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">const</span> principal = grupo.find(m => m.tipo_miembro === <span class="v">'principal'</span> && m.presente)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">const</span> suplente = grupo.find(m => m.tipo_miembro === <span class="v">'suplente'</span> && m.presente)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">if</span> (principal) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eligible_set.push({ ...principal, rol_en_sesion: <span class="v">'principal'</span>, computa_quorum: <span class="v">true</span>, puede_votar: <span class="v">true</span> })<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">if</span> (suplente) eligible_set.push({ ...suplente, rol_en_sesion: <span class="v">'suplente_con_voz'</span>, computa_quorum: <span class="v">false</span>, puede_votar: <span class="v">false</span> })<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;} <span class="k">else if</span> (suplente) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eligible_set.push({ ...suplente, rol_en_sesion: <span class="v">'suplente_actuando'</span>, computa_quorum: <span class="v">true</span>, puede_votar: <span class="v">true</span> })<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      &nbsp;&nbsp;}<br><br>
+      &nbsp;&nbsp;<span class="cm">// 2. JV — 1 voto institucional</span><br>
+      &nbsp;&nbsp;<span class="k">const</span> jvPresentes = asistentes.filter(m => m.organo === <span class="v">'JV'</span> && m.presente)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (jvPresentes.length > <span class="v">0</span>) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">const</span> rep = resolverRepresentanteJV(jvPresentes, session_id)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">if</span> (rep) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eligible_set.push({ ...rep, rol_en_sesion: <span class="v">'jv_representante'</span>, computa_quorum: <span class="v">true</span>, puede_votar: <span class="v">true</span> })<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;jvPresentes.filter(m => m.member_id !== rep.member_id).forEach(m =><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eligible_set.push({ ...m, rol_en_sesion: <span class="v">'jv_voz'</span>, computa_quorum: <span class="v">false</span>, puede_votar: <span class="v">false</span> })<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      &nbsp;&nbsp;}<br><br>
+      &nbsp;&nbsp;updateSessionMembers(session_id, eligible_set)<br>
+      &nbsp;&nbsp;<span class="k">return</span> eligible_set<br>
+      }
+    </div>
+  </div>
+
+  <div class="card cb">
+    <div class="ct c">⚙️ resolverRepresentanteJV</div>
+    <div class="code">
+      <span class="fn">function</span> resolverRepresentanteJV(<span class="k">jvPresentes</span>, <span class="k">session_id</span>) {<br>
+      &nbsp;&nbsp;<span class="k">const</span> presidente = jvPresentes.find(m => m.cargo_funcional === <span class="v">'PRESIDENTE_JV'</span>)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (presidente) { setJVSession(session_id, { representante_jv_id: presidente.member_id, representante_designado_por: <span class="v">'auto'</span> }); <span class="k">return</span> presidente }<br><br>
+      &nbsp;&nbsp;<span class="k">const</span> jvSession = getJVSession(session_id)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (jvSession.representante_jv_id) <span class="k">return</span> jvPresentes.find(m => m.member_id === jvSession.representante_jv_id)<br><br>
+      &nbsp;&nbsp;<span class="cm">// sin presidente y sin designar → disparar UI de designación al admin</span><br>
+      &nbsp;&nbsp;triggerUIDesignarRepresentanteJV(session_id, jvPresentes)<br>
+      &nbsp;&nbsp;<span class="k">return null</span><br>
+      }
+    </div>
+  </div>
+
+  <div class="stitle" style="margin-top:24px;">Validación de Voto</div>
+
+  <div class="card gb">
+    <div class="ct g">⚙️ validarVotante(cedula, voting_id) — Formulario público</div>
+    <div class="code ok">
+      <div class="code-lbl g">// ejecutar al recibir cédula — antes de mostrar cualquier opción</div>
+      <span class="fn">function</span> validarVotante(<span class="k">cedula</span>, <span class="k">voting_id</span>) {<br>
+      &nbsp;&nbsp;<span class="k">const</span> member = buscarPorCedula(cedula)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (!member) <span class="k">return</span> { status: <span class="v">'NOT_FOUND'</span> }<br><br>
+      &nbsp;&nbsp;<span class="k">const</span> sm = getSessionMember(member.member_id, voting_id.session_id)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (!sm.puede_votar) <span class="k">return</span> { status: <span class="v">'NO_VOTE'</span>, cargo: member.cargo_funcional }<br>
+      &nbsp;&nbsp;<span class="k">if</span> (sm.rol_en_sesion === <span class="v">'suplente_con_voz'</span>) <span class="k">return</span> { status: <span class="v">'SUPLENTE_SIN_VOTO'</span> }<br>
+      &nbsp;&nbsp;<span class="k">if</span> (sm.rol_en_sesion === <span class="v">'jv_voz'</span>) <span class="k">return</span> { status: <span class="v">'JV_VOZ'</span> }<br><br>
+      &nbsp;&nbsp;<span class="k">const</span> jvSession = getJVSession(voting_id.session_id)<br>
+      &nbsp;&nbsp;<span class="k">if</span> (member.organo === <span class="v">'JV'</span> && jvSession.jv_voto_emitido) <span class="k">return</span> { status: <span class="v">'JV_VOTED'</span> }<br>
+      &nbsp;&nbsp;<span class="k">if</span> (checkVotoExistente(member.member_id, voting_id)) <span class="k">return</span> { status: <span class="v">'ALREADY_VOTED'</span> }<br><br>
+      &nbsp;&nbsp;<span class="k">return</span> { status: <span class="v">'OK'</span>, member, session_member: sm }<br>
+      }
+    </div>
+  </div>
+
+  <div class="stitle" style="margin-top:24px;">Lógica de Resultados</div>
+
+  <div class="two">
+    <div class="card gb">
+      <div class="ct g">Ordinaria — Mayoría simple dinámica</div>
+      <div class="code ok">
+        <div class="code-lbl g">// A favor / En contra / Abstención</div>
+        <span class="k">const</span> total = aFavor + enContra + abstencion<br>
+        <span class="k">const</span> mayoria = Math.floor(total / <span class="v">2</span>) + <span class="v">1</span><br>
+        resultado = aFavor >= mayoria ? <span class="v">'APROBADA'</span> : <span class="v">'RECHAZADA'</span><br><br>
+        <span class="cm">// 7 votos → mayoría 4</span><br>
+        <span class="cm">// 5 votos → mayoría 3</span><br>
+        <span class="cm">// abstenciones NO reducen el universo</span>
+      </div>
+    </div>
+    <div class="card ab">
+      <div class="ct a">Múltiple opciones — Ganador por conteo</div>
+      <div class="code">
+        <div class="code-lbl a">// NUNCA aplicar mayoría simple aquí</div>
+        <span class="k">const</span> ganador = opciones.maxBy(op => contarVotos(op))<br>
+        <span class="k">if</span> (empate) resultado = <span class="v">'EMPATE_REQUIERE_DESEMPATE'</span><br>
+        <span class="k">else</span> resultado = <span class="v">'GANADOR: '</span> + ganador.nombre<br><br>
+        <span class="cm">// ej: AGUILA 6 · CONDOR 3 · JUPITER 2 · VELOZ 1</span><br>
+        <span class="cm">// → GANADOR: TRANSPORTES AGUILA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rb">
+    <div class="ct r">⚙️ Control votaciones simultáneas</div>
+    <ul class="bl">
+      <li><span class="dr"></span><div>Máximo 1 votación ACTIVA por sesión. Al activar → verificar. Si hay ACTIVA → pedir confirmación de cierre.</div></li>
+      <li><span class="dr"></span><div>URL del panel → <code>/public/meeting/[ID]/vote</code> → siempre muestra la votación ACTIVA actual. Sin URL fija por votación.</div></li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- TAB 3: CASOS DE PRUEBA -->
+<div class="pnl" id="p3">
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t g">TEST-01 — Principal + Suplente presentes</div>
+    <div class="caso-body"><strong>Entrada:</strong> PIEDRAHITA (principal TESORERIA, presente) + YAMILE (suplente TESORERIA, presente)<br>
+    <strong>Intento voto Yamile:</strong> validarVotante → <code>rol_en_sesion = suplente_con_voz</code> → status: SUPLENTE_SIN_VOTO</div>
+    <div class="caso-res ok">✅ Solo Piedrahita vota · Yamile tiene voz · Cargo suma 1 a quórum</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t a">TEST-02 — Principal ausente · Suplente presente</div>
+    <div class="caso-body"><strong>Entrada:</strong> CASSO (suplente FISCALIA, presente) · TARQUINO (principal FISCALIA, ausente)<br>
+    <strong>Resultado motor:</strong> Casso → <code>rol_en_sesion = suplente_actuando</code>, <code>puede_votar = true</code></div>
+    <div class="caso-res ok">✅ Casso actúa como principal · Vota válidamente · Suma al quórum</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t r">TEST-03 — 3 miembros JV presentes · Sin Presidente</div>
+    <div class="caso-body"><strong>Entrada:</strong> TUTA + CARDENAS + DAYANA (presentes, ninguno Presidente JV)<br>
+    <strong>Flujo:</strong> triggerUIDesignarRepresentante → admin designa TUTA → CARDENAS y DAYANA: <code>jv_voz</code><br>
+    <strong>Intento voto CARDENAS:</strong> validarVotante → status: JV_VOZ</div>
+    <div class="caso-res ok">✅ 1 voto institucional JV · Los otros 2 bloqueados</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t r">TEST-04 — Doble voto JV</div>
+    <div class="caso-body"><strong>Entrada:</strong> TUTA (representante) ya votó → <code>jv_voto_emitido = true</code><br>
+    <strong>Intento CARDENAS:</strong> validarVotante → status: JV_VOTED</div>
+    <div class="caso-res er">✅ Segundo voto JV rechazado · Mensaje inmediato</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t r">TEST-05 — Invitado intenta votar</div>
+    <div class="caso-body"><strong>Entrada:</strong> CC 1016035338 (no está en BD de miembros con voto)<br>
+    <strong>Resultado:</strong> buscarPorCedula → NOT_FOUND</div>
+    <div class="caso-res er">✅ "Cédula no encontrada. Reintenta." · Sin opción "Continuar como invitado"</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t g">TEST-06 — Quórum con suplente actuando</div>
+    <div class="caso-body"><strong>Entrada:</strong> 6 JD presentes + CASSO (suplente actuando Fiscalía) + 1 JV representante<br>
+    <strong>Cálculo:</strong> 6 + 1 suplente_actuando + 1 JV = 8 computables</div>
+    <div class="caso-res ok">✅ Quórum 8 · Alcanzado (mínimo 7) · Sesión válida</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t g">TEST-07 — Votación múltiple con ganador</div>
+    <div class="caso-body"><strong>Entrada:</strong> AGUILA 6 · CONDOR 3 · JUPITER 2 · VELOZ 1<br>
+    <strong>Lógica:</strong> calcularResultadoMultiple → max = 6 → ganadores = [AGUILA]</div>
+    <div class="caso-res ok">✅ GANADOR: TRANSPORTES AGUILA — 6 votos (50%)</div>
+  </div>
+
+  <div class="caso" style="margin-bottom:10px;">
+    <div class="caso-t a">TEST-08 — Ordinaria con abstenciones</div>
+    <div class="caso-body"><strong>Entrada:</strong> A favor: 3 · En contra: 2 · Abstención: 2 (total 7 emitidos)<br>
+    <strong>Cálculo:</strong> mayoría = floor(7/2)+1 = 4 · aFavor (3) &lt; mayoría (4)</div>
+    <div class="caso-res er">✅ RECHAZADA · Abstenciones no reducen el universo</div>
+  </div>
+
+</div>
+
+<!-- TAB 4: UI/UX -->
+<div class="pnl" id="p4">
+
+  <div class="card">
+    <div class="ct c">📱 Mensajes por status — formulario público</div>
+    <div class="mock">
+      <div class="mock-title">Respuestas exactas según resultado de validarVotante()</div>
+      <div class="mock-card warn">
+        <div class="mock-label warn">NOT_FOUND</div>
+        <div class="mock-text">Cédula no encontrada. Por favor reintenta.</div>
+        <div class="mock-sub">Solo botón "Reintentar" · Sin opción "Continuar como invitado"</div>
+      </div>
+      <div class="mock-card err">
+        <div class="mock-label err">NO_VOTE — Contadora / Revisor Fiscal</div>
+        <div class="mock-text">Tu cargo (<strong>[Cargo]</strong>) no tiene voto en las sesiones de Junta Directiva. Tu asistencia ya fue registrada.</div>
+        <div class="mock-sub">Sin formulario de opciones · Sin botón de voto</div>
+      </div>
+      <div class="mock-card err">
+        <div class="mock-label err">SUPLENTE_SIN_VOTO</div>
+        <div class="mock-text">El cargo <strong>[Cargo]</strong> ya tiene voto registrado por el miembro principal. Tu asistencia quedó registrada con voz.</div>
+      </div>
+      <div class="mock-card err">
+        <div class="mock-label err">JV_VOZ · JV_VOTED</div>
+        <div class="mock-text">El voto de la Junta de Vigilancia ya fue registrado por el representante designado. Tu presencia queda registrada.</div>
+      </div>
+      <div class="mock-card ok">
+        <div class="mock-label ok">OK — Suplente actuando</div>
+        <div class="mock-text">Estás actuando en reemplazo del principal de <strong>[Cargo]</strong>. Tu voto es válido y computa para esta votación.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card ab">
+    <div class="ct a">🖥️ Modal — Designar Representante JV (solo Admin)</div>
+    <div class="mock">
+      <div class="mock-card warn">
+        <div class="mock-label warn">Aparece cuando hay JV presentes y el Presidente está ausente</div>
+        <div class="mock-text">El Presidente de la Junta de Vigilancia no está presente. Selecciona el miembro que emitirá el voto institucional en esta sesión:</div>
+        <div class="mock-sub">Lista de miembros JV presentes con radio buttons · Botón "Designar representante" · Solo el admin puede hacer esta acción</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct c">🖥️ Tarjeta de votación — Panel de reunión</div>
+    <div class="mock">
+      <div class="mock-card ok">
+        <div class="mock-label ok">Estado: ACTIVA</div>
+        <div class="mock-text"><strong>[Título de la votación]</strong></div>
+        <div class="mock-sub">Botones: "Ver Votación" · "Ver Resultados" · "📋 Copiar enlace" · <strong>"Cerrar Votación"</strong> (rojo)<br>
+        Al cerrar: confirmar → bloquear nuevos votos → estado CERRADA → ofrecer PDF</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB 5: RIESGOS -->
+<div class="pnl" id="p5">
+
+  <div class="risk-grid">
+    <div class="risk-item r">
+      <div class="risk-label r">🔴 LÓGICO</div>
+      <div class="risk-title">Votos inflados — resultado incorrecto</div>
+      <div class="risk-desc">Con suplentes y JV sin control, una votación con 9 elegibles puede tener 12+ votos. El ganador puede ser incorrecto. Nadie lo nota en pantalla.</div>
+    </div>
+    <div class="risk-item r">
+      <div class="risk-label r">🔴 JURÍDICO</div>
+      <div class="risk-title">Viola el estatuto — decisión impugnable</div>
+      <div class="risk-desc">Art. 24° es explícito: 1 voto JV. Contar 3 individuales es violación estatutaria. Cualquier decisión tomada puede impugnarse.</div>
+    </div>
+    <div class="risk-item r">
+      <div class="risk-label r">🔴 PROBATORIO</div>
+      <div class="risk-title">PDF no trazable ni defendible</div>
+      <div class="risk-desc">Sin registro de quién actuó como representante JV y qué suplente reemplazó a quién, el acta no tiene valor probatorio ante ningún conflicto.</div>
+    </div>
+    <div class="risk-item r">
+      <div class="risk-label r">🔴 ACTA</div>
+      <div class="risk-title">Sesión declarable nula</div>
+      <div class="risk-desc">Acta donde un invitado votó, 3 JV emitieron votos individuales y principal + suplente del mismo cargo votaron: no tiene validez legal.</div>
+    </div>
+  </div>
+
+  <div class="card cb" style="margin-top:16px;">
+    <div class="ct c">📋 Para el ingeniero — 4 pasos</div>
+    <ul class="bl">
+      <li><span class="dc"></span><div>Implementar <code>calcularElegibilidad(session_id)</code> como función central. Crear tablas <code>session_members</code> y <code>jv_session</code>.</div></li>
+      <li><span class="dc"></span><div>El formulario público de votación consulta <code>session_members</code> — no ejecuta lógica propia. Nunca.</div></li>
+      <li><span class="dc"></span><div>Lógica de resultados diferenciada: Ordinaria = <code>floor(total/2)+1</code> · Múltiple = mayor conteo.</div></li>
+      <li><span class="dc"></span><div>Correr los 8 tests antes de declarar fix completo. Dashboard y PDF consumen el mismo <code>eligible_voters_set</code>.</div></li>
+    </ul>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+function show(i,btn){
+  for(var j=0;j<6;j++){var p=document.getElementById('p'+j);if(p)p.className=(i===j)?'pnl on':'pnl';}
+  document.querySelectorAll('.tb').forEach(function(t){t.className='tb';});
+  if(btn)btn.className='tb on';
+}
+</script>
+</body>
+</html>

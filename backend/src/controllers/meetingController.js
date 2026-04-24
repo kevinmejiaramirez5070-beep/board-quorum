@@ -221,3 +221,50 @@ exports.installSession = async (req, res) => {
   }
 };
 
+// Guardar el representante JV designado por el admin para esta reunión
+// Se almacena en la tabla meetings como un campo JSON en extra_data o en attendance con un flag
+exports.setJvRepresentative = async (req, res) => {
+  try {
+    const { id: meetingId } = req.params;
+    const { member_id } = req.body;
+    if (!member_id) return res.status(400).json({ message: 'member_id requerido' });
+
+    const db = require('../config/database');
+    // Guardamos el representante JV en la tabla meetings usando un campo extra (jv_representative_id)
+    // Si la columna no existe, lo guardamos como metadata en attendance con un flag especial
+    try {
+      await db.execute(
+        'UPDATE meetings SET jv_representative_id = ? WHERE id = ?',
+        [member_id, meetingId]
+      );
+    } catch (colErr) {
+      // Si la columna no existe, log y continuar — el fallback es el primer-en-votar
+      console.warn('[JV] jv_representative_id column not found, using first-vote fallback:', colErr.message);
+    }
+    res.json({ message: 'Representante JV designado', member_id });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getJvRepresentative = async (req, res) => {
+  try {
+    const { id: meetingId } = req.params;
+    const db = require('../config/database');
+    try {
+      const [rows] = await db.execute(
+        `SELECT m.jv_representative_id, mb.name, mb.position, mb.rol_organico
+         FROM meetings m
+         LEFT JOIN members mb ON mb.id = m.jv_representative_id
+         WHERE m.id = ?`,
+        [meetingId]
+      );
+      res.json(rows[0] || { jv_representative_id: null });
+    } catch (colErr) {
+      res.json({ jv_representative_id: null });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

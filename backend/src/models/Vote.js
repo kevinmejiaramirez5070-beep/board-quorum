@@ -2,10 +2,18 @@ const db = require('../config/database');
 
 class Vote {
   static async findByVoting(votingId) {
+    // VOT-ROL fix: mostrar cargo real (rol_organico o position), nunca el campo 'role' que puede ser 'member'
     const [rows] = await db.execute(
-      `SELECT v.*, m.name as member_name, m.role
+      `SELECT v.*,
+              COALESCE(m.name, v.voter_name, 'Invitado') AS member_name,
+              COALESCE(
+                NULLIF(TRIM(COALESCE(m.rol_organico, '')), ''),
+                NULLIF(TRIM(COALESCE(m.position, '')), ''),
+                m.role,
+                '-'
+              ) AS role
        FROM votes v
-       JOIN members m ON v.member_id = m.id
+       LEFT JOIN members m ON v.member_id = m.id
        WHERE v.voting_id = ?`,
       [votingId]
     );

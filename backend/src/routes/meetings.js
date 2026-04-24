@@ -18,6 +18,9 @@ router.delete('/:id', auth, isAdmin, meetingController.deleteMeeting);
 
 // Solo Autorizado (y admin_master) instala sesión en vivo
 router.post('/:id/install-session', auth, isAuthorizedLive, meetingController.installSession);
+// Designar representante JV para la reunión (admin/authorized)
+router.post('/:id/jv-representative', auth, isAuthorizedLive, meetingController.setJvRepresentative);
+router.get('/:id/jv-representative', auth, meetingController.getJvRepresentative);
 
 // Rutas de solicitudes de unión
 router.post('/:meetingId/join-request', auth, joinRequestController.requestToJoin);

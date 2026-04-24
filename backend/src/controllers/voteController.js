@@ -60,77 +60,139 @@ exports.getVotes = async (req, res) => {
   }
 };
 
-// PASO 1: Verificar cédula para votación (nuevo sistema seguro)
+// PASO 1: Verificar cédula para votación — retorna status codes específicos (BQ_ESPECIFICACION_v2)
+// Status: NOT_FOUND | ALREADY_VOTED | NO_VOTE | SUPLENTE_SIN_VOTO | SUPLENTE_ACTUANDO | JV_VOTED | JV_VOZ | OK
 exports.verifyDocumentForVoting = async (req, res) => {
   try {
     const { votingId } = req.params;
     const { cedula } = req.body;
 
     if (!cedula) {
-      return res.status(400).json({ message: 'Número de cédula es requerido' });
+      return res.status(400).json({ status: 'ERROR', message: 'Número de cédula es requerido' });
     }
 
-    // Verificar que la votación esté activa
     const voting = await Voting.findById(votingId);
-    if (!voting) {
-      return res.status(404).json({ message: 'Votación no encontrada' });
-    }
-    if (voting.status !== 'active') {
-      return res.status(400).json({ message: 'La votación no está activa actualmente' });
-    }
+    if (!voting) return res.status(404).json({ status: 'ERROR', message: 'Votación no encontrada' });
+    if (voting.status !== 'active') return res.status(400).json({ status: 'ERROR', message: 'La votación no está activa' });
 
-    // Obtener la reunión para obtener client_id
     const meeting = await Meeting.findById(voting.meeting_id, null);
-    if (!meeting) {
-      return res.status(404).json({ message: 'Reunión no encontrada' });
-    }
+    if (!meeting) return res.status(404).json({ status: 'ERROR', message: 'Reunión no encontrada' });
 
     const Member = require('../models/Member');
-    
-    // Buscar miembro por número de documento
+    const Attendance = require('../models/Attendance');
+
     const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
-    
     if (!member) {
-      // No encontrado
-      return res.status(404).json({ 
-        found: false,
-        message: 'No se encontró en la base de datos',
-        cedula: cedula
-      });
+      return res.status(404).json({ status: 'NOT_FOUND', found: false, cedula });
     }
 
-    // Verificar si ya votó
+    // Ya votó
     const hasVoted = await Vote.hasVotedByDocument(votingId, cedula, meeting.client_id);
     if (hasVoted) {
-      return res.status(400).json({ 
+      return res.status(400).json({ status: 'ALREADY_VOTED', found: true });
+    }
+
+    // No tiene derecho a voto (Contadora, Revisor Fiscal, etc.)
+    const canVote = member.puede_votar === true || member.puede_votar === 1;
+    if (!canVote) {
+      return res.status(403).json({
+        status: 'NO_VOTE',
         found: true,
-        alreadyVoted: true,
-        message: 'Ya has votado en esta votación'
+        cargo: member.rol_organico || member.position || 'Tu cargo'
       });
     }
 
-    // Validar elegibilidad para votar (INTERNO, no mostrar al usuario)
-    const canVote = member.puede_votar === true || member.puede_votar === 1;
-    
-    // Retornar solo datos públicos para confirmación (NO mostrar campos sensibles)
-    res.json({
+    const memberType = String(member.member_type || '').toLowerCase().trim();
+    const tipoParticipante = String(member.tipo_participante || '').toUpperCase().trim();
+    const positionUpper = String(member.position || '').toUpperCase();
+
+    // ── JV: Junta de Vigilancia ──────────────────────────────────────────────
+    const isJV = memberType === 'junta_vigilancia' || tipoParticipante === 'JUNTA_DE_VIGILANCIA';
+    if (isJV) {
+      const jvAlreadyVoted = await Vote.hasJVVoted(parseInt(votingId), meeting.client_id);
+      if (jvAlreadyVoted) {
+        return res.status(403).json({ status: 'JV_VOTED', found: true });
+      }
+      // JV presente pero no fue el primero en votar — se le avisa que puede ser él el representante
+      // (el control real está en confirmVote; aquí le dejamos pasar con status JV_OK)
+      return res.json({
+        status: 'OK',
+        found: true,
+        isJV: true,
+        member: {
+          id: member.id,
+          name: member.name,
+          numero_documento: member.numero_documento,
+          position: member.rol_organico || member.position || 'Junta de Vigilancia',
+          cargo: member.rol_organico || member.position || 'Junta de Vigilancia'
+        }
+      });
+    }
+
+    // ── Suplente ─────────────────────────────────────────────────────────────
+    const isSuplente = memberType === 'suplente' || tipoParticipante === 'SUPLENTE' || /\bSUPLENTE\b/.test(positionUpper);
+    if (isSuplente) {
+      // Verificar si el principal está PRESENTE en la reunión
+      let principalPresent = false;
+
+      if (member.principal_id) {
+        const principalAttendance = await Attendance.findByMemberAndMeeting(voting.meeting_id, member.principal_id);
+        principalPresent = principalAttendance && principalAttendance.status === 'present';
+      }
+
+      if (!principalPresent && member.rol_organico) {
+        // Fallback: buscar por mismo rol_organico
+        const [principalRows] = await require('../config/database').execute(
+          `SELECT m.id FROM members m
+           WHERE m.client_id = ? AND UPPER(TRIM(COALESCE(m.rol_organico,''))) = ?
+             AND (LOWER(TRIM(COALESCE(m.member_type,''))) NOT IN ('suplente'))
+             AND m.id != ? LIMIT 1`,
+          [meeting.client_id, (member.rol_organico || '').toUpperCase().trim(), member.id]
+        );
+        if (principalRows.length > 0) {
+          const att = await Attendance.findByMemberAndMeeting(voting.meeting_id, principalRows[0].id);
+          principalPresent = att && att.status === 'present';
+        }
+      }
+
+      if (principalPresent) {
+        // Principal está presente → suplente tiene voz pero NO voto
+        return res.status(403).json({
+          status: 'SUPLENTE_SIN_VOTO',
+          found: true,
+          cargo: member.rol_organico || member.position || 'Tu cargo'
+        });
+      } else {
+        // Principal ausente → suplente actúa como principal
+        return res.json({
+          status: 'SUPLENTE_ACTUANDO',
+          found: true,
+          member: {
+            id: member.id,
+            name: member.name,
+            numero_documento: member.numero_documento,
+            position: member.rol_organico || member.position || 'Miembro',
+            cargo: member.rol_organico || member.position || 'Tu cargo'
+          }
+        });
+      }
+    }
+
+    // ── Miembro normal: OK ────────────────────────────────────────────────────
+    return res.json({
+      status: 'OK',
       found: true,
-      alreadyVoted: false,
       member: {
         id: member.id,
         name: member.name,
         numero_documento: member.numero_documento,
-        position: member.position || member.rol_organico || 'Miembro'
-      },
-      canVote: canVote,
-      // Este mensaje se mostrará solo si NO puede votar
-      voteMessage: canVote 
-        ? null 
-        : 'Tu voto se registrará pero NO cuenta para la votación'
+        position: member.rol_organico || member.position || 'Miembro',
+        cargo: member.rol_organico || member.position || 'Miembro'
+      }
     });
   } catch (error) {
     console.error('Error in verifyDocumentForVoting:', error);
-    res.status(500).json({ message: error.message || 'Error al verificar la cédula' });
+    res.status(500).json({ status: 'ERROR', message: error.message || 'Error al verificar la cédula' });
   }
 };
 

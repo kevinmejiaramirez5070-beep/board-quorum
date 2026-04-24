@@ -16,6 +16,8 @@ export const meetingService = {
   delete: (id) => api.delete(`/meetings/${id}`),
   getQuorum: (id) => api.get(`/meetings/${id}/quorum`),
   validateInstallation: (id) => api.get(`/meetings/${id}/validate-installation`),
-  installSession: (id) => api.post(`/meetings/${id}/install-session`)
+  installSession: (id) => api.post(`/meetings/${id}/install-session`),
+  setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
+  getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };
 
