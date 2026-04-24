@@ -152,6 +152,11 @@ function App() {
               path="/public/voting/:votingId" 
               element={<PublicVoting />} 
             />
+            {/* VOT-LINK fix: ruta dinámica que muestra la votación ACTIVA de la reunión */}
+            <Route 
+              path="/public/meeting/:meetingId/vote" 
+              element={<PublicVoting meetingMode />} 
+            />
             <Route 
               path="/public/meeting/:meetingId/attendance" 
               element={<PublicAttendanceRegister />} 

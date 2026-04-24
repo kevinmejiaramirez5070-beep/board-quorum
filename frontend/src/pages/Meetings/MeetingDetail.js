@@ -111,22 +111,12 @@ const MeetingDetail = () => {
       const votingsData = Array.isArray(votingsRes.data) ? votingsRes.data : [];
       setVotings(votingsData);
       
-      // Si hay votaciones, generar el link
-      if (votingsData.length > 0 && votingsData[0].id) {
-        const link = `${window.location.origin}/public/voting/${votingsData[0].id}`;
+      // VOT-LINK fix: link apunta a la reunión (votación activa dinámica), no a un ID fijo
+      if (votingsData.length > 0) {
+        const link = `${window.location.origin}/public/meeting/${meetingIdParam}/vote`;
         setVotingLink(link);
       } else {
         setVotingLink(null);
-      }
-      
-      // Debug: verificar votaciones cargadas
-      console.log('Votaciones cargadas:', votingsData);
-      console.log('Número de votaciones:', votingsData.length);
-      if (votingsData.length > 0) {
-        console.log('Primera votación:', votingsData[0]);
-        console.log('Link de votaciones generado:', `${window.location.origin}/public/voting/${votingsData[0].id}`);
-      } else {
-        console.warn('No se encontraron votaciones para esta reunión');
       }
       
       // Intentar cargar quorum, pero no fallar si hay error
@@ -168,16 +158,38 @@ const MeetingDetail = () => {
     }
   };
 
-  const handleActivateVoting = async (votingId) => {
+  const handleActivateVoting = async (targetVotingId) => {
     try {
       setErrorMessage(null);
-      await votingService.activate(votingId);
+      // VOT-SIMULTANEA: si ya hay una activa, pedir confirmación antes de continuar
+      const activeVoting = votings.find(v => v.status === 'active');
+      if (activeVoting && activeVoting.id !== targetVotingId) {
+        const confirmMsg = language === 'es'
+          ? `Hay una votación activa: "${activeVoting.title}". ¿Cerrarla y activar la nueva?`
+          : `There is an active voting: "${activeVoting.title}". Close it and activate the new one?`;
+        if (!window.confirm(confirmMsg)) return;
+        // Cerrar la activa primero
+        await votingService.close(activeVoting.id);
+      }
+      await votingService.activate(targetVotingId);
       loadMeetingData();
     } catch (error) {
       console.error('Error activating voting:', error);
-      // Mostrar el mensaje específico del backend si está disponible
-      const errorMsg = error.response?.data?.message || t('errorActivatingVoting');
-      setErrorMessage(errorMsg);
+      setErrorMessage(error.response?.data?.message || t('errorActivatingVoting'));
+    }
+  };
+
+  const handleCloseVoting = async (targetVotingId) => {
+    const confirmMsg = language === 'es'
+      ? '¿Cerrar esta votación? No se podrán registrar más votos.'
+      : 'Close this voting? No more votes will be accepted.';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      setErrorMessage(null);
+      await votingService.close(targetVotingId);
+      loadMeetingData();
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || (language === 'es' ? 'Error al cerrar la votación' : 'Error closing voting'));
     }
   };
 
@@ -186,7 +198,6 @@ const MeetingDetail = () => {
       setErrorMessage(null);
       await meetingService.installSession(meetingIdParam);
       await loadMeetingData();
-      alert(language === 'es' ? 'Sesión instalada correctamente.' : 'Session installed successfully.');
     } catch (error) {
       console.error('Error installing session:', error);
       const msg = error.response?.data?.message || (language === 'es' ? 'Error al instalar la sesión' : 'Error installing session');
@@ -1101,48 +1112,80 @@ const MeetingDetail = () => {
                 <p className="empty">{language === 'es' ? 'No hay votaciones registradas' : 'No votings registered'}</p>
               ) : (
                 <div className="votings-list">
-                  {votings.map((voting) => (
-                    <div key={voting.id} className="voting-card">
-                      <div className="voting-header">
-                        <h3>{voting.title}</h3>
-                        <span className={`voting-status status-${voting.status}`}>
-                          {voting.status === 'pending' 
-                            ? (language === 'es' ? 'Pendiente' : 'Pending')
-                            : voting.status === 'active'
-                            ? (language === 'es' ? 'Activa' : 'Active')
-                            : voting.status === 'completed'
-                            ? (language === 'es' ? 'Completada' : 'Completed')
-                            : voting.status
-                          }
-                        </span>
-                      </div>
-                      {voting.description && <p>{voting.description}</p>}
-                      <div className="voting-actions">
-                        {voting.status === 'pending' && canAuthorizedLive && (
-                          <button 
-                            className="btn btn-primary"
-                            onClick={() => handleActivateVoting(voting.id)}
-                          >
-                            {t('activate')}
-                          </button>
-                        )}
-                        {voting.status === 'active' && (
-                          <button 
+                  {votings.map((voting) => {
+                    const voteLink = `${window.location.origin}/public/meeting/${meetingIdParam}/vote`;
+                    const statusLabel = voting.status === 'pending'
+                      ? (language === 'es' ? 'Pendiente' : 'Pending')
+                      : voting.status === 'active'
+                      ? (language === 'es' ? 'Activa' : 'Active')
+                      : voting.status === 'completed' || voting.status === 'closed'
+                      ? (language === 'es' ? 'Cerrada' : 'Closed')
+                      : voting.status;
+
+                    return (
+                      <div key={voting.id} className="voting-card">
+                        <div className="voting-header">
+                          <h3>{voting.title}</h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className={`voting-status status-${voting.status}`}>{statusLabel}</span>
+                            {/* VOT-LINK-RECOVERY: copiar enlace disponible siempre en cada tarjeta */}
+                            {(voting.status === 'pending' || voting.status === 'active') && (
+                              <button
+                                title={language === 'es' ? 'Copiar enlace de votación' : 'Copy voting link'}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(voteLink);
+                                  setErrorMessage(null);
+                                }}
+                                style={{
+                                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                                  padding: '4px 8px', cursor: 'pointer', fontSize: '14px', color: 'var(--text-secondary)'
+                                }}
+                              >
+                                📋
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {voting.description && <p>{voting.description}</p>}
+                        <div className="voting-actions">
+                          {voting.status === 'pending' && canAuthorizedLive && (
+                            <button className="btn btn-primary" onClick={() => handleActivateVoting(voting.id)}>
+                              {t('activate')}
+                            </button>
+                          )}
+                          {voting.status === 'active' && (
+                            <>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => navigate(`/meetings/${id}/voting/${voting.id}`)}
+                              >
+                                {language === 'es' ? 'Ver Votación' : 'View Voting'}
+                              </button>
+                              {/* VOT-CERRAR: botón rojo para cerrar votación activa */}
+                              {canAuthorizedLive && (
+                                <button
+                                  className="btn"
+                                  onClick={() => handleCloseVoting(voting.id)}
+                                  style={{
+                                    background: 'rgba(220,38,38,0.1)', color: '#dc2626',
+                                    border: '1px solid rgba(220,38,38,0.4)', fontWeight: 700
+                                  }}
+                                >
+                                  {language === 'es' ? '🔒 Cerrar Votación' : '🔒 Close Voting'}
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <button
                             className="btn btn-secondary"
-                            onClick={() => navigate(`/meetings/${id}/voting/${voting.id}`)}
+                            onClick={() => navigate(`/meetings/${id}/voting/${voting.id}/results`)}
                           >
-                            {language === 'es' ? 'Ver Votación' : 'View Voting'}
+                            {t('viewResults')}
                           </button>
-                        )}
-                        <button 
-                          className="btn btn-secondary"
-                          onClick={() => navigate(`/meetings/${id}/voting/${voting.id}/results`)}
-                        >
-                          {t('viewResults')}
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

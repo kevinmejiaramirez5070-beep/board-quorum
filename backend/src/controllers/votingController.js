@@ -152,6 +152,41 @@ exports.getResults = async (req, res) => {
   }
 };
 
+// VOT-CERRAR: Cerrar votación activa
+exports.closeVoting = async (req, res) => {
+  try {
+    const voting = await Voting.findById(req.params.id);
+    if (!voting) return res.status(404).json({ message: 'Voting not found' });
+    await Voting.updateStatus(req.params.id, 'completed');
+    res.json({ message: 'Voting closed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// VOT-LINK fix: obtener la votación ACTIVA de una reunión (sin auth)
+exports.getActiveMeetingVoting = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const votings = await Voting.findByMeeting(meetingId);
+    const active = votings.find(v => v.status === 'active');
+    if (!active) {
+      return res.status(404).json({ message: 'No hay votación activa en este momento', noActive: true });
+    }
+    res.json({
+      id: active.id,
+      title: active.title,
+      description: active.description,
+      status: active.status,
+      meeting_id: active.meeting_id,
+      type: active.type,
+      options: active.options || null
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Endpoint público para obtener votación (sin autenticación)
 exports.getPublicVoting = async (req, res) => {
   try {

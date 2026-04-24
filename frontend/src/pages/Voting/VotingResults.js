@@ -219,11 +219,26 @@ const VotingResults = () => {
   if (!results) return <div className="error">{language === 'es' ? 'No se pudieron cargar los resultados' : 'Could not load results'}</div>;
 
   const { voting, results: voteResults, votes, totalVotes, majority, majorityValidation } = results;
-  const maxVotes = Math.max(...voteResults.map(r => r.votes), 0);
+  const maxVotes = Math.max(...voteResults.map(r => parseInt(r.votes) || 0), 0);
   
-  // Verificar si el usuario puede generar reportes (admin, admin_master, authorized)
   const canGenerateReports = user?.role === 'authorized' || user?.role === 'admin_master';
   const canGeneratePdf = canGenerateReports && totalVotes > 0;
+
+  // VOT-LOGICA-MULTIPLE: para votaciones múltiples, el ganador es la opción con más votos
+  const isMultiple = voting?.type === 'multiple';
+  const winnerOption = isMultiple && voteResults.length > 0
+    ? voteResults.reduce((best, cur) => (parseInt(cur.votes) || 0) > (parseInt(best.votes) || 0) ? cur : best, voteResults[0])
+    : null;
+  const isTie = isMultiple && winnerOption && voteResults.filter(r => (parseInt(r.votes) || 0) === (parseInt(winnerOption.votes) || 0)).length > 1;
+
+  // Para votación ordinaria: mayoría dinámica = floor(emitidos/2)+1
+  const ordinariaMajority = !isMultiple ? Math.floor(totalVotes / 2) + 1 : null;
+  const affirmativeOptions = ['a favor', 'sí', 'si', 'yes', 'aprobado'];
+  const affirmativeVotes = !isMultiple
+    ? voteResults.filter(r => affirmativeOptions.includes((r.option || '').toLowerCase()))
+        .reduce((s, r) => s + (parseInt(r.votes) || 0), 0)
+    : 0;
+  const ordinariaApproved = !isMultiple && ordinariaMajority !== null && affirmativeVotes >= ordinariaMajority;
 
   return (
     <div className="voting-results">
@@ -242,48 +257,83 @@ const VotingResults = () => {
             <div className="summary-value">{totalVotes}</div>
             <div className="summary-label">{language === 'es' ? 'Total de Votos' : 'Total Votes'}</div>
           </div>
-          {majority !== undefined && (
-            <div className="summary-card">
-              <div className="summary-value">{majority}</div>
-              <div className="summary-label">{language === 'es' ? 'Mayoría Requerida' : 'Required Majority'}</div>
-            </div>
-          )}
-          {majorityValidation && (
-            <div className={`summary-card ${majorityValidation.approved ? 'approved' : 'rejected'}`}>
-              <div className="summary-value">
-                {majorityValidation.approved ? '✓' : '✗'}
+          {/* VOT-LOGICA-MULTIPLE: resultado diferenciado por tipo */}
+          {isMultiple ? (
+            winnerOption && (
+              <div className={`summary-card ${isTie ? '' : 'approved'}`}>
+                <div className="summary-value" style={{ fontSize: '18px' }}>
+                  {isTie ? '⚖️' : '🏆'}
+                </div>
+                <div className="summary-label">
+                  {isTie
+                    ? (language === 'es' ? 'EMPATE' : 'TIE')
+                    : `GANADOR: ${winnerOption.option} (${winnerOption.votes} votos)`}
+                </div>
               </div>
-              <div className="summary-label">
-                {majorityValidation.approved 
-                  ? (language === 'es' ? 'APROBADA' : 'APPROVED')
-                  : (language === 'es' ? 'RECHAZADA' : 'REJECTED')
-                }
+            )
+          ) : (
+            <>
+              {ordinariaMajority !== null && (
+                <div className="summary-card">
+                  <div className="summary-value">{ordinariaMajority}</div>
+                  <div className="summary-label">{language === 'es' ? 'Mayoría Requerida' : 'Required Majority'}</div>
+                </div>
+              )}
+              <div className={`summary-card ${ordinariaApproved ? 'approved' : 'rejected'}`}>
+                <div className="summary-value">{ordinariaApproved ? '✓' : '✗'}</div>
+                <div className="summary-label">
+                  {ordinariaApproved
+                    ? (language === 'es' ? 'APROBADA' : 'APPROVED')
+                    : (language === 'es' ? 'RECHAZADA' : 'REJECTED')}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        {majorityValidation && (
-          <div className={`majority-validation ${majorityValidation.approved ? 'approved' : 'rejected'}`}>
-            <h3>{language === 'es' ? 'Validación de Mayoría Simple' : 'Simple Majority Validation'}</h3>
-            <div className="validation-details">
-              <div className="validation-item">
-                <span className="label">{language === 'es' ? 'Votos Afirmativos:' : 'Affirmative Votes:'}</span>
-                <span className="value">{majorityValidation.affirmative}</span>
+        {/* Bloque de detalle del resultado */}
+        {isMultiple ? (
+          <div className={`majority-validation ${isTie ? '' : 'approved'}`}>
+            <h3>{language === 'es' ? 'Resultado — Selección Múltiple' : 'Result — Multiple Choice'}</h3>
+            {isTie ? (
+              <div className="validation-result">
+                {language === 'es'
+                  ? `Empate entre opciones con ${winnerOption.votes} votos. Se requiere desempate.`
+                  : `Tie between options with ${winnerOption.votes} votes. Tiebreaker required.`}
               </div>
-              <div className="validation-item">
-                <span className="label">{language === 'es' ? 'Mayoría Requerida:' : 'Required Majority:'}</span>
-                <span className="value">{majorityValidation.majority}</span>
+            ) : (
+              <div className="validation-result approved">
+                {language === 'es'
+                  ? `GANADOR: ${winnerOption?.option} con ${winnerOption?.votes} votos (${totalVotes > 0 ? ((parseInt(winnerOption?.votes)||0)*100/totalVotes).toFixed(1) : 0}% del total).`
+                  : `WINNER: ${winnerOption?.option} with ${winnerOption?.votes} votes (${totalVotes > 0 ? ((parseInt(winnerOption?.votes)||0)*100/totalVotes).toFixed(1) : 0}% of total).`}
               </div>
-              <div className="validation-item">
-                <span className="label">{language === 'es' ? 'Total Votos Emitidos:' : 'Total Votes Cast:'}</span>
-                <span className="value">{majorityValidation.total}</span>
-              </div>
-            </div>
-            <div className={`validation-result ${majorityValidation.approved ? 'approved' : 'rejected'}`}>
-              {majorityValidation.message}
-            </div>
+            )}
           </div>
+        ) : (
+          ordinariaMajority !== null && (
+            <div className={`majority-validation ${ordinariaApproved ? 'approved' : 'rejected'}`}>
+              <h3>{language === 'es' ? 'Resultado — Votación Ordinaria' : 'Result — Ordinary Vote'}</h3>
+              <div className="validation-details">
+                <div className="validation-item">
+                  <span className="label">{language === 'es' ? 'Votos A favor:' : 'Votes In favor:'}</span>
+                  <span className="value">{affirmativeVotes}</span>
+                </div>
+                <div className="validation-item">
+                  <span className="label">{language === 'es' ? 'Mayoría requerida:' : 'Required majority:'}</span>
+                  <span className="value">{ordinariaMajority}</span>
+                </div>
+                <div className="validation-item">
+                  <span className="label">{language === 'es' ? 'Total emitidos:' : 'Total cast:'}</span>
+                  <span className="value">{totalVotes}</span>
+                </div>
+              </div>
+              <div className={`validation-result ${ordinariaApproved ? 'approved' : 'rejected'}`}>
+                {ordinariaApproved
+                  ? (language === 'es' ? `APROBADA — ${affirmativeVotes} votos a favor (mínimo requerido: ${ordinariaMajority})` : `APPROVED — ${affirmativeVotes} votes in favor (minimum required: ${ordinariaMajority})`)
+                  : (language === 'es' ? `RECHAZADA — ${affirmativeVotes} votos a favor (mínimo requerido: ${ordinariaMajority})` : `REJECTED — ${affirmativeVotes} votes in favor (minimum required: ${ordinariaMajority})`)}
+              </div>
+            </div>
+          )
         )}
 
         <div className="results-chart">

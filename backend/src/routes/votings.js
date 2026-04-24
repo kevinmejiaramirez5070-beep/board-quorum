@@ -12,10 +12,12 @@ router.get('/:id/results', auth, isAdminOrAuthorized, votingController.getResult
 router.post('/meeting/:meetingId', auth, isAdmin, votingController.createVoting);
 router.put('/:id', auth, isAdmin, votingController.updateVoting);
 
-// Solo Autorizado (y admin_master) activa votaciones en vivo
+// Solo Autorizado (y admin_master) activa y cierra votaciones en vivo
 router.put('/:id/activate', auth, isAuthorizedLive, votingController.activateVoting);
+router.put('/:id/close', auth, isAuthorizedLive, votingController.closeVoting);
 
-// Endpoint público (sin autenticación)
+// Endpoints públicos (sin autenticación) — específico antes que genérico
+router.get('/public/meeting/:meetingId/active', votingController.getActiveMeetingVoting);
 router.get('/public/:id', votingController.getPublicVoting);
 
 module.exports = router;

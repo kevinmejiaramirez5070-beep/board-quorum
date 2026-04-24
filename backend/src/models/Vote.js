@@ -65,6 +65,57 @@ class Vote {
   }
 
   /**
+   * VOT-JV-VOTO: verifica si ya votó algún miembro de la Junta de Vigilancia en esta votación
+   */
+  static async hasJVVoted(votingId, clientId) {
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count
+       FROM votes v
+       JOIN members m ON v.member_id = m.id
+       WHERE v.voting_id = ?
+         AND m.client_id = ?
+         AND (
+           LOWER(TRIM(COALESCE(m.member_type,''))) = 'junta_vigilancia'
+           OR UPPER(TRIM(COALESCE(m.tipo_participante,''))) = 'JUNTA_DE_VIGILANCIA'
+         )`,
+      [votingId, clientId]
+    );
+    return (parseInt(rows[0].count) || 0) > 0;
+  }
+
+  /**
+   * VOT-SUPLENCIAS: verifica si el principal de este suplente ya votó
+   * Busca por principal_id directo o por mismo rol_organico
+   */
+  static async hasPrincipalVoted(votingId, member) {
+    if (!member) return false;
+    // Por principal_id directo
+    if (member.principal_id) {
+      const [rows] = await db.execute(
+        'SELECT COUNT(*) as count FROM votes WHERE voting_id = ? AND member_id = ?',
+        [votingId, member.principal_id]
+      );
+      if ((parseInt(rows[0].count) || 0) > 0) return true;
+    }
+    // Por mismo rol_organico (fallback)
+    const rolOrganico = (member.rol_organico || '').toUpperCase().trim();
+    if (rolOrganico) {
+      const [rows] = await db.execute(
+        `SELECT COUNT(*) as count
+         FROM votes v
+         JOIN members m ON v.member_id = m.id
+         WHERE v.voting_id = ?
+           AND UPPER(TRIM(COALESCE(m.rol_organico,''))) = ?
+           AND (LOWER(TRIM(COALESCE(m.member_type,''))) NOT IN ('suplente'))
+           AND v.member_id != ?`,
+        [votingId, rolOrganico, member.id]
+      );
+      if ((parseInt(rows[0].count) || 0) > 0) return true;
+    }
+    return false;
+  }
+
+  /**
    * Crea un voto verificando por cédula
    */
   static async createByDocument(data) {

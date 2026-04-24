@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BQ · Hallazgos Pruebas — 18 Abril 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0A;--card:#111c2d;--card2:#0d1520;
+  --cyan:#00C6FF;--blue:#0072FF;
+  --green:#10B981;--gbg:rgba(16,185,129,0.08);--gbr:rgba(16,185,129,0.3);
+  --red:#EF4444;--rbg:rgba(239,68,68,0.08);--rbr:rgba(239,68,68,0.3);
+  --amber:#F59E0B;--abg:rgba(245,158,11,0.08);--abr:rgba(245,158,11,0.3);
+  --gray:#9CA3AF;--border:rgba(0,198,255,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e2e8f0;min-height:100vh;}
+
+.hdr{background:linear-gradient(135deg,#0A0A0A,#0d1f35);border-bottom:2px solid var(--rbr);padding:24px 52px 18px;}
+.hdr-top{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.logo{width:34px;height:34px;background:linear-gradient(135deg,var(--cyan),var(--blue));border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;color:#000;}
+.brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;}
+.hdr h1{font-family:'Syne',sans-serif;font-size:1.55em;font-weight:800;color:#fff;line-height:1.2;}
+.hdr h1 em{color:var(--red);font-style:normal;}
+.meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--gray);}
+.meta strong{color:#cbd5e1;}
+.badge{display:inline-block;margin-top:7px;background:var(--rbg);border:1px solid var(--rbr);color:var(--red);font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;}
+
+.tabs-bar{background:#0d1520;border-bottom:1px solid var(--border);padding:0 52px;display:flex;overflow-x:auto;}
+.tabs-bar::-webkit-scrollbar{display:none;}
+.tb{padding:13px 20px;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none;transition:color .2s;}
+.tb:hover{color:#cbd5e1;}
+.tb.on{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+.body{padding:32px 52px 52px;max-width:1040px;width:100%;}
+.pnl{display:none;}.pnl.on{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:14px;}
+.card.gb{border-color:var(--gbr);background:rgba(16,185,129,0.04);}
+.ct{font-family:'Syne',sans-serif;font-size:.85em;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.ct.g{color:var(--green);}
+
+.bug{border-radius:10px;padding:18px 20px;margin-bottom:12px;border-left:4px solid;}
+.bug.r{background:rgba(239,68,68,0.05);border-left-color:var(--red);}
+.bug.a{background:rgba(245,158,11,0.05);border-left-color:var(--amber);}
+.bug-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.bug-id{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.06em;}
+.bug-id.r{background:var(--rbg);color:var(--red);border:1px solid var(--rbr);}
+.bug-id.a{background:var(--abg);color:var(--amber);border:1px solid var(--abr);}
+.bug-sev{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);}
+.bug-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95em;color:#fff;width:100%;margin-top:2px;}
+.bug-body{font-size:13px;color:#94a3b8;line-height:1.65;}
+.bug-body strong{color:#e2e8f0;}
+
+.fix-box{background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:10px 14px;margin-top:10px;font-size:13px;color:#6ee7b7;line-height:1.65;}
+.fix-box strong{color:#10B981;}
+
+/* RESUMEN TABLE */
+.sum-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:12px 0;}
+.sum-table th{padding:9px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;background:var(--card2);color:var(--gray);border:1px solid rgba(255,255,255,0.06);}
+.sum-table td{padding:9px 13px;border:1px solid rgba(255,255,255,0.05);vertical-align:middle;line-height:1.4;}
+.sum-table td:first-child{font-family:'DM Mono',monospace;font-size:11px;}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;}
+.pill.r{background:var(--rbg);color:var(--red);border:1px solid var(--rbr);}
+.pill.a{background:var(--abg);color:var(--amber);border:1px solid var(--abr);}
+
+/* CHECKLIST */
+.chk{list-style:none;padding:0;}
+.chk li{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:#94a3b8;line-height:1.55;}
+.chk li:last-child{border-bottom:none;}
+.chk li strong{color:#e2e8f0;}
+.sq{width:15px;height:15px;border:2px solid var(--cyan);border-radius:3px;flex-shrink:0;margin-top:2px;}
+
+/* MINI TABLE BRANDING */
+.mini-table{width:100%;border-collapse:collapse;font-size:13px;margin:0;}
+.mini-table td{padding:11px 14px;border:1px solid rgba(255,255,255,0.05);vertical-align:top;line-height:1.5;}
+.mini-table td:first-child{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);white-space:nowrap;}
+.mini-table td:nth-child(2){color:#94a3b8;}
+.mini-table td:last-child{color:#6ee7b7;font-size:12.5px;}
+
+code{background:rgba(0,198,255,0.08);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--cyan);}
+
+@media(max-width:768px){
+  .hdr,.tabs-bar,.body{padding-left:18px;padding-right:18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">BQ</div>
+    <div class="brand">Board Quorum · Reporte de Pruebas</div>
+  </div>
+  <h1>Hallazgos — <em>18 Abril 2026</em></h1>
+  <div class="meta">
+    <span>📅 <strong>18 abril 2026</strong></span>
+    <span>🏢 <strong>ASOCOLCI · Módulo Votaciones</strong></span>
+    <span>👤 <strong>Para: Ing. Andrés Suárez Soto</strong></span>
+    <span>✍️ <strong>De: Javier Castilla Robles</strong></span>
+  </div>
+  <div class="badge">⚠️ Prueba controlada — sesión en vivo simulada</div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tb on" onclick="show(0,this)">📊 Resumen</button>
+  <button class="tb" onclick="show(1,this)">🔴 Bugs Críticos (7)</button>
+  <button class="tb" onclick="show(2,this)">🟡 UX Pendientes (8)</button>
+  <button class="tb" onclick="show(3,this)">✅ Checklist Cierre</button>
+</div>
+
+<div class="body">
+
+<!-- TAB 0: RESUMEN -->
+<div class="pnl on" id="p0">
+
+  <table class="sum-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Descripción</th>
+        <th>Severidad</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>VOT-SUPLENCIAS</td><td>Principal + suplente votan simultáneamente — confirmado en PDF</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-JV-VOTO</td><td>3 votos JV individuales en lugar de 1 institucional — viola Art. 24°</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-INVITADO</td><td>Cédula no encontrada → sistema ofrece "Continuar como invitado" en votación</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-LOGICA-MULTIPLE</td><td>Votación múltiple aplica mayoría simple → "RECHAZADA: 0 votos afirmativos"</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-SIMULTANEA</td><td>Múltiples votaciones ACTIVAS al mismo tiempo — sin control</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-LINK</td><td>Link del panel siempre apunta a la primera votación creada</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-ROL</td><td>PDF votación muestra "member" — debe mostrar cargo real</td><td><span class="pill r">CRÍTICO</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-CERRAR</td><td>No existe botón "Cerrar Votación"</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-LINK-RECOVERY</td><td>Link de votación no recuperable después del momento de creación</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-COPY</td><td>Sin botón de copiar enlace con 1 clic en confirmación de votación creada</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-ROLSINVOTO</td><td>Contadora / Revisor Fiscal acceden al formulario — bloqueo tardío (al final)</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-ALERTS</td><td>window.alert() nativo en múltiples puntos — reemplazar por mensajes inline</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-SESION-UX</td><td>"Nueva Votación" activo aunque sesión no esté instalada</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-TIPOS</td><td>Eliminar "Ponderada" · Renombrar "Simple" → "Ordinaria (A favor/En contra/Abstención)"</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>VOT-MSG</td><td>Texto de espera demasiado largo y confuso para móvil</td><td><span class="pill a">UX</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>BRAND-01</td><td>Footer y contacto landing page aún con datos de Pivot Consulting</td><td><span class="pill a">MENOR</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+      <tr><td>ADMIN-01</td><td>Edición maestro miembros sin acceso directo — JD nueva desde 19 mar sin actualizar</td><td><span class="pill a">OPERACIONAL</span></td><td><span class="pill r">ABIERTO</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="card gb">
+    <div class="ct g">✅ Confirmado que sigue correcto — no tocar</div>
+    <ul class="chk">
+      <li><span class="sq"></span><div>Motor quórum — 12 cargos · mínimo 7 fijo · JV = 1 institucional · suplencias correctas</div></li>
+      <li><span class="sq"></span><div>VOT-SESION y VOT-LOGICA — activación y resultado 0 votos: corregidos en sesión anterior</div></li>
+      <li><span class="sq"></span><div>PDF asistencia — cargos correctos · branding BQ correcto</div></li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- TAB 1: BUGS CRÍTICOS -->
+<div class="pnl" id="p1">
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-SUPLENCIAS</span>
+      <span class="bug-sev">🔴 CRÍTICO · Integridad del voto · Confirmado en PDF</span>
+      <div class="bug-title">Principal + suplente del mismo cargo votan simultáneamente</div>
+    </div>
+    <div class="bug-body">
+      Confirmado en votación "Empresa de Transportes":<br>
+      — <strong>TESORERÍA:</strong> PIEDRAHITA ESCOBAR (principal) + YAMILE BUSTOS SIERRA (suplente) → 2 votos del mismo cargo.<br>
+      — <strong>FISCALÍA:</strong> TARQUINO FERNÁNDEZ (principal) + CASSO OSCAR JAVIER (suplente) → 2 votos del mismo cargo.<br>
+      El resultado final tiene votos inflados. Jurídicamente inválido.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Al recibir cédula en formulario de votación, validar <code>session_members.puede_votar</code>. Si <code>rol_en_sesion = "suplente_con_voz"</code> → bloquear inmediatamente: <em>"Tu cargo ya tiene voto registrado por el miembro principal."</em> Sin mostrar opciones.
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-JV-VOTO</span>
+      <span class="bug-sev">🔴 CRÍTICO · Viola Art. 24° literal d · Confirmado en PDF</span>
+      <div class="bug-title">Los 3 miembros JV votan individualmente — deben ser 1 voto institucional</div>
+    </div>
+    <div class="bug-body">
+      ELVIS GIOVANNI TUTA → CONDOR · ARBEY CARDENAS → JUPITER · NINY DAYANA LOPEZ → VELOZ. Tres votos distintos, todos computados. El Art. 24° literal d es explícito: <em>"un (1) voto"</em>. La JV como órgano emite 1 voto, no 1 por miembro.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Solo el representante JV designado para la sesión puede votar. Al intentar un segundo miembro JV: <em>"El voto de la Junta de Vigilancia ya fue registrado."</em> Ver especificación técnica — Tab Algoritmos para lógica completa.
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-INVITADO</span>
+      <span class="bug-sev">🔴 CRÍTICO · Seguridad · Voto inválido afecta resultado</span>
+      <div class="bug-title">Cédula no encontrada → "Continuar como invitado" disponible en formulario de votación</div>
+    </div>
+    <div class="bug-body">
+      MONICA LORENA QUESADA (CC 1016035338 — no es miembro con voto) pudo votar vía esta opción y su voto afectó el resultado. Cualquier cédula no registrada puede votar en sesión real.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Cédula no encontrada en formulario de votación → solo <em>"Cédula no encontrada. Reintenta."</em> La opción "Continuar como invitado" no debe existir en este flujo bajo ninguna circunstancia.
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-LOGICA-MULTIPLE</span>
+      <span class="bug-sev">🔴 CRÍTICO · Lógica de resultados</span>
+      <div class="bug-title">Votación de selección múltiple aplica mayoría simple → resultado absurdo</div>
+    </div>
+    <div class="bug-body">
+      "Empresa de Transportes" (4 opciones): el sistema concluyó <strong>"RECHAZADA: 0 votos afirmativos (mayoría requerida: 7)"</strong>. El resultado correcto: <strong>GANADOR: TRANSPORTES AGUILA — 6 votos (50%)</strong>.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Lógica diferenciada por tipo:<br>
+      • <strong>Ordinaria</strong> → mayoría dinámica: <code>floor(votos_emitidos/2)+1</code><br>
+      • <strong>Múltiple opciones</strong> → ganador = opción con más votos. Empate → "Requiere desempate."
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-SIMULTANEA</span>
+      <span class="bug-sev">🔴 CRÍTICO · Lógica de sesión</span>
+      <div class="bug-title">Múltiples votaciones ACTIVAS simultáneamente — sin control</div>
+    </div>
+    <div class="bug-body">
+      Al activar una votación PENDIENTE, el sistema no cierra ni bloquea las que ya están ACTIVAS. Se confirmaron 3 ACTIVAS al mismo tiempo. El link compartido no sabe a cuál apuntar.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Al clic en "Activar", verificar si hay otra ACTIVA. Si existe: <em>"Hay una votación activa: [nombre]. ¿Cerrarla y activar esta?"</em> — Cerrar y Activar / Cancelar. Máximo 1 ACTIVA en cualquier momento.
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-LINK</span>
+      <span class="bug-sev">🔴 CRÍTICO · Funcionalidad en sesión viva</span>
+      <div class="bug-title">Link del panel siempre apunta a la primera votación creada (URL estática)</div>
+    </div>
+    <div class="bug-body">
+      El "Link de Votaciones" del panel tiene URL fija (<code>/public/voting/[ID votación 1]</code>). Con segunda o tercera votación, el mismo link lleva a la primera. Confirmado en ventana incógnita.
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> URL del panel → <code>/public/meeting/[ID]/vote</code> · Página que muestra la votación ACTIVA en ese momento. Si no hay activa → mensaje de espera. Admin comparte este link una sola vez al inicio de sesión.
+    </div>
+  </div>
+
+  <div class="bug r">
+    <div class="bug-head">
+      <span class="bug-id r">VOT-ROL</span>
+      <span class="bug-sev">🔴 CRÍTICO · Trazabilidad del acta</span>
+      <div class="bug-title">PDF votación muestra "member" para todos — debe mostrar cargo real</div>
+    </div>
+    <div class="bug-body">
+      El PDF de asistencia ya lo hace bien (PRESIDENCIA, VICEPRESIDENCIA, etc.). El PDF de votación no. Inconsistencia que invalida la trazabilidad del acta.<br>
+      <em>Ej: HERNANDEZ FLOREZ MARIA HELENA → "member" · Debe decir: PRESIDENCIA</em>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> PDF votación debe leer <code>cargo_funcional</code> de <code>session_members</code> — la misma función de lookup que usa el PDF de asistencia.
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB 2: UX PENDIENTES -->
+<div class="pnl" id="p2">
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-CERRAR</span>
+      <span class="bug-sev">🟡 UX · Operativo</span>
+      <div class="bug-title">No existe botón "Cerrar Votación" — votos quedan abiertos indefinidamente</div>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> En cada tarjeta ACTIVA → botón <strong>"Cerrar Votación"</strong> (rojo) que bloquee nuevos votos, registre timestamp de cierre, cambie estado a CERRADA y ofrezca generar PDF.
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-LINK-RECOVERY</span>
+      <span class="bug-sev">🟡 UX · Crítico en sesión viva</span>
+      <div class="bug-title">Link de votación solo visible al crearla — no recuperable después</div>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> En cada tarjeta de votación (PENDIENTE o ACTIVA) → ícono <strong>📋</strong> que copie el link al portapapeles con feedback <em>"¡Copiado!"</em> por 2 segundos. Siempre disponible.
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-COPY</span>
+      <span class="bug-sev">🟡 UX · Fricción en sesión viva</span>
+      <div class="bug-title">Pantalla de confirmación de votación creada sin botón "Copiar enlace"</div>
+    </div>
+    <div class="bug-body">
+      Flujo actual: (1) alert nativo con link — solo "Aceptar", (2) pantalla de confirmación con link y botón "Abrir →" — sin copiar. El admin debe seleccionar texto manualmente.
+    </div>
+    <div class="fix-box">
+      <strong>Fix A:</strong> Eliminar alert nativo. Ir directo a pantalla de confirmación.<br>
+      <strong>Fix B:</strong> Agregar botón <strong>"📋 Copiar enlace"</strong> en pantalla de confirmación con feedback <em>"¡Copiado!"</em>
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-ROLSINVOTO</span>
+      <span class="bug-sev">🟡 UX · Bloqueo tardío genera confusión</span>
+      <div class="bug-title">Contadora y Revisor Fiscal pueden seleccionar voto — son bloqueados solo al confirmar</div>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Al identificarse por cédula, validar <code>elegible_voto</code>. Si false → mostrar de inmediato: <em>"Tu cargo ([Cargo]) no tiene voto. Asistencia ya registrada."</em> Sin mostrar opciones de votación.
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-ALERTS</span>
+      <span class="bug-sev">🟡 UX · Profesionalismo</span>
+      <div class="bug-title">window.alert() nativo en múltiples puntos — rompe la experiencia en móvil</div>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Reemplazar todos los <code>window.alert()</code> por mensajes inline (toast o banner contextual dentro del componente).
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-SESION-UX</span>
+      <span class="bug-sev">🟡 UX · Prerequisito sin control</span>
+      <div class="bug-title">"Nueva Votación" activo aunque sesión no esté instalada</div>
+    </div>
+    <div class="fix-box">
+      <strong>Fix:</strong> Si sesión no instalada → botón "Nueva Votación" deshabilitado con tooltip: <em>"Primero instala la sesión."</em> Botón "Instalar Sesión" con más protagonismo visual.
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-TIPOS</span>
+      <span class="bug-sev">🟡 UX · Nomenclatura</span>
+      <div class="bug-title">Tipos de votación incorrectos para el contexto de gobernanza</div>
+    </div>
+    <div class="fix-box">
+      Eliminar <strong>"Ponderada"</strong>. Renombrar <strong>"Simple"</strong> → <strong>"Ordinaria (A favor / En contra / Abstención)"</strong>. Mantener <strong>"Múltiple opciones"</strong>.
+    </div>
+  </div>
+
+  <div class="bug a">
+    <div class="bug-head">
+      <span class="bug-id a">VOT-MSG</span>
+      <span class="bug-sev">🟡 UX · Texto</span>
+      <div class="bug-title">Mensaje de votación no habilitada — demasiado largo</div>
+    </div>
+    <div class="fix-box">
+      <strong>Reemplazar por:</strong> <em>"La votación aún no ha sido habilitada. El administrador la activará en breve. Por favor espera."</em>
+    </div>
+  </div>
+
+  <!-- Branding y Admin integrados aquí -->
+  <div style="margin-top:24px;">
+    <div style="font-family:'Syne',sans-serif;font-size:.85em;font-weight:700;color:var(--amber);margin-bottom:10px;">🟡 BRANDING · ADMINISTRACIÓN</div>
+    <table class="mini-table">
+      <tr>
+        <td>BRAND-01/02</td>
+        <td>Footer y sección Contacto aún muestran "Pivot Consulting · pivotconsulting.com.co"</td>
+        <td>Reemplazar por: "Board Quorum · bq@pivotconsulting.com.co" (provisional)</td>
+      </tr>
+      <tr>
+        <td>ADMIN-01</td>
+        <td>Acceso a edición de miembros requiere navegar por reuniones — sin acceso directo. JD nueva desde 19 marzo sin actualizar en BD.</td>
+        <td>Acceso directo desde panel para AdminMaster y Admin-Asocolci. Funciones: ver · editar · agregar · dar de baja.</td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- TAB 3: CHECKLIST -->
+<div class="pnl" id="p3">
+
+  <div class="card" style="border-color:var(--rbr);background:rgba(239,68,68,0.03);">
+    <div class="ct" style="color:var(--red);">🔴 Críticos — No pasan a producción con esto abierto</div>
+    <ul class="chk">
+      <li><span class="sq"></span><div><strong>VOT-SUPLENCIAS</strong> — Suplente bloqueado si principal ya votó en la misma votación</div></li>
+      <li><span class="sq"></span><div><strong>VOT-JV-VOTO</strong> — JV emite 1 voto institucional · Art. 24° literal d · representante designado bloquea a los demás</div></li>
+      <li><span class="sq"></span><div><strong>VOT-INVITADO</strong> — "Continuar como invitado" eliminado del flujo de votación</div></li>
+      <li><span class="sq"></span><div><strong>VOT-LOGICA-MULTIPLE</strong> — Resultados diferenciados por tipo: Ordinaria vs Múltiple opciones</div></li>
+      <li><span class="sq"></span><div><strong>VOT-SIMULTANEA</strong> — Máximo 1 votación ACTIVA · Control al activar</div></li>
+      <li><span class="sq"></span><div><strong>VOT-LINK</strong> — Link del panel apunta a votación activa actual · No hardcodeado a votación 1</div></li>
+      <li><span class="sq"></span><div><strong>VOT-ROL</strong> — PDF votación muestra cargo real · No "member"</div></li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-color:var(--abr);">
+    <div class="ct" style="color:var(--amber);">🟡 UX — Antes de primera sesión real con cliente</div>
+    <ul class="chk">
+      <li><span class="sq"></span><div><strong>VOT-CERRAR</strong> — Botón "Cerrar Votación" en cada tarjeta ACTIVA</div></li>
+      <li><span class="sq"></span><div><strong>VOT-LINK-RECOVERY</strong> — Ícono 📋 para copiar link en cada tarjeta</div></li>
+      <li><span class="sq"></span><div><strong>VOT-COPY</strong> — Botón copiar en confirmación de creación · Sin alert nativo</div></li>
+      <li><span class="sq"></span><div><strong>VOT-ROLSINVOTO</strong> — Bloqueo al identificarse · no al confirmar</div></li>
+      <li><span class="sq"></span><div><strong>VOT-ALERTS</strong> — window.alert() reemplazados por mensajes inline</div></li>
+      <li><span class="sq"></span><div><strong>VOT-SESION-UX</strong> — "Nueva Votación" deshabilitado sin sesión instalada</div></li>
+      <li><span class="sq"></span><div><strong>VOT-TIPOS</strong> — "Ponderada" eliminada · "Simple" → "Ordinaria"</div></li>
+      <li><span class="sq"></span><div><strong>VOT-MSG</strong> — Texto de espera actualizado</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="ct" style="color:var(--gray);">Branding · Admin — Antes de mostrar a clientes externos</div>
+    <ul class="chk">
+      <li><span class="sq"></span><div><strong>BRAND-01/02</strong> — Footer y contacto actualizados a Board Quorum</div></li>
+      <li><span class="sq"></span><div><strong>ADMIN-01</strong> — Acceso directo edición miembros · BD actualizada con JD nueva (19 mar 2026)</div></li>
+    </ul>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+function show(i,btn){
+  for(var j=0;j<4;j++){var p=document.getElementById('p'+j);if(p)p.className=(i===j)?'pnl on':'pnl';}
+  document.querySelectorAll('.tb').forEach(function(t){t.className='tb';});
+  if(btn)btn.className='tb on';
+}
+</script>
+</body>
+</html>

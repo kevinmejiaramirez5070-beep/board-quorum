@@ -177,9 +177,37 @@ exports.confirmVote = async (req, res) => {
     const canVote = member.puede_votar === true || member.puede_votar === 1;
     if (!canVote) {
       return res.status(403).json({ 
-        message: 'No tienes permiso para votar en esta reunión',
+        message: 'Tu cargo no tiene derecho a voto en esta reunión. Asistencia ya registrada.',
         canVote: false
       });
+    }
+
+    // VOT-SUPLENCIAS: si es suplente, verificar que el principal no haya votado ya
+    const memberType = String(member.member_type || '').toLowerCase().trim();
+    const tipoParticipante = String(member.tipo_participante || '').toUpperCase().trim();
+    const positionUpper = String(member.position || '').toUpperCase();
+    const isSupplente = memberType === 'suplente' || tipoParticipante === 'SUPLENTE' || /\bSUPLENTE\b/.test(positionUpper);
+
+    if (isSupplente) {
+      const principalAlreadyVoted = await Vote.hasPrincipalVoted(votingId, member);
+      if (principalAlreadyVoted) {
+        return res.status(403).json({
+          message: 'El voto de tu cargo ya fue registrado por el miembro principal. Tu voto como suplente no puede registrarse.',
+          canVote: false
+        });
+      }
+    }
+
+    // VOT-JV-VOTO: si es miembro de la Junta de Vigilancia, solo 1 voto institucional
+    const isJV = memberType === 'junta_vigilancia' || tipoParticipante === 'JUNTA_DE_VIGILANCIA';
+    if (isJV) {
+      const jvAlreadyVoted = await Vote.hasJVVoted(parseInt(votingId), meeting.client_id);
+      if (jvAlreadyVoted) {
+        return res.status(403).json({
+          message: 'El voto de la Junta de Vigilancia ya fue registrado. La JV emite 1 voto institucional por votación (Art. 24°).',
+          canVote: false
+        });
+      }
     }
 
     // Registrar voto

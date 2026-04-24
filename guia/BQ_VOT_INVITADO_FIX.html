@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BQ · VOT-INVITADO — Fix Elegibilidad Votación</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0A;--card:#111c2d;--card2:#0d1520;--code:#060d18;
+  --cyan:#00C6FF;--blue:#0072FF;
+  --green:#10B981;--gbg:rgba(16,185,129,0.08);--gbr:rgba(16,185,129,0.3);
+  --red:#EF4444;--rbg:rgba(239,68,68,0.08);--rbr:rgba(239,68,68,0.3);
+  --amber:#F59E0B;--abg:rgba(245,158,11,0.08);--abr:rgba(245,158,11,0.3);
+  --gray:#9CA3AF;--border:rgba(0,198,255,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#e2e8f0;min-height:100vh;}
+
+.hdr{background:linear-gradient(135deg,#0A0A0A,#1a0a0a);border-bottom:3px solid var(--red);padding:24px 52px 18px;}
+.hdr-top{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.logo{width:34px;height:34px;background:linear-gradient(135deg,var(--red),#b91c1c);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;color:#fff;}
+.brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;}
+.hdr h1{font-family:'Syne',sans-serif;font-size:1.55em;font-weight:800;color:#fff;line-height:1.2;}
+.hdr h1 em{color:var(--red);font-style:normal;}
+.meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--gray);}
+.meta strong{color:#cbd5e1;}
+.badge{display:inline-block;margin-top:7px;background:var(--rbg);border:1px solid var(--rbr);color:var(--red);font-size:11px;font-weight:700;padding:3px 14px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;}
+
+.body{padding:36px 52px 64px;max-width:960px;width:100%;}
+
+.regla-central{background:rgba(239,68,68,0.08);border:2px solid var(--red);border-radius:12px;padding:20px 26px;margin-bottom:28px;text-align:center;}
+.regla-central .r1{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;}
+.regla-central .r2{font-family:'Syne',sans-serif;font-size:1.5em;font-weight:800;color:#fff;line-height:1.2;margin-bottom:8px;}
+.regla-central .r3{font-size:13px;color:#94a3b8;line-height:1.6;}
+
+.section{margin-bottom:28px;}
+.sec-title{font-family:'Syne',sans-serif;font-size:.8em;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--cyan);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin-bottom:12px;}
+.card.rb{border-color:var(--rbr);background:rgba(239,68,68,0.04);}
+.card.gb{border-color:var(--gbr);background:rgba(16,185,129,0.04);}
+.card.ab{border-color:var(--abr);}
+.ct{font-family:'Syne',sans-serif;font-size:.82em;font-weight:700;margin-bottom:8px;}
+.ct.r{color:var(--red);}.ct.g{color:var(--green);}.ct.a{color:var(--amber);}.ct.c{color:var(--cyan);}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+
+.code{background:var(--code);border:1px solid rgba(0,198,255,0.18);border-radius:8px;padding:14px 18px;font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.9;overflow-x:auto;margin:8px 0;}
+.code.ok{border-color:var(--gbr);}
+.code.err{border-color:var(--rbr);}
+.code-lbl{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.code-lbl.r{color:var(--red);}.code-lbl.g{color:var(--green);}.code-lbl.a{color:var(--amber);}
+.k{color:var(--amber);}.v{color:var(--green);}.cm{color:#374151;font-style:italic;}.fn{color:var(--cyan);}.er{color:var(--red);}
+
+.bl{list-style:none;padding:0;}
+.bl li{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:#94a3b8;line-height:1.6;}
+.bl li:last-child{border-bottom:none;}
+.bl li strong{color:#e2e8f0;}
+.dg{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:7px;}
+.dr{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:7px;}
+.da{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:7px;}
+
+/* FLUJO VISUAL */
+.flujo{display:flex;align-items:center;gap:0;margin:12px 0;flex-wrap:wrap;}
+.flujo-step{padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;}
+.flujo-step.ok{background:var(--gbg);border:1px solid var(--gbr);color:var(--green);}
+.flujo-step.er{background:var(--rbg);border:1px solid var(--rbr);color:var(--red);}
+.flujo-step.neu{background:var(--card2);border:1px solid var(--border);color:#94a3b8;}
+.flujo-arr{color:var(--gray);font-size:16px;padding:0 6px;}
+
+/* CASOS */
+.tests{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.test{background:var(--card2);border-radius:8px;padding:12px 14px;}
+.test-n{font-family:'DM Mono',monospace;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.test-body{font-size:12.5px;color:#94a3b8;line-height:1.55;margin-bottom:8px;}
+.test-body strong{color:#e2e8f0;}
+.test-res{font-family:'DM Mono',monospace;font-size:11px;padding:5px 9px;border-radius:5px;}
+.test-res.ok{background:var(--gbg);color:var(--green);border:1px solid var(--gbr);}
+.test-res.er{background:var(--rbg);color:var(--red);border:1px solid var(--rbr);}
+
+/* UI MOCK */
+.mock-card{background:#1e293b;border-radius:8px;padding:14px 18px;border-left:3px solid var(--red);margin:8px 0;}
+.mock-icon{font-size:22px;margin-bottom:8px;}
+.mock-title-ui{font-family:'Syne',sans-serif;font-size:.95em;font-weight:800;color:#fff;margin-bottom:6px;}
+.mock-body-ui{font-size:13px;color:#94a3b8;line-height:1.6;}
+.mock-sub-ui{font-size:11.5px;color:#475569;margin-top:6px;}
+
+code{background:rgba(0,198,255,0.08);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);}
+
+@media(max-width:768px){
+  .hdr,.body{padding-left:18px;padding-right:18px;}
+  .two,.tests{grid-template-columns:1fr;}
+  .flujo{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">BQ</div>
+    <div class="brand">Board Quorum · Fix Crítico</div>
+  </div>
+  <h1><em>VOT-INVITADO</em> — Elegibilidad de Votación</h1>
+  <div class="meta">
+    <span>📅 <strong>18 abril 2026</strong></span>
+    <span>👤 <strong>Para: Ing. Andrés Suárez Soto</strong></span>
+    <span>✍️ <strong>De: Javier Castilla Robles</strong></span>
+  </div>
+  <div class="badge">🔴 Confirmado en prueba — cédula no registrada emitió voto válido</div>
+</div>
+
+<div class="body">
+
+  <!-- REGLA CENTRAL -->
+  <div class="regla-central">
+    <div class="r1">Regla de negocio — no negociable</div>
+    <div class="r2">CÉDULA NO RECONOCIDA = NO VOTA.</div>
+    <div class="r3">No existe flujo "continuar como invitado" dentro del enlace de votación.<br>Invitados no votan. Sin excepción. Sin bypass.</div>
+  </div>
+
+  <!-- ELEGIBILIDAD -->
+  <div class="section">
+    <div class="sec-title">1 · Regla de Elegibilidad</div>
+
+    <div class="two">
+      <div class="card rb">
+        <div class="ct r">❌ Flujo actual — eliminar</div>
+        <div class="flujo">
+          <div class="flujo-step neu">Cédula no encontrada</div>
+          <div class="flujo-arr">→</div>
+          <div class="flujo-step er">"Continuar como invitado"</div>
+          <div class="flujo-arr">→</div>
+          <div class="flujo-step er">Formulario de voto</div>
+          <div class="flujo-arr">→</div>
+          <div class="flujo-step er">Voto registrado ❌</div>
+        </div>
+      </div>
+      <div class="card gb">
+        <div class="ct g">✅ Flujo correcto</div>
+        <div class="flujo">
+          <div class="flujo-step neu">Cédula no encontrada</div>
+          <div class="flujo-arr">→</div>
+          <div class="flujo-step er">Bloqueo inmediato</div>
+          <div class="flujo-arr">→</div>
+          <div class="flujo-step ok">Mensaje · Fin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code ok">
+      <div class="code-lbl g">// única condición para permitir votar</div>
+      <span class="k">if</span> (<br>
+      &nbsp;&nbsp;cedulaReconocida === <span class="v">true</span> &&<br>
+      &nbsp;&nbsp;registradoEnReunion === <span class="v">true</span> &&<br>
+      &nbsp;&nbsp;eligible_voto === <span class="v">true</span><br>
+      ) {<br>
+      &nbsp;&nbsp;<span class="fn">permitirVotar</span>()<br>
+      } <span class="k">else</span> {<br>
+      &nbsp;&nbsp;<span class="fn">bloquearVoto</span>() <span class="cm">// bloqueo antes del formulario — siempre</span><br>
+      }
+    </div>
+  </div>
+
+  <!-- MODELO DE DATOS -->
+  <div class="section">
+    <div class="sec-title">2 · Modelo de Datos — Campo status</div>
+    <div class="card cb">
+      <div class="ct c">Agregar campo status a members / session_members</div>
+      <div class="code ok">
+        <div class="code-lbl g">// status posibles</div>
+        <span class="k">status</span>: <span class="v">"habilitado" | "pendiente_validacion" | "invitado"</span><br><br>
+        <span class="cm">// regla obligatoria — ejecutar en backend al calcular elegibilidad</span><br>
+        <span class="k">if</span> (status === <span class="v">"invitado"</span>) eligible_voto = <span class="v">false</span> <span class="cm">// siempre. Sin excepción.</span><br>
+        <span class="k">if</span> (status === <span class="v">"pendiente_validacion"</span>) eligible_voto = <span class="v">false</span><br>
+        <span class="k">if</span> (status === <span class="v">"habilitado"</span> && elegible_por_cargo) eligible_voto = <span class="v">true</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKEND + FRONTEND -->
+  <div class="section">
+    <div class="sec-title">3 · Arquitectura — Dónde vive el bloqueo</div>
+    <div class="two">
+      <div class="card">
+        <div class="ct a">⚙️ Backend — Fuente de verdad</div>
+        <ul class="bl">
+          <li><span class="dg"></span><div><strong>Endpoint POST /api/voting/validate</strong> recibe <code>cedula + voting_id</code> → devuelve <code>{ eligible: bool, status, cargo }</code></div></li>
+          <li><span class="dg"></span><div>Si <code>eligible = false</code> → devuelve <strong>HTTP 403</strong>. El frontend no muestra el formulario.</div></li>
+          <li><span class="dg"></span><div>El endpoint <strong>POST /api/voting/submit</strong> revalida elegibilidad antes de registrar. Si no pasa → <strong>HTTP 403</strong>. Nunca confiar en el frontend.</div></li>
+          <li><span class="dg"></span><div>Validación en <strong>middleware</strong> del endpoint de submit: si <code>eligible_voto !== true</code> → rechazar antes de tocar la lógica de voto.</div></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ct c">🖥️ Frontend — Solo refleja lo que dice el backend</div>
+        <ul class="bl">
+          <li><span class="dg"></span><div>Al recibir cédula → llamar <code>/api/voting/validate</code> antes de renderizar cualquier opción.</div></li>
+          <li><span class="dg"></span><div>Si backend devuelve <code>eligible: false</code> → mostrar mensaje de bloqueo. No renderizar el formulario.</div></li>
+          <li><span class="dg"></span><div>El botón "Confirmar Voto" solo existe en DOM si <code>eligible: true</code> fue devuelto por el backend.</div></li>
+          <li><span class="dr"></span><div><strong>Eliminar completamente</strong> el botón / lógica "Continuar como invitado" del componente de votación.</div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card rb">
+      <div class="ct r">🔒 Seguridad — Prevenir bypass</div>
+      <ul class="bl">
+        <li><span class="dr"></span><div><strong>Acceso directo por URL</strong> (<code>/public/voting/16</code>): el backend valida cédula antes de servir cualquier dato. Sin token válido → pantalla de ingreso de cédula. Sin cédula elegible → bloqueo.</div></li>
+        <li><span class="dr"></span><div><strong>Manipulación del enlace:</strong> el voting_id en la URL no otorga elegibilidad — la elegibilidad viene de la BD, no del enlace.</div></li>
+        <li><span class="dr"></span><div><strong>Doble validación obligatoria:</strong> frontend valida para UX, backend valida para seguridad. Si el frontend falla o es manipulado, el backend rechaza igual.</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- UI -->
+  <div class="section">
+    <div class="sec-title">4 · UI — Mensaje de bloqueo</div>
+    <div class="mock-card">
+      <div class="mock-icon">🚫</div>
+      <div class="mock-title-ui">No es posible registrar su voto</div>
+      <div class="mock-body-ui">La cédula ingresada no se encuentra habilitada para esta votación. Solo pueden votar personas registradas en la reunión con derecho a voto.</div>
+      <div class="mock-sub-ui">Botón único: "Reintentar" · Sin opción "Continuar como invitado" · Sin acceso al formulario</div>
+    </div>
+  </div>
+
+  <!-- CASOS DE PRUEBA -->
+  <div class="section">
+    <div class="sec-title">5 · Casos de Prueba</div>
+    <div class="tests">
+      <div class="test">
+        <div class="test-n">TEST-01 — Flujo válido</div>
+        <div class="test-body"><strong>Entrada:</strong> Cédula reconocida · registrada en reunión · <code>eligible_voto = true</code> · <code>status = habilitado</code></div>
+        <div class="test-res ok">✅ Permite votar</div>
+      </div>
+      <div class="test">
+        <div class="test-n">TEST-02 — Cédula no reconocida</div>
+        <div class="test-body"><strong>Entrada:</strong> CC 1016035338 — no existe en BD de miembros</div>
+        <div class="test-res er">🚫 Bloqueo inmediato · Mensaje · Sin formulario</div>
+      </div>
+      <div class="test">
+        <div class="test-n">TEST-03 — Status invitado</div>
+        <div class="test-body"><strong>Entrada:</strong> Cédula encontrada · <code>status = invitado</code> → <code>eligible_voto = false</code></div>
+        <div class="test-res er">🚫 Bloqueado · Mismo mensaje · Sin formulario</div>
+      </div>
+      <div class="test">
+        <div class="test-n">TEST-04 — Bypass por URL directa</div>
+        <div class="test-body"><strong>Entrada:</strong> Usuario accede a <code>/public/voting/16</code> directo sin cédula validada</div>
+        <div class="test-res er">🚫 Backend rechaza · Redirige a pantalla de cédula</div>
+      </div>
+      <div class="test">
+        <div class="test-n">TEST-05 — Doble submit</div>
+        <div class="test-body"><strong>Entrada:</strong> Usuario elegible intenta hacer POST a <code>/api/voting/submit</code> por segunda vez</div>
+        <div class="test-res er">🚫 Middleware rechaza · HTTP 403 · Voto no registrado</div>
+      </div>
+      <div class="test">
+        <div class="test-n">TEST-06 — Status pendiente_validacion</div>
+        <div class="test-body"><strong>Entrada:</strong> Miembro nuevo aún no validado · <code>status = pendiente_validacion</code></div>
+        <div class="test-res er">🚫 Bloqueado · No vota hasta ser habilitado</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPACTO RESULTADOS -->
+  <div class="section">
+    <div class="sec-title">6 · Impacto en Resultados · PDF · Dashboard</div>
+    <div class="card rb">
+      <div class="ct r">Regla de integridad — sin excepción</div>
+      <ul class="bl">
+        <li><span class="dr"></span><div>Votos de cédulas no elegibles <strong>nunca entran al conteo</strong>. Si llegaron por el bug actual, deben invalidarse retroactivamente en las sesiones de prueba.</div></li>
+        <li><span class="dr"></span><div>La tabla de votos debe incluir <code>member_id + eligible_voto_al_momento</code> para trazabilidad. Si <code>eligible_voto = false</code> al momento del voto → voto marcado como inválido.</div></li>
+        <li><span class="dr"></span><div>El PDF de resultados y el dashboard solo agregan votos donde <code>eligible_voto = true</code>. Nunca conteo bruto de la tabla de votos.</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- RECOMENDACION -->
+  <div class="section">
+    <div class="sec-title">7 · Para el Ingeniero — 3 pasos en orden</div>
+    <div class="card gb">
+      <div class="ct g">Implementar en este orden exacto</div>
+      <ul class="bl">
+        <li><span class="dg"></span><div><strong>1. Backend primero:</strong> Agregar campo <code>status</code> a <code>members</code>. Implementar middleware de elegibilidad en <code>/api/voting/submit</code>. Revalidar aunque el frontend diga que es elegible.</div></li>
+        <li><span class="dg"></span><div><strong>2. Eliminar del frontend:</strong> Borrar botón/lógica "Continuar como invitado" del componente de votación. Reemplazar por mensaje de bloqueo con botón "Reintentar".</div></li>
+        <li><span class="dg"></span><div><strong>3. Correr los 6 tests</strong> antes de cerrar el fix. Verificar especialmente TEST-04 (bypass URL) y TEST-05 (doble submit) — son los más frecuentes en producción.</div></li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

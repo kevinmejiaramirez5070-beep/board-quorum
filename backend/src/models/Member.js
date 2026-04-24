@@ -222,7 +222,8 @@ class Member {
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     const [rows] = await db.execute(
       `SELECT id, name, numero_documento, tipo_documento, position, rol_organico, 
-              cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante
+              cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante,
+              member_type, principal_id
        FROM members 
        WHERE numero_documento = ? AND client_id = ? AND ${activeCondition}`,
       [documentNumber, clientId]
