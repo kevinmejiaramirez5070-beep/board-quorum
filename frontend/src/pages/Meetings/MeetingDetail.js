@@ -25,6 +25,8 @@ const MeetingDetail = () => {
   const [attendanceLink, setAttendanceLink] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [showQuorumProjection, setShowQuorumProjection] = useState(false);
+  const [quorumDetail, setQuorumDetail] = useState(null);
+  const [showQuorumDetail, setShowQuorumDetail] = useState(false);
   const [showJvModal, setShowJvModal] = useState(false);
   const [jvRepresentative, setJvRepresentative] = useState(null);
   const [jvRepresentativeId, setJvRepresentativeId] = useState(null);
@@ -179,6 +181,16 @@ const MeetingDetail = () => {
     } catch (error) {
       console.error('Error activating voting:', error);
       setErrorMessage(error.response?.data?.message || t('errorActivatingVoting'));
+    }
+  };
+
+  const handleLoadQuorumDetail = async () => {
+    try {
+      const res = await meetingService.getQuorumDetail(meetingIdParam);
+      setQuorumDetail(res.data);
+      setShowQuorumDetail(true);
+    } catch (err) {
+      console.error('Error cargando detalle de quórum:', err);
     }
   };
 
@@ -825,6 +837,14 @@ const MeetingDetail = () => {
                     🖥️ {language === 'es' ? 'Proyectar en pantalla completa' : 'Project full screen'}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleLoadQuorumDetail}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                >
+                  🔍 {language === 'es' ? 'Ver detalle' : 'View detail'}
+                </button>
               </div>
             </div>
             <div className="quorum-stats">
@@ -863,6 +883,62 @@ const MeetingDetail = () => {
                 : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached')
               }
             </div>
+
+            {showQuorumDetail && quorumDetail && (
+              <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <strong style={{ fontSize: '14px' }}>
+                    🔍 {language === 'es' ? 'Detalle de quórum' : 'Quorum breakdown'}
+                    <span style={{ marginLeft: '10px', color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>
+                      {language === 'es'
+                        ? `${quorumDetail.computable_votes} computables de ${quorumDetail.total_present} presentes`
+                        : `${quorumDetail.computable_votes} countable of ${quorumDetail.total_present} present`}
+                    </span>
+                  </strong>
+                  <button type="button" onClick={() => setShowQuorumDetail(false)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: 'var(--text-secondary)' }}>✕</button>
+                </div>
+                {quorumDetail.jv_institutional_vote > 0 && (
+                  <div style={{ background: '#e0f2fe', borderRadius: '6px', padding: '8px 12px', marginBottom: '10px', fontSize: '13px' }}>
+                    ⚖️ <strong>Junta de Vigilancia</strong>: {quorumDetail.jv_members.join(', ')} → <strong>+1 voto institucional</strong>
+                  </div>
+                )}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-secondary)', textAlign: 'left' }}>
+                        <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)' }}>
+                          {language === 'es' ? 'Nombre' : 'Name'}
+                        </th>
+                        <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)' }}>
+                          {language === 'es' ? 'Cargo' : 'Role'}
+                        </th>
+                        <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
+                          {language === 'es' ? 'Cuenta' : 'Counts'}
+                        </th>
+                        <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)' }}>
+                          {language === 'es' ? 'Motivo' : 'Reason'}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quorumDetail.breakdown.map((row, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border-color)', background: row.counts ? '#f0fdf4' : 'transparent' }}>
+                          <td style={{ padding: '6px 10px', fontWeight: 500 }}>{row.name || '—'}</td>
+                          <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{row.role || '—'}</td>
+                          <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                            {row.counts ? '✅' : '—'}
+                          </td>
+                          <td style={{ padding: '6px 10px', fontSize: '12px', color: row.counts ? '#166534' : 'var(--text-secondary)' }}>
+                            {row.reason_label}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

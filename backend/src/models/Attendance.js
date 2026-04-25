@@ -1,5 +1,17 @@
 const db = require('../config/database');
 
+const REASON_LABELS = {
+  PRINCIPAL_CUENTA:                    'Cuenta — principal presente',
+  SUPLENTE_ACTUANDO_PRINCIPAL_AUSENTE: 'Cuenta — suplente actuando (principal ausente)',
+  JV_VOTO_INSTITUCIONAL:               'No suma individualmente — voto institucional JV (+1 total)',
+  SUPLENTE_PRINCIPAL_PRESENTE_ID:      'No cuenta — principal presente (ID directo)',
+  SUPLENTE_PRINCIPAL_PRESENTE_ROL:     'No cuenta — principal presente (mismo rol orgánico)',
+  SUPLENTE_PRINCIPAL_PRESENTE_CARGO:   'No cuenta — principal presente (cargo coincidente)',
+  SIN_DERECHO_QUORUM:                  'No cuenta — sin derecho a quórum (cuenta_quorum=false)',
+  PENDIENTE_APROBACION:                'No cuenta — asistencia pendiente de aprobación',
+  MANUAL_NO_MIEMBRO:                   'No cuenta — registro manual sin miembro asociado',
+};
+
 class Attendance {
   static async findByMeeting(meetingId) {
     const [rows] = await db.execute(
@@ -155,20 +167,26 @@ class Attendance {
           if (principalPresentByOrg) continue;
         }
 
-        // c) Fallback posición: "TESORERO SUPLENTE" → palabras base ["TESORERO"]
-        //    busca si hay un no-suplente presente cuyo position comparte esa palabra
+        // c) Fallback posición: "TESORERO SUPLENTE" → base "TESORERO"
+        //    Usa coincidencia de PALABRA COMPLETA (no includes) para evitar
+        //    falsos positivos como "FISCAL" ⊂ "FISCALIA".
         const posBase = norm(row.position)
           .replace(/\bSUPLENTE\b/g, '')
+          .replace(/\bPRINCIPAL\b/g, '')
           .trim()
           .split(/\s+/)
-          .filter(w => w.length > 3); // descarta preposiciones / palabras cortas
+          .filter(w => w.length > 3);
 
         if (posBase.length > 0) {
           const principalPresentByPos = rows.some(r => {
             if (isJvRow(r) || isSuplenteRow(r)) return false;
             const rPos = norm(r.position);
             const rOrg = norm(r.rol_organico);
-            return posBase.some(w => rPos.includes(w) || rOrg.includes(w));
+            // Coincidencia EXACTA de palabra (word boundary) en position o rol_organico
+            return posBase.some(w => {
+              const re = new RegExp(`\\b${w}\\b`);
+              return re.test(rPos) || re.test(rOrg);
+            });
           });
           if (principalPresentByPos) continue;
         }
@@ -183,6 +201,159 @@ class Attendance {
 
     if (jvPresent) votes += 1;
     return votes;
+  }
+
+  /**
+   * Detalle de quórum — devuelve cada asistente con su estado computable y el motivo.
+   * Usa exactamente las mismas reglas que countPresentWithVote para coherencia total.
+   */
+  static async getQuorumBreakdown(meetingId) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const cuentaQuorumCond = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
+    const pendingOkCond = isPostgreSQL
+      ? 'COALESCE(a.pending_approval, false) = false'
+      : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
+
+    // Todos los presentes (incluyendo los que NO cuentan) para el reporte completo
+    const [allPresent] = await db.execute(
+      `SELECT a.id as attendance_id, a.member_id, a.pending_approval,
+              COALESCE(m.name, a.manual_name) AS name,
+              COALESCE(m.rol_organico, m.position, m.role, a.manual_position) AS display_role,
+              m.cuenta_quorum, m.member_type, m.tipo_participante,
+              m.principal_id, m.rol_organico, m.position
+       FROM attendance a
+       LEFT JOIN members m ON a.member_id = m.id
+       WHERE a.meeting_id = ? AND a.status = 'present'
+       ORDER BY a.arrival_time, a.id`,
+      [meetingId]
+    );
+
+    const norm = (s) => String(s || '').toUpperCase().trim();
+    const isPending = (r) => {
+      if (isPostgreSQL) return r.pending_approval === true || r.pending_approval === 't';
+      return r.pending_approval === 1 || r.pending_approval === true;
+    };
+
+    const isJvRow = (r) => {
+      const mt = String(r.member_type || '').toLowerCase().trim();
+      const tp = norm(r.tipo_participante);
+      return mt === 'junta_vigilancia' || tp === 'JUNTA_DE_VIGILANCIA';
+    };
+
+    const isSuplenteRow = (r) => {
+      const mt = String(r.member_type || '').toLowerCase().trim();
+      const tp = norm(r.tipo_participante);
+      const pos = norm(r.position);
+      return mt === 'suplente' || tp === 'SUPLENTE' || /\bSUPLENTE\b/.test(pos);
+    };
+
+    // Solo los que TIENEN member_id, cuenta_quorum=true, y no están pendientes
+    const eligible = allPresent.filter(r => {
+      if (!r.member_id) return false;
+      const cq = r.cuenta_quorum;
+      const cqOk = cq === true || cq === 1 || cq === '1' || cq === 't';
+      return cqOk && !isPending(r);
+    });
+
+    const presentIds = new Set(eligible.map(r => Number(r.member_id)));
+
+    const breakdown = [];
+    let votes = 0;
+    let jvPresent = false;
+    const jvMembers = [];
+
+    for (const row of allPresent) {
+      // Sin member_id → manual / invitado
+      if (!row.member_id) {
+        breakdown.push({ ...row, counts: false, reason: 'MANUAL_NO_MIEMBRO' });
+        continue;
+      }
+      // Pendiente de aprobación
+      if (isPending(row)) {
+        breakdown.push({ ...row, counts: false, reason: 'PENDIENTE_APROBACION' });
+        continue;
+      }
+      // Sin cuenta_quorum
+      const cq = row.cuenta_quorum;
+      const cqOk = cq === true || cq === 1 || cq === '1' || cq === 't';
+      if (!cqOk) {
+        breakdown.push({ ...row, counts: false, reason: 'SIN_DERECHO_QUORUM' });
+        continue;
+      }
+
+      if (isJvRow(row)) {
+        jvPresent = true;
+        jvMembers.push(row.name);
+        breakdown.push({ ...row, counts: false, reason: 'JV_VOTO_INSTITUCIONAL' });
+        continue;
+      }
+
+      if (isSuplenteRow(row)) {
+        // a) principal_id directo
+        if (row.principal_id && presentIds.has(Number(row.principal_id))) {
+          breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_ID' });
+          continue;
+        }
+        // b) Fallback rol_organico exacto
+        if (norm(row.rol_organico)) {
+          const matchByOrg = eligible.some(r =>
+            !isJvRow(r) && !isSuplenteRow(r) &&
+            norm(r.rol_organico) === norm(row.rol_organico)
+          );
+          if (matchByOrg) {
+            breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_ROL' });
+            continue;
+          }
+        }
+        // c) Fallback posición (word boundary)
+        const posBase = norm(row.position)
+          .replace(/\bSUPLENTE\b/g, '')
+          .replace(/\bPRINCIPAL\b/g, '')
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 3);
+
+        if (posBase.length > 0) {
+          const matchByPos = eligible.some(r => {
+            if (isJvRow(r) || isSuplenteRow(r)) return false;
+            const rPos = norm(r.position);
+            const rOrg = norm(r.rol_organico);
+            return posBase.some(w => {
+              const re = new RegExp(`\\b${w}\\b`);
+              return re.test(rPos) || re.test(rOrg);
+            });
+          });
+          if (matchByPos) {
+            breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_CARGO' });
+            continue;
+          }
+        }
+        // El principal está ausente → el suplente cuenta
+        votes++;
+        breakdown.push({ ...row, counts: true, reason: 'SUPLENTE_ACTUANDO_PRINCIPAL_AUSENTE' });
+      } else {
+        // Principal u otro tipo elegible
+        votes++;
+        breakdown.push({ ...row, counts: true, reason: 'PRINCIPAL_CUENTA' });
+      }
+    }
+
+    if (jvPresent) votes += 1;
+
+    return {
+      total_present: allPresent.length,
+      computable_votes: votes,
+      jv_institutional_vote: jvPresent ? 1 : 0,
+      jv_members: jvMembers,
+      breakdown: breakdown.map(r => ({
+        name: r.name,
+        role: r.display_role,
+        member_type: r.member_type || r.tipo_participante || 'PRINCIPAL',
+        counts: r.counts,
+        reason: r.reason,
+        reason_label: REASON_LABELS[r.reason] || r.reason
+      }))
+    };
   }
 
   static async countByStatus(meetingId, status) {

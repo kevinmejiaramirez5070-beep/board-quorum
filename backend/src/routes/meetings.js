@@ -9,6 +9,7 @@ router.get('/', auth, meetingController.getAllMeetings);
 router.get('/public/:id', meetingController.getPublicMeeting);
 router.get('/:id', auth, meetingController.getMeeting);
 router.get('/:id/quorum', auth, meetingController.getQuorum);
+router.get('/:id/quorum-detail', auth, meetingController.getQuorumDetail);
 router.get('/:id/validate-installation', auth, meetingController.validateInstallation);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)

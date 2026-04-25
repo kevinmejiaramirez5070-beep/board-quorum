@@ -268,3 +268,24 @@ exports.getJvRepresentative = async (req, res) => {
   }
 };
 
+exports.getQuorumDetail = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+
+    const breakdown = await Attendance.getQuorumBreakdown(req.params.id);
+    const QuorumService = require('../services/quorumService');
+    const quorumInfo = await QuorumService.getQuorumInfo(req.params.id, req.user.client_id);
+
+    res.json({
+      ...breakdown,
+      required: quorumInfo.required,
+      quorum_met: quorumInfo.valid,
+      meeting_type: quorumInfo.organLabel
+    });
+  } catch (error) {
+    console.error('Error in getQuorumDetail:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
