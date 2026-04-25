@@ -14,6 +14,7 @@ const Members = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   
   // Authorized NO puede editar miembros
   const canEditMembers = user?.role === 'admin' || user?.role === 'admin_master';
@@ -76,6 +77,7 @@ const Members = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const updated = { ...formData, [name]: type === 'checkbox' ? checked : value };
+    if (saveError) setSaveError(null);
 
     // Auto-ajuste: CONTABILIDAD y REVISORIA no cuentan para quórum ni votan
     if (name === 'rol_organico') {
@@ -134,7 +136,7 @@ const Members = () => {
     } catch (error) {
       console.error('Error saving member:', error);
       const errorMessage = error.response?.data?.message || error.message || t('errorSavingMember');
-      alert(errorMessage);
+      setSaveError(errorMessage);
     }
   };
 
@@ -421,6 +423,15 @@ const Members = () => {
               </div>
 
               <div className="form-actions">
+                {saveError && (
+                  <div style={{ 
+                    background: '#fee2e2', border: '1px solid #f87171', borderRadius: '6px', 
+                    padding: '10px 14px', color: '#b91c1c', marginBottom: '8px', width: '100%',
+                    fontSize: '14px'
+                  }}>
+                    ⚠️ {saveError}
+                  </div>
+                )}
                 <button type="submit" className="btn btn-primary">
                   {editingId ? t('update') : t('create')}
                 </button>
