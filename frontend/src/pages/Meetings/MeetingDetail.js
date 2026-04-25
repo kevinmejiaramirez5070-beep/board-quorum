@@ -1040,21 +1040,7 @@ const MeetingDetail = () => {
                       📄 {language === 'es' ? 'Generar PDF Asistencia' : 'Generate Attendance PDF'}
                     </button>
                   )}
-                  {/* Botón designar representante JV — solo si hay JV en asistencia */}
-                  {canAuthorizedLive && attendance.some(a =>
-                    (String(a.role || '').toUpperCase().includes('VIGILANCIA') ||
-                     String(a.role || '').toUpperCase().includes('JV')) && a.status === 'present'
-                  ) && (
-                    <button
-                      className="btn"
-                      onClick={() => setShowJvModal(true)}
-                      style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.4)', fontWeight: 600 }}
-                    >
-                      ⚖️ {jvRepresentative
-                        ? (language === 'es' ? `Rep. JV: ${jvRepresentative.member_name || ''}` : `JV Rep: ${jvRepresentative.member_name || ''}`)
-                        : (language === 'es' ? 'Designar Rep. JV' : 'Designate JV Rep.')}
-                    </button>
-                  )}
+                  {/* Botón designar representante JV — movido a sección Votaciones */}
                   <button 
                     className="btn btn-primary"
                     onClick={() => navigate(`/meetings/${id}/attendance/register`)}
@@ -1212,6 +1198,26 @@ const MeetingDetail = () => {
                     >
                       {t('newVoting')}
                     </button>
+                  )}
+
+                  {/* Botón Designar Rep. JV — solo para votaciones, no afecta quórum */}
+                  {canAuthorizedLive && attendance.some(a =>
+                    (String(a.role || '').toUpperCase().includes('VIGILANCIA') ||
+                     String(a.role || '').toUpperCase().includes('JV')) && a.status === 'present'
+                  ) && (
+                    <>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>|</span>
+                      <button
+                        className="btn"
+                        onClick={() => setShowJvModal(true)}
+                        style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.4)', fontWeight: 600, fontSize: '13px' }}
+                        title={language === 'es' ? 'Define quién emite el voto institucional de JV en cada votación' : 'Define who casts the JV institutional vote'}
+                      >
+                        ⚖️ {jvRepresentative
+                          ? (language === 'es' ? `Voto JV: ${jvRepresentative.member_name || ''}` : `JV Vote: ${jvRepresentative.member_name || ''}`)
+                          : (language === 'es' ? 'Designar voto JV' : 'Designate JV vote')}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
