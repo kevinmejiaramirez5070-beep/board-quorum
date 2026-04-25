@@ -85,18 +85,13 @@ class Attendance {
    * Cuenta votos computables para quórum (reglas ASOCOLCI).
    *
    * Reglas:
-   *  1. JV (junta_vigilancia): suma exactamente 1 si hay al menos 1 presente, sin importar cuántos asistan.
-   *  2. Suplente: suma 1 SOLO si su principal NO está presente.
-   *     Detección de suplente (en orden):
-   *       a) member_type = 'suplente'
-   *       b) tipo_participante = 'SUPLENTE'
-   *       c) position contiene la palabra 'SUPLENTE' (cubre datos históricos sin tipo_participante)
-   *     Detección de que el principal está presente (en orden):
-   *       a) principal_id apunta a un miembro que también está presente
-   *       b) Fallback rol_organico: hay algún principal presente con mismo rol_organico
-   *       c) Fallback posición: hay algún no-suplente presente cuyo position comparte la
-   *          palabra base del cargo (ej: "TESORERO SUPLENTE" → busca presente con "TESORERO")
-   *  3. Principal (cualquier otro): suma 1.
+   *  1. JV (junta_vigilancia): suma exactamente 1 si hay al menos 1 presente.
+   *  2. Suplente: suma 1 SOLO si su principal específico NO está presente.
+   *     Detección de suplente: member_type='suplente' | tipo_participante='SUPLENTE' | 'SUPLENTE' en position.
+   *     Detección del principal: SOLO por principal_id (vínculo directo del par).
+   *     Sin fallbacks por rol_organico ni por position — roles genéricos como "VOCALES"
+   *     cruzarían pares distintos y generarían falsos negativos.
+   *  3. Principal: suma 1.
    *  Solo se cuentan miembros con cuenta_quorum=true y sin pending_approval.
    */
   static async countPresentWithVote(meetingId) {
@@ -153,45 +148,15 @@ class Attendance {
       }
 
       if (isSuplenteRow(row)) {
-        // a) principal_id directo: si ese miembro está presente → no cuenta
+        // Regla: el suplente solo NO cuenta si su principal específico está presente.
+        // Detección SOLO por principal_id (vínculo directo del par).
+        // NO se usan fallbacks por rol_organico ni por position, porque roles genéricos
+        // como "VOCALES" causarían falsos positivos al cruzar pares distintos.
         if (row.principal_id && presentIds.has(Number(row.principal_id))) {
+          // Principal presente → suplente no suma
           continue;
         }
-
-        // b) Fallback rol_organico: si hay un principal presente con mismo rol_organico
-        if (norm(row.rol_organico)) {
-          const principalPresentByOrg = rows.some(r =>
-            !isJvRow(r) && !isSuplenteRow(r) &&
-            norm(r.rol_organico) === norm(row.rol_organico)
-          );
-          if (principalPresentByOrg) continue;
-        }
-
-        // c) Fallback posición: "TESORERO SUPLENTE" → base "TESORERO"
-        //    Usa coincidencia de PALABRA COMPLETA (no includes) para evitar
-        //    falsos positivos como "FISCAL" ⊂ "FISCALIA".
-        const posBase = norm(row.position)
-          .replace(/\bSUPLENTE\b/g, '')
-          .replace(/\bPRINCIPAL\b/g, '')
-          .trim()
-          .split(/\s+/)
-          .filter(w => w.length > 3);
-
-        if (posBase.length > 0) {
-          const principalPresentByPos = rows.some(r => {
-            if (isJvRow(r) || isSuplenteRow(r)) return false;
-            const rPos = norm(r.position);
-            const rOrg = norm(r.rol_organico);
-            // Coincidencia EXACTA de palabra (word boundary) en position o rol_organico
-            return posBase.some(w => {
-              const re = new RegExp(`\\b${w}\\b`);
-              return re.test(rPos) || re.test(rOrg);
-            });
-          });
-          if (principalPresentByPos) continue;
-        }
-
-        // El principal no está presente → el suplente sí suma
+        // Principal ausente (o sin vínculo definido) → suplente suma
         votes++;
       } else {
         // Principal u otro tipo con cuenta_quorum: suma 1
@@ -289,46 +254,12 @@ class Attendance {
       }
 
       if (isSuplenteRow(row)) {
-        // a) principal_id directo
+        // Solo usar principal_id — sin fallbacks por rol_organico ni posición
         if (row.principal_id && presentIds.has(Number(row.principal_id))) {
           breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_ID' });
           continue;
         }
-        // b) Fallback rol_organico exacto
-        if (norm(row.rol_organico)) {
-          const matchByOrg = eligible.some(r =>
-            !isJvRow(r) && !isSuplenteRow(r) &&
-            norm(r.rol_organico) === norm(row.rol_organico)
-          );
-          if (matchByOrg) {
-            breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_ROL' });
-            continue;
-          }
-        }
-        // c) Fallback posición (word boundary)
-        const posBase = norm(row.position)
-          .replace(/\bSUPLENTE\b/g, '')
-          .replace(/\bPRINCIPAL\b/g, '')
-          .trim()
-          .split(/\s+/)
-          .filter(w => w.length > 3);
-
-        if (posBase.length > 0) {
-          const matchByPos = eligible.some(r => {
-            if (isJvRow(r) || isSuplenteRow(r)) return false;
-            const rPos = norm(r.position);
-            const rOrg = norm(r.rol_organico);
-            return posBase.some(w => {
-              const re = new RegExp(`\\b${w}\\b`);
-              return re.test(rPos) || re.test(rOrg);
-            });
-          });
-          if (matchByPos) {
-            breakdown.push({ ...row, counts: false, reason: 'SUPLENTE_PRINCIPAL_PRESENTE_CARGO' });
-            continue;
-          }
-        }
-        // El principal está ausente → el suplente cuenta
+        // Principal ausente (o sin vínculo) → el suplente cuenta
         votes++;
         breakdown.push({ ...row, counts: true, reason: 'SUPLENTE_ACTUANDO_PRINCIPAL_AUSENTE' });
       } else {

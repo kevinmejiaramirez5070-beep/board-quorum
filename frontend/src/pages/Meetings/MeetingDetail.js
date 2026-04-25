@@ -277,8 +277,19 @@ const MeetingDetail = () => {
   };
 
   // Generar PDF de asistencia
-  const generateAttendancePDF = () => {
+  const generateAttendancePDF = async () => {
     if (!meeting || !attendance) return;
+
+    // Cargar detalle de quórum para el PDF (no recalcula, usa backend)
+    let pdfQuorumDetail = quorumDetail;
+    if (!pdfQuorumDetail) {
+      try {
+        const res = await meetingService.getQuorumDetail(meetingIdParam);
+        pdfQuorumDetail = res.data;
+      } catch (e) {
+        console.warn('No se pudo cargar detalle de quórum para PDF:', e);
+      }
+    }
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -336,6 +347,77 @@ const MeetingDetail = () => {
         : (language === 'es' ? 'Quorum no alcanzado' : 'Quorum not reached'), 
         margin, yPos);
       yPos += lineHeight * 2;
+    }
+
+    // ── Detalle de quórum (trazabilidad) ─────────────────────────────────────
+    if (pdfQuorumDetail && pdfQuorumDetail.breakdown && pdfQuorumDetail.breakdown.length > 0) {
+      if (yPos > doc.internal.pageSize.getHeight() - 50) { doc.addPage(); yPos = margin; }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'Detalle de Quórum' : 'Quorum Breakdown', margin, yPos);
+      yPos += lineHeight * 0.5;
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(language === 'es'
+        ? `Votos computables: ${pdfQuorumDetail.computable_votes}  |  Total presentes: ${pdfQuorumDetail.total_present}  |  Voto institucional JV: ${pdfQuorumDetail.jv_institutional_vote}`
+        : `Computable votes: ${pdfQuorumDetail.computable_votes}  |  Total present: ${pdfQuorumDetail.total_present}  |  JV institutional vote: ${pdfQuorumDetail.jv_institutional_vote}`,
+        margin, yPos);
+      yPos += lineHeight;
+
+      // Encabezado de tabla
+      const colName   = margin;
+      const colRole   = margin + 65;
+      const colCounts = margin + 115;
+      const colReason = margin + 127;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 3;
+      doc.text(language === 'es' ? 'Nombre'  : 'Name',   colName,   yPos);
+      doc.text(language === 'es' ? 'Cargo'   : 'Role',   colRole,   yPos);
+      doc.text(language === 'es' ? 'Cuenta'  : 'Counts', colCounts, yPos);
+      doc.text(language === 'es' ? 'Motivo'  : 'Reason', colReason, yPos);
+      yPos += 3;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += lineHeight * 0.7;
+
+      doc.setFont('helvetica', 'normal');
+      pdfQuorumDetail.breakdown.forEach((row) => {
+        if (yPos > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); yPos = margin; }
+        const nameLines = doc.splitTextToSize(displayNameWithAccents(row.name || '—'), 60);
+        const roleLines = doc.splitTextToSize(displayNameWithAccents(row.role || '—'), 48);
+        const countsText = row.counts ? (language === 'es' ? 'SÍ' : 'YES') : 'NO';
+        const reasonLines = doc.splitTextToSize(row.reason_label || row.reason || '—', pageWidth - colReason - margin);
+        const rowH = lineHeight * Math.max(nameLines.length, roleLines.length, reasonLines.length, 1);
+
+        if (row.counts) doc.setTextColor(0, 100, 0);
+        else doc.setTextColor(100, 100, 100);
+
+        doc.text(nameLines,   colName,   yPos);
+        doc.text(roleLines,   colRole,   yPos);
+        doc.text(countsText,  colCounts, yPos);
+        doc.text(reasonLines, colReason, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += rowH;
+      });
+
+      // JV summary
+      if (pdfQuorumDetail.jv_members && pdfQuorumDetail.jv_members.length > 0) {
+        if (yPos > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); yPos = margin; }
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.text(
+          language === 'es'
+            ? `Junta de Vigilancia presente: ${pdfQuorumDetail.jv_members.join(', ')} → +1 voto institucional`
+            : `Oversight Board present: ${pdfQuorumDetail.jv_members.join(', ')} → +1 institutional vote`,
+          margin, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += lineHeight;
+      }
+      yPos += lineHeight * 0.5;
     }
 
     // Lista de asistencia
