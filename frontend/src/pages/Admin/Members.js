@@ -311,6 +311,7 @@ const Members = () => {
                       <option value="">{language === 'es' ? 'Seleccionar Cargo Funcional' : 'Select Functional Position'}</option>
                       <option value="PRESIDENTE">{language === 'es' ? 'Presidente' : 'President'}</option>
                       <option value="VICEPRESIDENTE">{language === 'es' ? 'Vicepresidente' : 'Vice President'}</option>
+                      <option value="SECRETARIA PRINCIPAL">{language === 'es' ? 'Secretaría Principal' : 'Principal Secretary'}</option>
                       <option value="SUPLENTE SECRETARIA">{language === 'es' ? 'Suplente Secretaria' : 'Alternate Secretary'}</option>
                       <option value="TESORERO PRINCIPAL">{language === 'es' ? 'Tesorero Principal' : 'Principal Treasurer'}</option>
                       <option value="TESORERO SUPLENTE">{language === 'es' ? 'Tesorero Suplente' : 'Alternate Treasurer'}</option>
