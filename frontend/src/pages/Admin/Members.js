@@ -108,6 +108,7 @@ const Members = () => {
         name: formData.name.trim(),
         rol_organico: formData.rol_organico || null,
         position: formData.cargo || null,
+        cargo_funcional: formData.cargo || null,
         role: formData.role || 'member',
         member_type: member_type,
         principal_id: formData.tipo_participante === 'SUPLENTE' && formData.principal_id ? parseInt(formData.principal_id, 10) : null,

@@ -23,47 +23,73 @@ class Member {
 
   static async create(data) {
     const { 
-      client_id, product_id = null, name, email, role, position, 
+      client_id, product_id = null, name, email = null, role = 'member', position = null,
       member_type = 'principal', principal_id = null, user_id = null,
       tipo_documento = null, numero_documento = null, rol_organico = null,
       tipo_participante = null, rol_en_votacion = null,
+      cargo_funcional = null,
       cuenta_quorum = 1, puede_votar = 1
     } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
-    const cuentaQuorumValue = isPostgreSQL ? (cuenta_quorum ? 'true' : 'false') : cuenta_quorum;
-    const puedeVotarValue = isPostgreSQL ? (puede_votar ? 'true' : 'false') : puede_votar;
+    const cuentaQuorumValue = isPostgreSQL ? (cuenta_quorum ? 'true' : 'false') : (cuenta_quorum ? 1 : 0);
+    const puedeVotarValue = isPostgreSQL ? (puede_votar ? 'true' : 'false') : (puede_votar ? 1 : 0);
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
-    const [rows, fields] = await db.execute(
-      `INSERT INTO members (
-        client_id, product_id, name, email, role, position, 
-        member_type, principal_id, user_id,
-        tipo_documento, numero_documento, rol_organico,
-        tipo_participante, rol_en_votacion,
-        cuenta_quorum, puede_votar,
-        active, created_at
-      )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
-      [
-        client_id, product_id, name, email, role, position, 
-        member_type, principal_id, user_id,
-        tipo_documento, numero_documento, rol_organico,
-        tipo_participante, rol_en_votacion
-      ]
-    );
-    // PostgreSQL: el wrapper devuelve [rows, fields], y rows[0].id contiene el ID
-    // MySQL: el wrapper devuelve [result, fields], y result.insertId contiene el ID
-    if (isPostgreSQL) {
-      return rows?.[0]?.id;
+
+    // Intentar incluir cargo_funcional si la columna existe en la BD
+    // Si no existe se hace el INSERT sin ella (fallback)
+    try {
+      const [rows] = await db.execute(
+        `INSERT INTO members (
+          client_id, product_id, name, email, role, position,
+          member_type, principal_id, user_id,
+          tipo_documento, numero_documento, rol_organico,
+          tipo_participante, rol_en_votacion, cargo_funcional,
+          cuenta_quorum, puede_votar,
+          active, created_at
+        )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
+        [
+          client_id, product_id, name, email, role, position,
+          member_type, principal_id, user_id,
+          tipo_documento, numero_documento, rol_organico,
+          tipo_participante, rol_en_votacion, cargo_funcional
+        ]
+      );
+      if (isPostgreSQL) return rows?.[0]?.id;
+      return rows?.insertId;
+    } catch (colErr) {
+      // Si cargo_funcional no existe en la BD, reintentar sin esa columna
+      if (colErr.message && (colErr.message.includes('cargo_funcional') || colErr.message.includes('column') || colErr.message.includes('Unknown column'))) {
+        const [rows] = await db.execute(
+          `INSERT INTO members (
+            client_id, product_id, name, email, role, position,
+            member_type, principal_id, user_id,
+            tipo_documento, numero_documento, rol_organico,
+            tipo_participante, rol_en_votacion,
+            cuenta_quorum, puede_votar,
+            active, created_at
+          )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cuentaQuorumValue}, ${puedeVotarValue}, ${activeValue}, NOW())${returningClause}`,
+          [
+            client_id, product_id, name, email, role, position,
+            member_type, principal_id, user_id,
+            tipo_documento, numero_documento, rol_organico,
+            tipo_participante, rol_en_votacion
+          ]
+        );
+        if (isPostgreSQL) return rows?.[0]?.id;
+        return rows?.insertId;
+      }
+      throw colErr;
     }
-    return rows?.insertId;
   }
 
   static async update(id, data) {
     const { 
       product_id, name, email, role, position, member_type, principal_id, user_id,
       tipo_documento, numero_documento, rol_organico,
-      tipo_participante, rol_en_votacion,
+      tipo_participante, rol_en_votacion, cargo_funcional,
       cuenta_quorum, puede_votar
     } = data;
     const updateFields = [];
@@ -120,6 +146,10 @@ class Member {
     if (rol_en_votacion !== undefined) {
       updateFields.push('rol_en_votacion = ?');
       updateValues.push(rol_en_votacion);
+    }
+    if (cargo_funcional !== undefined) {
+      updateFields.push('cargo_funcional = ?');
+      updateValues.push(cargo_funcional);
     }
     if (cuenta_quorum !== undefined) {
       updateFields.push('cuenta_quorum = ?');

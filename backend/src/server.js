@@ -27,6 +27,36 @@ async function fixNonVotingRoles() {
   }
 }
 
+// Migración: agregar columna cargo_funcional si no existe
+async function addCargoFuncionalColumn() {
+  try {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    if (isPostgreSQL) {
+      await db.execute(`ALTER TABLE members ADD COLUMN IF NOT EXISTS cargo_funcional VARCHAR(100) NULL`);
+    } else {
+      // MySQL: verificar si ya existe antes de añadir
+      const [cols] = await db.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'members' AND COLUMN_NAME = 'cargo_funcional'`
+      );
+      if (cols.length === 0) {
+        await db.execute(`ALTER TABLE members ADD COLUMN cargo_funcional VARCHAR(100) NULL`);
+        console.log('✅ [migration] Columna cargo_funcional agregada a members');
+      }
+    }
+  } catch (err) {
+    console.error('⚠️  [migration] addCargoFuncionalColumn falló (no crítico):', err.message);
+  }
+}
+    const affected = isPostgreSQL ? (result?.rowCount ?? 0) : (result?.affectedRows ?? 0);
+    if (affected > 0) {
+      console.log(`✅ [migration] Corregidos ${affected} miembro(s) con rol CONTABILIDAD/REVISORIA → cuenta_quorum=false, puede_votar=false`);
+    }
+  } catch (err) {
+    console.error('⚠️  [migration] fixNonVotingRoles falló (no crítico):', err.message);
+  }
+}
+
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
@@ -93,5 +123,6 @@ app.listen(PORT, async () => {
   console.log(`🚀 BOARD QUORUM API running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   await fixNonVotingRoles();
+  await addCargoFuncionalColumn();
 });
 
