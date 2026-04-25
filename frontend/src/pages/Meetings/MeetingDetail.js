@@ -627,6 +627,7 @@ const MeetingDetail = () => {
   if (!meeting) return <div className="error">{t('meetingNotFound')}</div>;
 
   return (
+    <>
     <div className="meeting-detail">
       {errorMessage && (
         <div className="error-modal-overlay" onClick={() => setErrorMessage(null)}>
@@ -1235,6 +1236,7 @@ const MeetingDetail = () => {
         onConfirm={handleSetJvRepresentative}
       />
     )}
+    </>
   );
 };
 
