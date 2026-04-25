@@ -49,6 +49,28 @@ async function addCargoFuncionalColumn() {
   }
 }
 
+// Migración: resetear secuencias de PostgreSQL si están desincronizadas
+// Ocurre cuando se insertan filas via SQL directo sin usar el SERIAL/SEQUENCE
+async function fixPostgresSequences() {
+  try {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    if (!isPostgreSQL) return;
+    const tables = ['members', 'organizations', 'meetings', 'votings', 'votes', 'attendance'];
+    for (const table of tables) {
+      try {
+        await db.execute(
+          `SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`
+        );
+      } catch (e) {
+        // tabla o columna no existe, ignorar
+      }
+    }
+    console.log('✅ [migration] Secuencias PostgreSQL sincronizadas');
+  } catch (err) {
+    console.error('⚠️  [migration] fixPostgresSequences falló (no crítico):', err.message);
+  }
+}
+
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
@@ -116,5 +138,6 @@ app.listen(PORT, async () => {
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   await fixNonVotingRoles();
   await addCargoFuncionalColumn();
+  await fixPostgresSequences();
 });
 
