@@ -48,14 +48,6 @@ async function addCargoFuncionalColumn() {
     console.error('⚠️  [migration] addCargoFuncionalColumn falló (no crítico):', err.message);
   }
 }
-    const affected = isPostgreSQL ? (result?.rowCount ?? 0) : (result?.affectedRows ?? 0);
-    if (affected > 0) {
-      console.log(`✅ [migration] Corregidos ${affected} miembro(s) con rol CONTABILIDAD/REVISORIA → cuenta_quorum=false, puede_votar=false`);
-    }
-  } catch (err) {
-    console.error('⚠️  [migration] fixNonVotingRoles falló (no crítico):', err.message);
-  }
-}
 
 // Middleware
 app.use(cors({
