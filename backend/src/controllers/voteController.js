@@ -70,6 +70,7 @@ exports.verifyDocumentForVoting = async (req, res) => {
     if (!cedula) {
       return res.status(400).json({ status: 'ERROR', message: 'Número de cédula es requerido' });
     }
+    const cedulaNorm = String(cedula).replace(/\D/g, '') || cedula;
 
     const voting = await Voting.findById(votingId);
     if (!voting) return res.status(404).json({ status: 'ERROR', message: 'Votación no encontrada' });
@@ -81,9 +82,9 @@ exports.verifyDocumentForVoting = async (req, res) => {
     const Member = require('../models/Member');
     const Attendance = require('../models/Attendance');
 
-    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
+    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id);
     if (!member) {
-      return res.status(404).json({ status: 'NOT_FOUND', found: false, cedula });
+      return res.status(404).json({ status: 'NOT_FOUND', found: false, cedula: cedulaNorm });
     }
 
     // Ya votó
@@ -205,6 +206,7 @@ exports.confirmVote = async (req, res) => {
     if (!cedula || !option || !confirmado) {
       return res.status(400).json({ message: 'Cédula, opción y confirmación son requeridos' });
     }
+    const cedulaNormConfirm = String(cedula).replace(/\D/g, '') || cedula;
 
     // Verificar que la votación esté activa
     const voting = await Voting.findById(votingId);
@@ -224,13 +226,13 @@ exports.confirmVote = async (req, res) => {
     const Member = require('../models/Member');
     
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
+    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id);
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }
 
     // Verificar si ya votó
-    const hasVoted = await Vote.hasVotedByDocument(votingId, cedula, meeting.client_id);
+    const hasVoted = await Vote.hasVotedByDocument(votingId, cedulaNormConfirm, meeting.client_id);
     if (hasVoted) {
       return res.status(400).json({ message: 'Ya has votado en esta votación' });
     }

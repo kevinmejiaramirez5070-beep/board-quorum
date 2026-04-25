@@ -42,6 +42,8 @@ exports.verifyDocument = async (req, res) => {
     if (!cedula) {
       return res.status(400).json({ message: 'Número de cédula es requerido' });
     }
+    // Normalizar: solo dígitos (por si viene con puntos o comas)
+    const cedulaNorm = String(cedula).replace(/\D/g, '') || cedula;
 
     const Meeting = require('../models/Meeting');
     const Member = require('../models/Member');
@@ -53,14 +55,14 @@ exports.verifyDocument = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
-    
+    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id);
+
     if (!member) {
       // No encontrado - permitir registro manual
       return res.status(404).json({ 
         found: false,
         message: 'No se encontró en la base de datos',
-        cedula: cedula
+        cedula: cedulaNorm
       });
     }
 
@@ -97,6 +99,7 @@ exports.confirmAttendance = async (req, res) => {
     if (!cedula || !confirmado) {
       return res.status(400).json({ message: 'Cédula y confirmación son requeridos' });
     }
+    const cedulaNormConfirm = String(cedula).replace(/\D/g, '') || cedula;
 
     const Meeting = require('../models/Meeting');
     const Member = require('../models/Member');
@@ -108,7 +111,7 @@ exports.confirmAttendance = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedula, meeting.client_id);
+    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id);
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }

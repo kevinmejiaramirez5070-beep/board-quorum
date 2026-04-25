@@ -76,7 +76,9 @@ const Members = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const updated = { ...formData, [name]: type === 'checkbox' ? checked : value };
+    // Normalizar numero_documento: solo dígitos
+    const cleanedValue = name === 'numero_documento' ? value.replace(/\D/g, '') : value;
+    const updated = { ...formData, [name]: type === 'checkbox' ? checked : cleanedValue };
     if (saveError) setSaveError(null);
 
     // Auto-ajuste: CONTABILIDAD y REVISORIA no cuentan para quórum ni votan
@@ -145,7 +147,7 @@ const Members = () => {
     setFormData({
       product_id: member.product_id || '',
       tipo_documento: member.tipo_documento || '',
-      numero_documento: member.numero_documento || '',
+      numero_documento: (member.numero_documento || '').replace(/\D/g, ''),
       name: member.name || '',
       rol_organico: member.rol_organico || '',
       cargo: member.position || '',
@@ -335,6 +337,8 @@ const Members = () => {
                       value={formData.numero_documento}
                       onChange={handleChange}
                       className="input"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       placeholder={language === 'es' ? 'EJ: 1234567890' : 'EX: 1234567890'}
                     />
                   </div>

@@ -30,6 +30,8 @@ class Member {
       cargo_funcional = null,
       cuenta_quorum = 1, puede_votar = 1
     } = data;
+    // Normalizar documento: eliminar todo lo que no sea dígito
+    const docNormalizado = numero_documento ? String(numero_documento).replace(/\D/g, '') : null;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
     const cuentaQuorumValue = isPostgreSQL ? (cuenta_quorum ? 'true' : 'false') : (cuenta_quorum ? 1 : 0);
@@ -52,7 +54,7 @@ class Member {
         [
           client_id, product_id, name, email, role, position,
           member_type, principal_id, user_id,
-          tipo_documento, numero_documento, rol_organico,
+          tipo_documento, docNormalizado, rol_organico,
           tipo_participante, rol_en_votacion, cargo_funcional
         ]
       );
@@ -74,7 +76,7 @@ class Member {
           [
             client_id, product_id, name, email, role, position,
             member_type, principal_id, user_id,
-            tipo_documento, numero_documento, rol_organico,
+            tipo_documento, docNormalizado, rol_organico,
             tipo_participante, rol_en_votacion
           ]
         );
@@ -133,7 +135,7 @@ class Member {
     }
     if (numero_documento !== undefined) {
       updateFields.push('numero_documento = ?');
-      updateValues.push(numero_documento);
+      updateValues.push(numero_documento ? String(numero_documento).replace(/\D/g, '') : null);
     }
     if (rol_organico !== undefined) {
       updateFields.push('rol_organico = ?');
@@ -250,13 +252,17 @@ class Member {
   static async findByDocumentNumber(documentNumber, clientId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
+    // Normalizar el parámetro de entrada: solo dígitos
+    const docNorm = documentNumber ? String(documentNumber).replace(/\D/g, '') : documentNumber;
+    // Buscar tanto el valor exacto como el valor con formato (por datos históricos con comas)
     const [rows] = await db.execute(
       `SELECT id, name, numero_documento, tipo_documento, position, rol_organico, 
               cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante,
               member_type, principal_id
        FROM members 
-       WHERE numero_documento = ? AND client_id = ? AND ${activeCondition}`,
-      [documentNumber, clientId]
+       WHERE (numero_documento = ? OR numero_documento = ?)
+         AND client_id = ? AND ${activeCondition}`,
+      [docNorm, documentNumber, clientId]
     );
     return rows[0] || null;
   }
