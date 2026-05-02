@@ -164,6 +164,25 @@ const VotingResults = () => {
     
     yPos += lineHeight;
     
+    // §9 JV — Voto institucional Junta de Vigilancia
+    const jvVotePdf = votes.find(isJvVote);
+    if (jvVotePdf) {
+      if (yPos > doc.internal.pageSize.getHeight() - 30) { doc.addPage(); yPos = margin; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'es' ? 'Voto Institucional — Junta de Vigilancia' : 'Institutional Vote — Oversight Board', margin, yPos);
+      yPos += lineHeight;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        language === 'es'
+          ? `Representante JV (${clientName}): ${jvVotePdf.member_name}   |   Sentido del voto: ${jvVotePdf.option}`
+          : `JV Representative (${clientName}): ${jvVotePdf.member_name}   |   Vote: ${jvVotePdf.option}`,
+        margin, yPos
+      );
+      yPos += lineHeight * 1.5;
+    }
+
     // Detalle de votos
     if (yPos > doc.internal.pageSize.getHeight() - 50) {
       doc.addPage();
@@ -220,7 +239,17 @@ const VotingResults = () => {
 
   const { voting, results: voteResults, votes, totalVotes, majority, majorityValidation } = results;
   const maxVotes = Math.max(...voteResults.map(r => parseInt(r.votes) || 0), 0);
-  
+
+  // §9 JV: identificar el voto institucional (primer miembro JV que votó)
+  const isJvVote = (v) => {
+    const mt = String(v.member_type || '').toLowerCase().trim();
+    const tp = String(v.tipo_participante || '').toUpperCase().trim();
+    const role = String(v.role || '').toUpperCase();
+    return mt === 'junta_vigilancia' || tp === 'JUNTA_DE_VIGILANCIA' || role.includes('VIGILANCIA');
+  };
+  const jvVote = votes.find(isJvVote);
+  const clientName = client?.name || 'ASOCOLCI';
+
   const canGenerateReports = user?.role === 'authorized' || user?.role === 'admin_master';
   const canGeneratePdf = canGenerateReports && totalVotes > 0;
 
@@ -373,6 +402,35 @@ const VotingResults = () => {
             })}
           </div>
         </div>
+
+        {/* §9 JV — Voto institucional de la Junta de Vigilancia */}
+        {jvVote && (
+          <div style={{
+            background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.4)',
+            borderRadius: '8px', padding: '14px 20px', margin: '12px 0',
+            display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: '20px' }}>⚖️</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#7c3aed', fontSize: '14px' }}>
+                {language === 'es'
+                  ? `Representante JV (${clientName}): ${jvVote.member_name}`
+                  : `JV Representative (${clientName}): ${jvVote.member_name}`}
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                {language === 'es'
+                  ? `Sentido del voto institucional: ${jvVote.option}`
+                  : `Institutional vote: ${jvVote.option}`}
+              </div>
+            </div>
+            <span style={{
+              marginLeft: 'auto', background: 'rgba(124,58,237,0.15)', color: '#7c3aed',
+              borderRadius: '6px', padding: '4px 12px', fontWeight: 700, fontSize: '13px'
+            }}>
+              {jvVote.option}
+            </span>
+          </div>
+        )}
 
         <div className="votes-detail">
           <h3>{language === 'es' ? 'Detalle de Votos' : 'Vote Details'}</h3>

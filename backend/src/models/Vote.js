@@ -12,7 +12,9 @@ class Vote {
                 NULLIF(TRIM(COALESCE(m.rol_organico, '')), ''),
                 NULLIF(TRIM(COALESCE(m.member_type, '')), ''),
                 '-'
-              ) AS role
+              ) AS role,
+              m.member_type,
+              m.tipo_participante
        FROM votes v
        LEFT JOIN members m ON v.member_id = m.id
        WHERE v.voting_id = ?
