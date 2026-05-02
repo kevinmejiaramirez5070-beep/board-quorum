@@ -136,24 +136,11 @@ exports.verifyDocumentForVoting = async (req, res) => {
       // Verificar si el principal está PRESENTE en la reunión
       let principalPresent = false;
 
+      // Solo usar principal_id — fuente de verdad es la presencia real en sesión (BOARD_QUORUM_FINAL_INTEGRAL)
+      // Sin fallback por rol_organico: roles genéricos como "VOCALES" cruzarían pares distintos
       if (member.principal_id) {
         const principalAttendance = await Attendance.findByMemberAndMeeting(voting.meeting_id, member.principal_id);
         principalPresent = principalAttendance && principalAttendance.status === 'present';
-      }
-
-      if (!principalPresent && member.rol_organico) {
-        // Fallback: buscar por mismo rol_organico
-        const [principalRows] = await require('../config/database').execute(
-          `SELECT m.id FROM members m
-           WHERE m.client_id = ? AND UPPER(TRIM(COALESCE(m.rol_organico,''))) = ?
-             AND (LOWER(TRIM(COALESCE(m.member_type,''))) NOT IN ('suplente'))
-             AND m.id != ? LIMIT 1`,
-          [meeting.client_id, (member.rol_organico || '').toUpperCase().trim(), member.id]
-        );
-        if (principalRows.length > 0) {
-          const att = await Attendance.findByMemberAndMeeting(voting.meeting_id, principalRows[0].id);
-          principalPresent = att && att.status === 'present';
-        }
       }
 
       if (principalPresent) {

@@ -2,19 +2,21 @@ const db = require('../config/database');
 
 class Vote {
   static async findByVoting(votingId) {
-    // VOT-ROL fix: mostrar cargo real (rol_organico o position), nunca el campo 'role' que puede ser 'member'
+    // BUG-PDF-CARGO fix: usar SOLO rol_organico (cargo orgánico real del miembro).
+    // NO usar position/cargo_funcional — puede tener valores incorrectos.
+    // JOIN por member_id (fuente de verdad directa).
     const [rows] = await db.execute(
       `SELECT v.*,
               COALESCE(m.name, v.voter_name, 'Invitado') AS member_name,
               COALESCE(
                 NULLIF(TRIM(COALESCE(m.rol_organico, '')), ''),
-                NULLIF(TRIM(COALESCE(m.position, '')), ''),
-                m.role,
+                NULLIF(TRIM(COALESCE(m.member_type, '')), ''),
                 '-'
               ) AS role
        FROM votes v
        LEFT JOIN members m ON v.member_id = m.id
-       WHERE v.voting_id = ?`,
+       WHERE v.voting_id = ?
+       ORDER BY v.created_at`,
       [votingId]
     );
     return rows;
@@ -97,26 +99,11 @@ class Vote {
    */
   static async hasPrincipalVoted(votingId, member) {
     if (!member) return false;
-    // Por principal_id directo
+    // Solo por principal_id directo — sin fallback rol_organico (BOARD_QUORUM_FINAL_INTEGRAL)
     if (member.principal_id) {
       const [rows] = await db.execute(
         'SELECT COUNT(*) as count FROM votes WHERE voting_id = ? AND member_id = ?',
         [votingId, member.principal_id]
-      );
-      if ((parseInt(rows[0].count) || 0) > 0) return true;
-    }
-    // Por mismo rol_organico (fallback)
-    const rolOrganico = (member.rol_organico || '').toUpperCase().trim();
-    if (rolOrganico) {
-      const [rows] = await db.execute(
-        `SELECT COUNT(*) as count
-         FROM votes v
-         JOIN members m ON v.member_id = m.id
-         WHERE v.voting_id = ?
-           AND UPPER(TRIM(COALESCE(m.rol_organico,''))) = ?
-           AND (LOWER(TRIM(COALESCE(m.member_type,''))) NOT IN ('suplente'))
-           AND v.member_id != ?`,
-        [votingId, rolOrganico, member.id]
       );
       if ((parseInt(rows[0].count) || 0) > 0) return true;
     }

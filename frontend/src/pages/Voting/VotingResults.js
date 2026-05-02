@@ -224,15 +224,18 @@ const VotingResults = () => {
   const canGenerateReports = user?.role === 'authorized' || user?.role === 'admin_master';
   const canGeneratePdf = canGenerateReports && totalVotes > 0;
 
+  // TEST-M1: si no hay votos, no calcular resultado (evita "undefined" y "RECHAZADA" con 0 votos)
+  const noVotes = !totalVotes || totalVotes === 0;
+
   // VOT-LOGICA-MULTIPLE: para votaciones múltiples, el ganador es la opción con más votos
   const isMultiple = voting?.type === 'multiple';
-  const winnerOption = isMultiple && voteResults.length > 0
+  const winnerOption = isMultiple && !noVotes && voteResults.length > 0
     ? voteResults.reduce((best, cur) => (parseInt(cur.votes) || 0) > (parseInt(best.votes) || 0) ? cur : best, voteResults[0])
     : null;
   const isTie = isMultiple && winnerOption && voteResults.filter(r => (parseInt(r.votes) || 0) === (parseInt(winnerOption.votes) || 0)).length > 1;
 
-  // Para votación ordinaria: mayoría dinámica = floor(emitidos/2)+1
-  const ordinariaMajority = !isMultiple ? Math.floor(totalVotes / 2) + 1 : null;
+  // Para votación ordinaria: mayoría dinámica = floor(emitidos/2)+1 (solo si hay votos)
+  const ordinariaMajority = (!isMultiple && !noVotes) ? Math.floor(totalVotes / 2) + 1 : null;
   const affirmativeOptions = ['a favor', 'sí', 'si', 'yes', 'aprobado'];
   const affirmativeVotes = !isMultiple
     ? voteResults.filter(r => affirmativeOptions.includes((r.option || '').toLowerCase()))
@@ -251,6 +254,13 @@ const VotingResults = () => {
           <h1>{language === 'es' ? 'Resultados de Votación' : 'Voting Results'}</h1>
           <h2>{voting.title}</h2>
         </div>
+
+        {/* TEST-M1: banner sin votos */}
+        {noVotes && (
+          <div style={{ background: '#fef9c3', border: '1px solid #fde047', borderRadius: '8px', padding: '14px 20px', marginBottom: '16px', color: '#854d0e', fontWeight: 600 }}>
+            ⏳ {language === 'es' ? 'Sin votos registrados aún — los resultados aparecerán aquí cuando los participantes voten.' : 'No votes recorded yet — results will appear here once participants vote.'}
+          </div>
+        )}
 
         <div className="results-summary">
           <div className="summary-card">
@@ -291,8 +301,8 @@ const VotingResults = () => {
           )}
         </div>
 
-        {/* Bloque de detalle del resultado */}
-        {isMultiple ? (
+        {/* Bloque de detalle del resultado — oculto si no hay votos (TEST-M1) */}
+        {!noVotes && isMultiple ? (
           <div className={`majority-validation ${isTie ? '' : 'approved'}`}>
             <h3>{language === 'es' ? 'Resultado — Selección Múltiple' : 'Result — Multiple Choice'}</h3>
             {isTie ? (
