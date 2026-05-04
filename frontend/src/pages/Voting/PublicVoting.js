@@ -96,6 +96,9 @@ const PublicVoting = ({ meetingMode = false }) => {
       } else if (['NO_VOTE', 'SUPLENTE_SIN_VOTO', 'JV_VOTED', 'JV_VOZ', 'ALREADY_VOTED'].includes(status)) {
         setBlockInfo({ status, cargo, message: getBlockMessage(status, cargo) });
         setStep('blocked');
+      } else if (['NOT_PRESENT', 'CARGO_YA_VOTADO'].includes(status)) {
+        setBlockInfo({ status, cargo, message: getBlockMessage(status, cargo) });
+        setStep('blocked');
       } else {
         setInlineError(data.message || (language === 'es' ? 'Error al verificar la cédula.' : 'Error verifying ID.'));
       }
@@ -146,6 +149,8 @@ const PublicVoting = ({ meetingMode = false }) => {
         JV_VOTED: 'El voto de la Junta de Vigilancia ya fue registrado por el representante designado. Tu presencia queda registrada.',
         JV_VOZ: 'El voto de la Junta de Vigilancia ya fue registrado por el representante designado. Tu presencia queda registrada.',
         ALREADY_VOTED: 'Ya has votado en esta votación.',
+        NOT_PRESENT: 'No estás registrado como presente en esta reunión. Solo pueden votar asistentes presentes y aprobados.',
+        CARGO_YA_VOTADO: `El voto del cargo ${c} ya fue registrado por el suplente. Solo se permite 1 voto por cargo.`,
       },
       en: {
         NO_VOTE: `Your role (${c}) does not have voting rights in Board of Directors sessions. Your attendance has been recorded.`,
@@ -153,6 +158,8 @@ const PublicVoting = ({ meetingMode = false }) => {
         JV_VOTED: 'The Oversight Board vote has already been cast by the designated representative. Your presence is recorded.',
         JV_VOZ: 'The Oversight Board vote has already been cast by the designated representative. Your presence is recorded.',
         ALREADY_VOTED: 'You have already voted in this voting.',
+        NOT_PRESENT: 'You are not registered as present in this meeting. Only approved attendees can vote.',
+        CARGO_YA_VOTADO: `The vote for ${c} position was already registered by the substitute. Only 1 vote per position is allowed.`,
       }
     };
     return msgs[language]?.[status] || msgs.es[status] || 'No autorizado para votar.';
@@ -179,9 +186,11 @@ const PublicVoting = ({ meetingMode = false }) => {
       <div className="public-voting-page">
         <div className="container">
           <div className="voting-card">
-            <Logo size="medium" showText={true} />
             <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '24px' }}>
               {language === 'es' ? 'Votación no encontrada.' : 'Voting not found.'}
+            </div>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border, rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'center', opacity: 0.5 }}>
+              <Logo size="small" showText={true} />
             </div>
           </div>
         </div>
@@ -195,7 +204,6 @@ const PublicVoting = ({ meetingMode = false }) => {
       <div className="public-voting-page">
         <div className="container">
           <div className="voting-card">
-            <Logo size="medium" showText={true} />
             <h1>{voting.title}</h1>
             <div style={{
               marginTop: '24px',
@@ -212,6 +220,9 @@ const PublicVoting = ({ meetingMode = false }) => {
                   : 'The vote has not been enabled yet. The administrator will activate it shortly. Please wait.'}
               </p>
             </div>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border, rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'center', opacity: 0.5 }}>
+              <Logo size="small" showText={true} />
+            </div>
           </div>
         </div>
       </div>
@@ -224,9 +235,11 @@ const PublicVoting = ({ meetingMode = false }) => {
       <div className="public-voting-page">
         <div className="container">
           <div className="voting-card success">
-            <Logo size="medium" showText={true} />
             <h1>✓ {language === 'es' ? 'Voto Registrado' : 'Vote Registered'}</h1>
             <p>{language === 'es' ? 'Tu voto ha sido registrado exitosamente.' : 'Your vote has been registered successfully.'}</p>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border, rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'center', opacity: 0.5 }}>
+              <Logo size="small" showText={true} />
+            </div>
           </div>
         </div>
       </div>
@@ -239,7 +252,6 @@ const PublicVoting = ({ meetingMode = false }) => {
     <div className="public-voting-page">
       <div className="container">
         <div className="voting-card">
-          <Logo size="medium" showText={true} />
           <h1>{voting.title}</h1>
           {voting.description && <p className="voting-description">{voting.description}</p>}
 
@@ -409,6 +421,9 @@ const PublicVoting = ({ meetingMode = false }) => {
               </button>
             </div>
           )}
+          <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border, rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'center', opacity: 0.5 }}>
+            <Logo size="small" showText={true} />
+          </div>
         </div>
       </div>
     </div>

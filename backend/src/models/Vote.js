@@ -113,6 +113,22 @@ class Vote {
   }
 
   /**
+   * VOT-CARGO: verifica si el suplente de un principal ya votó (1 cargo = 1 voto)
+   * Busca votos emitidos por cualquier miembro cuyo principal_id sea el id del principal dado.
+   */
+  static async hasSustitutoVoted(votingId, principalMemberId) {
+    if (!principalMemberId) return false;
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count
+       FROM votes v
+       JOIN members m ON v.member_id = m.id
+       WHERE v.voting_id = ? AND m.principal_id = ?`,
+      [votingId, principalMemberId]
+    );
+    return (parseInt(rows[0].count) || 0) > 0;
+  }
+
+  /**
    * Crea un voto verificando por cédula
    */
   static async createByDocument(data) {

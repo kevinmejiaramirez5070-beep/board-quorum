@@ -27,9 +27,6 @@ const MeetingDetail = () => {
   const [showQuorumProjection, setShowQuorumProjection] = useState(false);
   const [quorumDetail, setQuorumDetail] = useState(null);
   const [showQuorumDetail, setShowQuorumDetail] = useState(false);
-  const [showJvModal, setShowJvModal] = useState(false);
-  const [jvRepresentative, setJvRepresentative] = useState(null);
-  const [jvRepresentativeId, setJvRepresentativeId] = useState(null);
   const quorumIntervalRef = useRef(null);
 
   const getStatusLabel = (status) => {
@@ -191,18 +188,6 @@ const MeetingDetail = () => {
       setShowQuorumDetail(true);
     } catch (err) {
       console.error('Error cargando detalle de quórum:', err);
-    }
-  };
-
-  const handleSetJvRepresentative = async () => {
-    if (!jvRepresentativeId) return;
-    try {
-      await meetingService.setJvRepresentative(meetingIdParam, jvRepresentativeId);
-      const selected = attendance.find(a => String(a.member_id) === String(jvRepresentativeId));
-      setJvRepresentative(selected);
-      setShowJvModal(false);
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Error al designar representante JV');
     }
   };
 
@@ -1282,25 +1267,6 @@ const MeetingDetail = () => {
                     </button>
                   )}
 
-                  {/* Botón Designar Rep. JV — solo para votaciones, no afecta quórum */}
-                  {canAuthorizedLive && attendance.some(a =>
-                    (String(a.role || '').toUpperCase().includes('VIGILANCIA') ||
-                     String(a.role || '').toUpperCase().includes('JV')) && a.status === 'present'
-                  ) && (
-                    <>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>|</span>
-                      <button
-                        className="btn"
-                        onClick={() => setShowJvModal(true)}
-                        style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.4)', fontWeight: 600, fontSize: '13px' }}
-                        title={language === 'es' ? 'Define quién emite el voto institucional de JV en cada votación' : 'Define who casts the JV institutional vote'}
-                      >
-                        ⚖️ {jvRepresentative
-                          ? (language === 'es' ? `Voto JV: ${jvRepresentative.member_name || ''}` : `JV Vote: ${jvRepresentative.member_name || ''}`)
-                          : (language === 'es' ? 'Designar voto JV' : 'Designate JV vote')}
-                      </button>
-                    </>
-                  )}
                 </div>
               </div>
               {votings.length === 0 ? (
@@ -1389,86 +1355,9 @@ const MeetingDetail = () => {
       </div>
     </div>
 
-    {/* Modal designar representante JV */}
-    {showJvModal && (
-      <JvRepresentativeModal
-        attendance={attendance}
-        language={language}
-        selectedId={jvRepresentativeId}
-        setSelectedId={setJvRepresentativeId}
-        onClose={() => setShowJvModal(false)}
-        onConfirm={handleSetJvRepresentative}
-      />
-    )}
     </>
   );
 };
-
-// Modal separado para designar representante JV
-function JvRepresentativeModal({ attendance, onConfirm, onClose, language, selectedId, setSelectedId }) {
-  const jvMembers = attendance.filter(a =>
-    (String(a.role || '').toUpperCase().includes('VIGILANCIA') ||
-     String(a.role || '').toUpperCase().includes('JV')) && a.status === 'present' && a.member_id
-  );
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 9999
-    }}>
-      <div style={{
-        background: 'var(--surface, #1e293b)', border: '1px solid rgba(167,139,250,0.4)',
-        borderRadius: '14px', padding: '28px', maxWidth: '440px', width: '90%'
-      }}>
-        <h3 style={{ color: '#a78bfa', margin: '0 0 8px' }}>⚖️ {language === 'es' ? 'Designar Representante JV' : 'Designate JV Representative'}</h3>
-        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 18px', lineHeight: 1.6 }}>
-          {language === 'es'
-            ? 'El Presidente de la Junta de Vigilancia no está presente. Selecciona el miembro que emitirá el voto institucional en esta sesión:'
-            : 'The JV President is not present. Select the member who will cast the institutional vote:'}
-        </p>
-        {jvMembers.length === 0 ? (
-          <p style={{ color: '#ef4444', fontSize: '13px' }}>
-            {language === 'es' ? 'No hay miembros JV presentes.' : 'No JV members are present.'}
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-            {jvMembers.map(m => (
-              <label key={m.id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-                background: selectedId === String(m.member_id) ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.04)',
-                border: selectedId === String(m.member_id) ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '8px', cursor: 'pointer'
-              }}>
-                <input
-                  type="radio"
-                  name="jvRep"
-                  value={String(m.member_id)}
-                  checked={selectedId === String(m.member_id)}
-                  onChange={e => setSelectedId(e.target.value)}
-                />
-                <span style={{ fontWeight: 600 }}>{m.member_name}</span>
-                <span style={{ color: '#94a3b8', fontSize: '12px' }}>{m.role}</span>
-              </label>
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button className="btn btn-secondary" onClick={onClose}>
-            {language === 'es' ? 'Cancelar' : 'Cancel'}
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={onConfirm}
-            disabled={!selectedId}
-            style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
-          >
-            {language === 'es' ? 'Designar representante' : 'Designate representative'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default MeetingDetail;
 

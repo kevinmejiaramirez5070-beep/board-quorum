@@ -93,6 +93,16 @@ exports.verifyDocumentForVoting = async (req, res) => {
       return res.status(400).json({ status: 'ALREADY_VOTED', found: true });
     }
 
+    // Verificar presencia aprobada en la reunión (eligible_voters_set)
+    const attendanceRecord = await Attendance.findByMemberAndMeeting(voting.meeting_id, member.id);
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const isPendingAtt = attendanceRecord && (isPostgreSQL
+      ? (attendanceRecord.pending_approval === true || attendanceRecord.pending_approval === 't')
+      : (attendanceRecord.pending_approval === 1 || attendanceRecord.pending_approval === true));
+    if (!attendanceRecord || attendanceRecord.status !== 'present' || isPendingAtt) {
+      return res.status(403).json({ status: 'NOT_PRESENT', found: true });
+    }
+
     // No tiene derecho a voto (Contadora, Revisor Fiscal, etc.)
     const canVote = member.puede_votar === true || member.puede_votar === 1;
     if (!canVote) {
@@ -166,6 +176,16 @@ exports.verifyDocumentForVoting = async (req, res) => {
       }
     }
 
+    // ── Principal: verificar que su suplente no haya votado ya (1 cargo = 1 voto) ──
+    const sustitutoVoted = await Vote.hasSustitutoVoted(parseInt(votingId), member.id);
+    if (sustitutoVoted) {
+      return res.status(403).json({
+        status: 'CARGO_YA_VOTADO',
+        found: true,
+        cargo: member.rol_organico || member.position || 'Tu cargo'
+      });
+    }
+
     // ── Miembro normal: OK ────────────────────────────────────────────────────
     return res.json({
       status: 'OK',
@@ -211,7 +231,8 @@ exports.confirmVote = async (req, res) => {
     }
 
     const Member = require('../models/Member');
-    
+    const Attendance = require('../models/Attendance');
+
     // Buscar miembro por número de documento
     const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id);
     if (!member) {
@@ -227,8 +248,21 @@ exports.confirmVote = async (req, res) => {
     // Validar elegibilidad para votar (INTERNO - validación crítica)
     const canVote = member.puede_votar === true || member.puede_votar === 1;
     if (!canVote) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: 'Tu cargo no tiene derecho a voto en esta reunión. Asistencia ya registrada.',
+        canVote: false
+      });
+    }
+
+    // Verificar presencia aprobada en la reunión (eligible_voters_set)
+    const attendanceRecordConfirm = await Attendance.findByMemberAndMeeting(voting.meeting_id, member.id);
+    const isPostgreSQLConfirm = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const isPendingConfirm = attendanceRecordConfirm && (isPostgreSQLConfirm
+      ? (attendanceRecordConfirm.pending_approval === true || attendanceRecordConfirm.pending_approval === 't')
+      : (attendanceRecordConfirm.pending_approval === 1 || attendanceRecordConfirm.pending_approval === true));
+    if (!attendanceRecordConfirm || attendanceRecordConfirm.status !== 'present' || isPendingConfirm) {
+      return res.status(403).json({
+        message: 'No estás registrado como presente en esta reunión.',
         canVote: false
       });
     }
@@ -244,6 +278,17 @@ exports.confirmVote = async (req, res) => {
       if (principalAlreadyVoted) {
         return res.status(403).json({
           message: 'El voto de tu cargo ya fue registrado por el miembro principal. Tu voto como suplente no puede registrarse.',
+          canVote: false
+        });
+      }
+    }
+
+    // VOT-CARGO: si es principal, verificar que su suplente no haya votado ya (1 cargo = 1 voto)
+    if (!isSupplente) {
+      const sustitutoVotedConfirm = await Vote.hasSustitutoVoted(parseInt(votingId), member.id);
+      if (sustitutoVotedConfirm) {
+        return res.status(403).json({
+          message: 'El voto de tu cargo ya fue registrado por el suplente. 1 cargo = 1 voto.',
           canVote: false
         });
       }

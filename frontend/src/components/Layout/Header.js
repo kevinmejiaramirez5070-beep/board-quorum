@@ -45,14 +45,14 @@ const Header = () => {
           <Link to="/" className="logo-link">
             <div className="logo-container">
               {showOrgLogo ? (
-                <img 
-                  src={client.logo} 
-                  alt={client.name || 'Logo'} 
+                <img
+                  src={client.logo}
+                  alt={client.name || 'Logo'}
                   style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
                 />
-              ) : (
+              ) : !showOrgName ? (
                 <Logo size="medium" showText={false} />
-              )}
+              ) : null}
               {showOrgName && (
                 <span className="organization-name">{client.name}</span>
               )}
