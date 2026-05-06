@@ -314,9 +314,9 @@ const VotingResults = () => {
     y = checkPage(doc, y, 40);
     y = sectionTitle(doc, language === 'es' ? '4.7 Detalle de votación' : '4.7 Voting Detail', y, pageWidth);
     const dCols = language === 'es'
-      ? ['Nombre', 'Rol', 'Tipo de voto', 'Sentido']
-      : ['Name', 'Role', 'Vote type', 'Direction'];
-    const dW = [58, 42, 38, 44];
+      ? ['Nombre', 'Rol', 'Tipo de voto', 'Sentido', 'Base válida']
+      : ['Name', 'Role', 'Vote type', 'Direction', 'Valid base'];
+    const dW = [50, 36, 34, 38, 24];
     y = tableHeader(doc, dCols, y, margin, dW, pageWidth);
 
     votes.forEach((vote, idx) => {
@@ -330,7 +330,7 @@ const VotingResults = () => {
         : String(vote.member_type || '').toLowerCase() === 'suplente'
           ? (language === 'es' ? 'Suplente actuando' : 'Acting substitute')
           : (language === 'es' ? 'Principal' : 'Principal');
-      y = tableRow(doc, [vote.member_name, vote.role || '-', voteType, vote.option], y, margin, dW);
+      y = tableRow(doc, [vote.member_name, vote.role || '-', voteType, vote.option, language === 'es' ? 'Sí ✓' : 'Yes ✓'], y, margin, dW);
     });
     y += 4;
 
@@ -378,6 +378,46 @@ const VotingResults = () => {
     });
     y += 4;
 
+    // ── SECCIÓN 7 — VALIDACIÓN NUMÉRICA AUTOMÁTICA ────────────────────────
+    y = checkPage(doc, y, 45);
+    y = sectionTitle(doc, language === 'es' ? 'Sección 7 — Validación numérica automática' : 'Section 7 — Automatic Numerical Validation', y, pageWidth);
+    const totalHabilitados = quorumDetail?.computable_votes ?? 0;
+    y = kv(doc, language === 'es' ? 'Total habilitados para votar' : 'Total eligible to vote', totalHabilitados, y, margin);
+    y = kv(doc, language === 'es' ? 'Total votos emitidos' : 'Total votes cast', totalVotes, y, margin);
+    y += 2;
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'bold');
+    if (totalHabilitados === totalVotes) {
+      doc.setTextColor(5, 150, 105);
+      const txt = language === 'es'
+        ? `✔ CONSISTENTE — El universo de votantes (${totalHabilitados}) coincide exactamente con los votos emitidos (${totalVotes}).`
+        : `✔ CONSISTENT — The eligible voter universe (${totalHabilitados}) matches exactly the votes cast (${totalVotes}).`;
+      const lines = doc.splitTextToSize(txt, pageWidth - 28);
+      doc.text(lines, margin, y);
+      y += LH * lines.length;
+    } else {
+      const diff = totalHabilitados - totalVotes;
+      if (diff < 0) {
+        doc.setTextColor(220, 38, 38);
+        const txt = language === 'es'
+          ? `❌ INCONSISTENCIA CRÍTICA — Se emitieron ${Math.abs(diff)} votos por encima del universo habilitado (${totalHabilitados} habilitados, ${totalVotes} emitidos).`
+          : `❌ CRITICAL INCONSISTENCY — ${Math.abs(diff)} votes were cast above the eligible universe (${totalHabilitados} eligible, ${totalVotes} cast).`;
+        const lines = doc.splitTextToSize(txt, pageWidth - 28);
+        doc.text(lines, margin, y);
+        y += LH * lines.length;
+      } else {
+        doc.setTextColor(180, 83, 9);
+        const txt = language === 'es'
+          ? `⚠ PARTICIPACIÓN PARCIAL — ${diff} habilitado(s) no emitió su voto. (${totalHabilitados} habilitados, ${totalVotes} emitidos)`
+          : `⚠ PARTIAL PARTICIPATION — ${diff} eligible voter(s) did not cast a vote. (${totalHabilitados} eligible, ${totalVotes} cast)`;
+        const lines = doc.splitTextToSize(txt, pageWidth - 28);
+        doc.text(lines, margin, y);
+        y += LH * lines.length;
+      }
+    }
+    doc.setTextColor(0, 0, 0);
+    y += 4;
+
     // ── 4.11 PIE DE AUDITORÍA ──────────────────────────────────────────────
     y = checkPage(doc, y, 35);
     y = sectionTitle(doc, language === 'es' ? '4.11 Pie de auditoría' : '4.11 Audit Footer', y, pageWidth);
@@ -386,6 +426,19 @@ const VotingResults = () => {
     y = kv(doc, language === 'es' ? 'Versión del sistema' : 'System version', 'BOARD QUORUM v2.0', y, margin);
     y = kv(doc, language === 'es' ? 'Identificador único' : 'Unique identifier', docId, y, margin);
     y = kv(doc, language === 'es' ? 'Origen' : 'Origin', 'BOARD QUORUM — Plataforma de Gobernanza Corporativa', y, margin);
+
+    // ── SECCIÓN 8 — TRAZABILIDAD FINAL ────────────────────────────────────
+    y = checkPage(doc, y, 35);
+    y = sectionTitle(doc, language === 'es' ? 'Sección 8 — Trazabilidad final' : 'Section 8 — Final Traceability', y, pageWidth);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    const trazText = language === 'es'
+      ? 'La presente votación se basa en los miembros habilitados conforme al quórum validado. La correspondencia entre asistentes, habilitados y votos ha sido verificada por el sistema BOARD QUORUM. Este documento es suficiente para auditar la votación sin necesidad de acceder a la plataforma.'
+      : 'This voting is based on eligible members as validated by quorum. The correspondence between attendees, eligible voters, and votes cast has been verified by the BOARD QUORUM system. This document is sufficient to audit the voting without accessing the platform.';
+    const trazLines = doc.splitTextToSize(trazText, pageWidth - 28);
+    doc.text(trazLines, margin, y);
+    doc.setFont('helvetica', 'normal');
+    y += LH * trazLines.length + 6;
 
     addPdfBranding(doc, voting);
 
