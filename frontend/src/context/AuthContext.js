@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [needsOperatorValidation, setNeedsOperatorValidation] = useState(false);
 
   useEffect(() => {
     // Cargar usuario y cliente desde localStorage al iniciar
@@ -17,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     if (storedUser && storedToken) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
-      
+
       // Admin Master NO debe tener cliente asociado (usa colores oficiales)
       if (userData.role === 'admin_master') {
         setClient(null);
@@ -29,6 +30,10 @@ export const AuthProvider = ({ children }) => {
         console.log('Cliente cargado desde localStorage:', clientData);
       } else {
         console.warn('⚠️ No hay cliente guardado en localStorage');
+      }
+
+      if (userData.role === 'authorized' && !sessionStorage.getItem('operatorValidated')) {
+        setNeedsOperatorValidation(true);
       }
     }
     setLoading(false);
@@ -66,6 +71,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
       
+      if (userData.role === 'authorized') {
+        setNeedsOperatorValidation(true);
+      }
+
       return { success: true, user: userData };
     } catch (error) {
       const message = error.response?.data?.message || 'Error al iniciar sesión';
@@ -73,12 +82,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const validateOperatorIdentity = async (documentNumber) => {
+    try {
+      const response = await api.post('/auth/validate-member', { document_number: documentNumber });
+      if (response.data.valid) {
+        sessionStorage.setItem('operatorValidated', '1');
+        setNeedsOperatorValidation(false);
+        return { success: true, memberName: response.data.member_name };
+      }
+      return { success: false, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Error al validar documento';
+      return { success: false, message };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setClient(null);
+    setNeedsOperatorValidation(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('client');
+    sessionStorage.removeItem('operatorValidated');
   };
 
   const value = {
@@ -88,7 +114,9 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    needsOperatorValidation,
+    validateOperatorIdentity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -202,8 +202,8 @@ const VotingResults = () => {
       y = kv(doc, language === 'es' ? 'Asistentes computables' : 'Computable attendees', quorumDetail.computable_votes, y, margin);
       y = kv(doc, language === 'es' ? 'Quórum mínimo requerido' : 'Minimum quorum required', quorumDetail.required ?? '-', y, margin);
       const qStatus = quorumDetail.quorum_met
-        ? (language === 'es' ? 'CUMPLIDO ✓' : 'MET ✓')
-        : (language === 'es' ? 'NO CUMPLIDO ✗' : 'NOT MET ✗');
+        ? (language === 'es' ? 'CUMPLIDO [OK]' : 'MET [OK]')
+        : (language === 'es' ? 'NO CUMPLIDO [NO]' : 'NOT MET [NO]');
       y = kv(doc, language === 'es' ? 'Resultado de quórum' : 'Quorum result', qStatus, y, margin);
       if (quorumDetail.jv_institutional_vote) {
         y = kv(doc, language === 'es' ? 'Voto institucional JV' : 'JV institutional vote',
@@ -236,13 +236,15 @@ const VotingResults = () => {
           const mt = String(row.member_type || '').toLowerCase();
           if (mt === 'junta_vigilancia') return 'JV';
           if (mt === 'suplente') return language === 'es' ? 'Suplente' : 'Substitute';
+          if (row.reason === 'SIN_DERECHO_QUORUM') return language === 'es' ? 'Sin voto' : 'No vote';
+          if (row.reason === 'MANUAL_NO_MIEMBRO') return language === 'es' ? 'Invitado' : 'Guest';
           return language === 'es' ? 'Principal' : 'Principal';
         })();
         const puedeVotar = row.counts
-          ? (language === 'es' ? 'Sí ✓' : 'Yes ✓')
+          ? (language === 'es' ? 'Si [OK]' : 'Yes [OK]')
           : row.reason === 'JV_VOTO_INSTITUCIONAL'
-            ? 'JV (1)'
-            : (language === 'es' ? 'No ✗' : 'No ✗');
+            ? (language === 'es' ? 'Institucional' : 'Institutional')
+            : (language === 'es' ? 'No [NO]' : 'No [NO]');
         y = tableRow(doc, [row.name, row.role || '-', tipo, puedeVotar, row.reason_label || row.reason], y, margin, bW);
       });
     } else {
@@ -330,7 +332,7 @@ const VotingResults = () => {
         : String(vote.member_type || '').toLowerCase() === 'suplente'
           ? (language === 'es' ? 'Suplente actuando' : 'Acting substitute')
           : (language === 'es' ? 'Principal' : 'Principal');
-      y = tableRow(doc, [vote.member_name, vote.role || '-', voteType, vote.option, language === 'es' ? 'Sí ✓' : 'Yes ✓'], y, margin, dW);
+      y = tableRow(doc, [vote.member_name, vote.role || '-', voteType, vote.option, language === 'es' ? 'Si [OK]' : 'Yes [OK]'], y, margin, dW);
     });
     y += 4;
 
@@ -353,21 +355,21 @@ const VotingResults = () => {
     y = checkPage(doc, y, 45);
     y = sectionTitle(doc, language === 'es' ? '4.9 Validaciones automáticas' : '4.9 Automatic Validations', y, pageWidth);
     const validations = language === 'es' ? [
-      '✓ Solo votaron personas registradas como presentes y aprobadas en asistencia.',
-      '✓ No se registraron votos de personas no asistentes (NOT_PRESENT bloqueado).',
-      '✓ No se registraron votos duplicados (ALREADY_VOTED bloqueado).',
-      '✓ Suplentes con principal presente fueron bloqueados (SUPLENTE_SIN_VOTO).',
-      '✓ Cargos con suplente ya votado fueron bloqueados (CARGO_YA_VOTADO).',
-      '✓ Roles sin derecho a voto fueron bloqueados (NO_VOTE).',
-      '✓ La Junta de Vigilancia emitió un único voto institucional (JV_VOTED).',
+      '[OK] Solo votaron personas registradas como presentes y aprobadas en asistencia.',
+      '[OK] No se registraron votos de personas no asistentes (NOT_PRESENT bloqueado).',
+      '[OK] No se registraron votos duplicados (ALREADY_VOTED bloqueado).',
+      '[OK] Suplentes con principal presente fueron bloqueados (SUPLENTE_SIN_VOTO).',
+      '[OK] Cargos con suplente ya votado fueron bloqueados (CARGO_YA_VOTADO).',
+      '[OK] Roles sin derecho a voto fueron bloqueados (NO_VOTE).',
+      '[OK] La Junta de Vigilancia emitio un unico voto institucional (JV_VOTED).',
     ] : [
-      '✓ Only persons registered as present and approved in attendance were allowed to vote.',
-      '✓ No votes from non-attendees were recorded (NOT_PRESENT blocked).',
-      '✓ No duplicate votes were recorded (ALREADY_VOTED blocked).',
-      '✓ Substitutes with present principal were blocked (SUPLENTE_SIN_VOTO).',
-      '✓ Positions with already-voted substitute were blocked (CARGO_YA_VOTADO).',
-      '✓ Roles without voting rights were blocked (NO_VOTE).',
-      '✓ The Oversight Board cast a single institutional vote (JV_VOTED).',
+      '[OK] Only persons registered as present and approved in attendance were allowed to vote.',
+      '[OK] No votes from non-attendees were recorded (NOT_PRESENT blocked).',
+      '[OK] No duplicate votes were recorded (ALREADY_VOTED blocked).',
+      '[OK] Substitutes with present principal were blocked (SUPLENTE_SIN_VOTO).',
+      '[OK] Positions with already-voted substitute were blocked (CARGO_YA_VOTADO).',
+      '[OK] Roles without voting rights were blocked (NO_VOTE).',
+      '[OK] The Oversight Board cast a single institutional vote (JV_VOTED).',
     ];
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
@@ -380,7 +382,7 @@ const VotingResults = () => {
 
     // ── SECCIÓN 7 — VALIDACIÓN NUMÉRICA AUTOMÁTICA ────────────────────────
     y = checkPage(doc, y, 45);
-    y = sectionTitle(doc, language === 'es' ? 'Sección 7 — Validación numérica automática' : 'Section 7 — Automatic Numerical Validation', y, pageWidth);
+    y = sectionTitle(doc, language === 'es' ? 'Sección 7 - Validación numérica automática' : 'Section 7 - Automatic Numerical Validation', y, pageWidth);
     const totalHabilitados = quorumDetail?.computable_votes ?? 0;
     y = kv(doc, language === 'es' ? 'Total habilitados para votar' : 'Total eligible to vote', totalHabilitados, y, margin);
     y = kv(doc, language === 'es' ? 'Total votos emitidos' : 'Total votes cast', totalVotes, y, margin);
@@ -390,8 +392,8 @@ const VotingResults = () => {
     if (totalHabilitados === totalVotes) {
       doc.setTextColor(5, 150, 105);
       const txt = language === 'es'
-        ? `✔ CONSISTENTE — El universo de votantes (${totalHabilitados}) coincide exactamente con los votos emitidos (${totalVotes}).`
-        : `✔ CONSISTENT — The eligible voter universe (${totalHabilitados}) matches exactly the votes cast (${totalVotes}).`;
+        ? `[OK] CONSISTENTE - El universo de votantes (${totalHabilitados}) coincide exactamente con los votos emitidos (${totalVotes}).`
+        : `[OK] CONSISTENT - The eligible voter universe (${totalHabilitados}) matches exactly the votes cast (${totalVotes}).`;
       const lines = doc.splitTextToSize(txt, pageWidth - 28);
       doc.text(lines, margin, y);
       y += LH * lines.length;
@@ -400,16 +402,16 @@ const VotingResults = () => {
       if (diff < 0) {
         doc.setTextColor(220, 38, 38);
         const txt = language === 'es'
-          ? `❌ INCONSISTENCIA CRÍTICA — Se emitieron ${Math.abs(diff)} votos por encima del universo habilitado (${totalHabilitados} habilitados, ${totalVotes} emitidos).`
-          : `❌ CRITICAL INCONSISTENCY — ${Math.abs(diff)} votes were cast above the eligible universe (${totalHabilitados} eligible, ${totalVotes} cast).`;
+          ? `[!!] INCONSISTENCIA CRITICA - Se emitieron ${Math.abs(diff)} votos por encima del universo habilitado (${totalHabilitados} habilitados, ${totalVotes} emitidos).`
+          : `[!!] CRITICAL INCONSISTENCY - ${Math.abs(diff)} votes were cast above the eligible universe (${totalHabilitados} eligible, ${totalVotes} cast).`;
         const lines = doc.splitTextToSize(txt, pageWidth - 28);
         doc.text(lines, margin, y);
         y += LH * lines.length;
       } else {
         doc.setTextColor(180, 83, 9);
         const txt = language === 'es'
-          ? `⚠ PARTICIPACIÓN PARCIAL — ${diff} habilitado(s) no emitió su voto. (${totalHabilitados} habilitados, ${totalVotes} emitidos)`
-          : `⚠ PARTIAL PARTICIPATION — ${diff} eligible voter(s) did not cast a vote. (${totalHabilitados} eligible, ${totalVotes} cast)`;
+          ? `[!] PARTICIPACION PARCIAL - ${diff} habilitado(s) no emitio su voto. (${totalHabilitados} habilitados, ${totalVotes} emitidos)`
+          : `[!] PARTIAL PARTICIPATION - ${diff} eligible voter(s) did not cast a vote. (${totalHabilitados} eligible, ${totalVotes} cast)`;
         const lines = doc.splitTextToSize(txt, pageWidth - 28);
         doc.text(lines, margin, y);
         y += LH * lines.length;
@@ -425,11 +427,11 @@ const VotingResults = () => {
       new Date().toLocaleString(language === 'es' ? 'es-ES' : 'en-US'), y, margin);
     y = kv(doc, language === 'es' ? 'Versión del sistema' : 'System version', 'BOARD QUORUM v2.0', y, margin);
     y = kv(doc, language === 'es' ? 'Identificador único' : 'Unique identifier', docId, y, margin);
-    y = kv(doc, language === 'es' ? 'Origen' : 'Origin', 'BOARD QUORUM — Plataforma de Gobernanza Corporativa', y, margin);
+    y = kv(doc, language === 'es' ? 'Origen' : 'Origin', 'BOARD QUORUM - Plataforma de Gobernanza Corporativa', y, margin);
 
     // ── SECCIÓN 8 — TRAZABILIDAD FINAL ────────────────────────────────────
     y = checkPage(doc, y, 35);
-    y = sectionTitle(doc, language === 'es' ? 'Sección 8 — Trazabilidad final' : 'Section 8 — Final Traceability', y, pageWidth);
+    y = sectionTitle(doc, language === 'es' ? 'Sección 8 - Trazabilidad final' : 'Section 8 - Final Traceability', y, pageWidth);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     const trazText = language === 'es'

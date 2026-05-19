@@ -6,7 +6,7 @@ import UserSettingsModal from '../UserSettings/UserSettingsModal';
 import './UserMenuDropdown.css';
 
 const UserMenuDropdown = () => {
-  const { user, logout } = useAuth();
+  const { user, client, logout } = useAuth();
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -61,9 +61,19 @@ const UserMenuDropdown = () => {
           aria-label="User menu"
         >
           <div className="user-info">
-            <span className="user-name">{displayNameWithAccents(user?.name) || user?.name}</span>
+            <span className="user-name">
+              {user?.role === 'admin_master'
+                ? (displayNameWithAccents(user?.name) || user?.name)
+                : client?.name
+                  ? `${client.name}`
+                  : (displayNameWithAccents(user?.name) || user?.name)}
+            </span>
             <span className={`user-role ${user?.role === 'authorized' ? 'authorized' : ''}`}>
-              {getRoleLabel()}
+              {user?.role === 'admin' && client?.name
+                ? (language === 'es' ? 'Administrador' : 'Administrator')
+                : user?.role === 'authorized' && client?.name
+                  ? (language === 'es' ? 'Operador Autorizado' : 'Authorized Operator')
+                  : getRoleLabel()}
             </span>
           </div>
           <svg

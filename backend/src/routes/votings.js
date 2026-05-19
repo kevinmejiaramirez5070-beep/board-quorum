@@ -8,8 +8,8 @@ router.get('/meeting/:meetingId', auth, isAdminOrAuthorized, votingController.ge
 router.get('/:id', auth, isAdminOrAuthorized, votingController.getVoting);
 router.get('/:id/results', auth, isAdminOrAuthorized, votingController.getResults);
 
-// Solo admin puede crear votaciones (antes del evento)
-router.post('/meeting/:meetingId', auth, isAdmin, votingController.createVoting);
+// Admin y Authorized pueden crear votaciones
+router.post('/meeting/:meetingId', auth, isAdminOrAuthorized, votingController.createVoting);
 router.put('/:id', auth, isAdmin, votingController.updateVoting);
 
 // Solo Autorizado (y admin_master) activa y cierra votaciones en vivo

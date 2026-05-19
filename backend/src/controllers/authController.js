@@ -146,6 +146,27 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.validateMember = async (req, res) => {
+  try {
+    const { document_number } = req.body;
+    if (!document_number) {
+      return res.status(400).json({ message: 'Número de documento requerido' });
+    }
+    const clientId = req.user?.client_id;
+    if (!clientId) {
+      return res.status(400).json({ message: 'Usuario sin organización asociada' });
+    }
+    const Member = require('../models/Member');
+    const member = await Member.findByDocumentNumber(String(document_number).trim(), clientId);
+    if (!member) {
+      return res.status(404).json({ valid: false, message: 'Documento no corresponde a un miembro activo de la organización' });
+    }
+    res.json({ valid: true, member_name: member.name });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.changeEmail = async (req, res) => {
   try {
     const { newEmail, password } = req.body;
