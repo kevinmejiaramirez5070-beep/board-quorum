@@ -34,6 +34,7 @@ const Members = () => {
     puede_votar: true
   });
   const [editingId, setEditingId] = useState(null);
+  const [productFilter, setProductFilter] = useState('all');
 
   useEffect(() => {
     if (!user) return;
@@ -450,9 +451,52 @@ const Members = () => {
 
         {!showForm && (
           <div className="members-list">
-            {members.length === 0 ? (
+            {/* Filtro por órgano de gobierno */}
+            {products.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600, marginRight: '4px' }}>
+                  {language === 'es' ? 'Filtrar por órgano:' : 'Filter by body:'}
+                </span>
+                <button
+                  onClick={() => setProductFilter('all')}
+                  style={{
+                    padding: '5px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
+                    border: productFilter === 'all' ? '2px solid var(--primary, #6366f1)' : '1.5px solid var(--border, rgba(255,255,255,0.12))',
+                    background: productFilter === 'all' ? 'var(--primary, #6366f1)' : 'transparent',
+                    color: productFilter === 'all' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                  }}
+                >
+                  {language === 'es' ? 'Todos' : 'All'} ({members.length})
+                </button>
+                {products.map(p => {
+                  const count = members.filter(m => String(m.product_id) === String(p.id)).length;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setProductFilter(String(p.id))}
+                      style={{
+                        padding: '5px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
+                        border: productFilter === String(p.id) ? '2px solid var(--primary, #6366f1)' : '1.5px solid var(--border, rgba(255,255,255,0.12))',
+                        background: productFilter === String(p.id) ? 'var(--primary, #6366f1)' : 'transparent',
+                        color: productFilter === String(p.id) ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                      }}
+                    >
+                      {p.name} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {(() => {
+              const displayedMembers = productFilter === 'all'
+                ? members
+                : members.filter(m => String(m.product_id) === productFilter);
+              return (
+            <>
+            {displayedMembers.length === 0 ? (
               <div className="empty-state">
-                <p>{t('noMembersRegistered')}</p>
+                <p>{productFilter === 'all' ? t('noMembersRegistered') : (language === 'es' ? 'No hay miembros en este órgano.' : 'No members in this body.')}</p>
               </div>
             ) : (
               <div className="members-table-container">
@@ -473,7 +517,7 @@ const Members = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.map(member => (
+                    {displayedMembers.map(member => (
                       <tr key={member.id}>
                         <td>{member.id}</td>
                         <td>{member.tipo_documento || '-'}</td>
@@ -519,6 +563,9 @@ const Members = () => {
                 </table>
               </div>
             )}
+            </>
+              );
+            })()}
           </div>
         )}
       </div>

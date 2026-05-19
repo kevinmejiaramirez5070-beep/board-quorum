@@ -16,6 +16,10 @@ const MeetingsList = () => {
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState(null);
   const [requestStatuses, setRequestStatuses] = useState({});
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteModal, setDeleteModal] = useState({
+    open: false, step: 1, meeting: null, confirmText: '', deleting: false, error: ''
+  });
 
   useEffect(() => {
     if (productId) {
@@ -70,23 +74,40 @@ const MeetingsList = () => {
     }
   };
 
-  const handleDelete = async (e, meetingId) => {
+  const openDeleteModal = (e, meeting) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (window.confirm(t('confirmDelete'))) {
-      try {
-        const response = await meetingService.delete(meetingId);
-        // Actualizar la lista removiendo la reunión eliminada
-        setMeetings(meetings.filter(m => m.id !== meetingId));
-        // Mostrar mensaje de éxito
-        alert('✅ ' + t('meetingDeleted'));
-      } catch (error) {
-        console.error('Error deleting meeting:', error);
-        console.error('Error response:', error.response);
-        const errorMessage = error.response?.data?.message || error.message || t('errorDeletingMeeting');
-        alert('❌ ' + errorMessage);
+    setDeleteModal({ open: true, step: 1, meeting, confirmText: '', deleting: false, error: '' });
+  };
+
+  const closeDeleteModal = () => {
+    if (deleteModal.deleting) return;
+    setDeleteModal({ open: false, step: 1, meeting: null, confirmText: '', deleting: false, error: '' });
+  };
+
+  const handleDeleteStep = async () => {
+    const { meeting, step, confirmText } = deleteModal;
+    if (step === 1) {
+      setDeleteModal(d => ({ ...d, step: 2, error: '' }));
+      return;
+    }
+    if (step === 2) {
+      if (confirmText.trim() !== meeting.title.trim()) {
+        setDeleteModal(d => ({ ...d, error: language === 'es' ? 'El título no coincide. Escríbelo exactamente.' : 'Title does not match. Type it exactly.' }));
+        return;
       }
+      setDeleteModal(d => ({ ...d, step: 3, error: '' }));
+      return;
+    }
+    // Paso 3: ejecutar borrado
+    setDeleteModal(d => ({ ...d, deleting: true, error: '' }));
+    try {
+      await meetingService.delete(meeting.id);
+      setMeetings(prev => prev.filter(m => m.id !== meeting.id));
+      setDeleteModal({ open: false, step: 1, meeting: null, confirmText: '', deleting: false, error: '' });
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || t('errorDeletingMeeting');
+      setDeleteModal(d => ({ ...d, deleting: false, error: msg }));
     }
   };
 
@@ -116,6 +137,26 @@ const MeetingsList = () => {
 
   if (loading) return <div className="loading">{t('loading')}</div>;
 
+  // Orden: activa primero, luego por fecha descendente
+  const statusPriority = { active: 0, scheduled: 1, completed: 2, archived: 3 };
+  const sortedMeetings = [...meetings].sort((a, b) => {
+    const pA = statusPriority[a.status] ?? 4;
+    const pB = statusPriority[b.status] ?? 4;
+    if (pA !== pB) return pA - pB;
+    return new Date(b.date) - new Date(a.date);
+  });
+  const filteredMeetings = statusFilter === 'all'
+    ? sortedMeetings
+    : sortedMeetings.filter(m => m.status === statusFilter);
+
+  const filterLabels = {
+    all: language === 'es' ? 'Todas' : 'All',
+    active: language === 'es' ? 'En curso' : 'In Progress',
+    scheduled: language === 'es' ? 'Programada' : 'Scheduled',
+    completed: language === 'es' ? 'Finalizada' : 'Completed',
+    archived: language === 'es' ? 'Archivada' : 'Archived',
+  };
+
   return (
     <div className="meetings-list">
       <div className="container" style={{ paddingLeft: '0' }}>
@@ -141,6 +182,30 @@ const MeetingsList = () => {
             </Link>
           )}
         </div>
+
+        {/* Filtros por estado */}
+        {meetings.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            {Object.entries(filterLabels).map(([key, label]) => {
+              const count = key === 'all' ? meetings.length : meetings.filter(m => m.status === key).length;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
+                  style={{
+                    padding: '6px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
+                    border: statusFilter === key ? '2px solid var(--primary, #6366f1)' : '1.5px solid var(--border, rgba(255,255,255,0.12))',
+                    background: statusFilter === key ? 'var(--primary, #6366f1)' : 'transparent',
+                    color: statusFilter === key ? '#fff' : 'var(--text-secondary, #94a3b8)',
+                    cursor: 'pointer', transition: 'all 0.15s'
+                  }}
+                >
+                  {label} {count > 0 && <span style={{ opacity: 0.75 }}>({count})</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {meetings.length === 0 ? (
             <div className="empty-state">
@@ -173,9 +238,14 @@ const MeetingsList = () => {
                 <span className="stat-label">{t('completed')}</span>
               </div>
             </div>
+            {filteredMeetings.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary, #94a3b8)', fontSize: '14px' }}>
+                {language === 'es' ? 'No hay reuniones con ese estado.' : 'No meetings with that status.'}
+              </div>
+            )}
             <div className="meetings-grid">
-              {meetings.map(meeting => (
-                <div key={meeting.id} className="meeting-card">
+              {filteredMeetings.map(meeting => (
+                <div key={meeting.id} className={`meeting-card${meeting.status === 'active' ? ' meeting-card--active' : ''}`}>
                   <div className="meeting-card-header">
                     <h3>{meeting.title}</h3>
                     <span className={`status status-${meeting.status}`}>
@@ -227,7 +297,7 @@ const MeetingsList = () => {
                           ✏️
                         </button>
                         <button
-                          onClick={(e) => handleDelete(e, meeting.id)}
+                          onClick={(e) => openDeleteModal(e, meeting)}
                           className="btn-action btn-delete"
                           title={t('deleteMeetingTitle')}
                         >
@@ -265,6 +335,130 @@ const MeetingsList = () => {
           </>
         )}
       </div>
+
+      {/* Modal de borrado multi-paso */}
+      {deleteModal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9000,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #1e293b)', borderRadius: '12px',
+            padding: '36px 32px', maxWidth: '460px', width: '100%',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            border: '1.5px solid rgba(239,68,68,0.3)'
+          }}>
+            {/* Indicador de pasos */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '24px' }}>
+              {[1,2,3].map(s => (
+                <div key={s} style={{
+                  flex: 1, height: '4px', borderRadius: '2px',
+                  background: deleteModal.step >= s ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                }} />
+              ))}
+            </div>
+
+            {deleteModal.step === 1 && (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '12px' }}>⚠️</div>
+                <h3 style={{ color: '#f87171', margin: '0 0 8px', textAlign: 'center', fontSize: '18px' }}>
+                  {language === 'es' ? 'Eliminar reunión' : 'Delete meeting'}
+                </h3>
+                <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '14px', textAlign: 'center', margin: '0 0 8px', lineHeight: 1.5 }}>
+                  {language === 'es' ? 'Estás a punto de eliminar:' : 'You are about to delete:'}
+                </p>
+                <p style={{ color: 'var(--text-primary, #f1f5f9)', fontWeight: 700, textAlign: 'center', margin: '0 0 16px', fontSize: '15px' }}>
+                  "{deleteModal.meeting?.title}"
+                </p>
+                <p style={{ color: '#fbbf24', fontSize: '13px', textAlign: 'center', margin: '0 0 24px' }}>
+                  {language === 'es'
+                    ? 'Se eliminarán también las asistencias, votaciones y votos asociados. Esta acción no tiene marcha atrás.'
+                    : 'Attendance, votings and votes will also be deleted. This action cannot be undone.'}
+                </p>
+              </>
+            )}
+
+            {deleteModal.step === 2 && (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '12px' }}>🔒</div>
+                <h3 style={{ color: '#f87171', margin: '0 0 12px', textAlign: 'center', fontSize: '18px' }}>
+                  {language === 'es' ? 'Confirma escribiendo el título' : 'Confirm by typing the title'}
+                </h3>
+                <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '13px', textAlign: 'center', margin: '0 0 16px' }}>
+                  {language === 'es' ? 'Escribe exactamente:' : 'Type exactly:'}{' '}
+                  <strong style={{ color: 'var(--text-primary, #f1f5f9)' }}>{deleteModal.meeting?.title}</strong>
+                </p>
+                <input
+                  type="text"
+                  autoFocus
+                  value={deleteModal.confirmText}
+                  onChange={e => setDeleteModal(d => ({ ...d, confirmText: e.target.value, error: '' }))}
+                  placeholder={deleteModal.meeting?.title}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: '8px', fontSize: '14px',
+                    border: deleteModal.error ? '1.5px solid #ef4444' : '1.5px solid var(--border, rgba(255,255,255,0.15))',
+                    background: 'var(--bg-input, rgba(255,255,255,0.05))',
+                    color: 'var(--text-primary, #f1f5f9)', outline: 'none', boxSizing: 'border-box',
+                    marginBottom: '8px'
+                  }}
+                />
+              </>
+            )}
+
+            {deleteModal.step === 3 && (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '12px' }}>🗑️</div>
+                <h3 style={{ color: '#ef4444', margin: '0 0 12px', textAlign: 'center', fontSize: '18px' }}>
+                  {language === 'es' ? 'Último paso — eliminación definitiva' : 'Final step — permanent deletion'}
+                </h3>
+                <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '14px', textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>
+                  {language === 'es'
+                    ? '¿Confirmas que deseas eliminar esta reunión permanentemente? No podrás recuperarla.'
+                    : 'Do you confirm you want to permanently delete this meeting? You cannot recover it.'}
+                </p>
+              </>
+            )}
+
+            {deleteModal.error && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '7px', padding: '10px 14px', color: '#f87171', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>
+                {deleteModal.error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleteModal.deleting}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '14px',
+                  background: 'transparent', color: 'var(--text-secondary, #94a3b8)',
+                  border: '1.5px solid var(--border, rgba(255,255,255,0.12))', cursor: 'pointer'
+                }}
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleDeleteStep}
+                disabled={deleteModal.deleting || (deleteModal.step === 2 && !deleteModal.confirmText.trim())}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 700,
+                  background: deleteModal.step === 3 ? '#dc2626' : '#ef4444',
+                  color: '#fff', border: 'none',
+                  cursor: deleteModal.deleting || (deleteModal.step === 2 && !deleteModal.confirmText.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: deleteModal.deleting ? 0.7 : 1
+                }}
+              >
+                {deleteModal.deleting
+                  ? (language === 'es' ? 'Eliminando...' : 'Deleting...')
+                  : deleteModal.step === 3
+                    ? (language === 'es' ? 'Eliminar definitivamente' : 'Delete permanently')
+                    : (language === 'es' ? 'Continuar' : 'Continue')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
