@@ -174,10 +174,6 @@ class Attendance {
    */
   static async getQuorumBreakdown(meetingId) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
-    const cuentaQuorumCond = isPostgreSQL ? 'm.cuenta_quorum = true' : 'm.cuenta_quorum = 1';
-    const pendingOkCond = isPostgreSQL
-      ? 'COALESCE(a.pending_approval, false) = false'
-      : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
 
     // Todos los presentes (incluyendo los que NO cuentan) para el reporte completo
     const [allPresent] = await db.execute(
@@ -379,7 +375,13 @@ class Attendance {
             FROM members m
             JOIN meetings meet ON meet.id = a.meeting_id
             WHERE m.client_id = meet.client_id
-              AND m.numero_documento = a.manual_document
+              AND (
+                m.numero_documento = a.manual_document
+                OR ${isPostgreSQL
+                  ? "regexp_replace(m.numero_documento, '[^0-9]', '', 'g') = regexp_replace(a.manual_document, '[^0-9]', '', 'g')"
+                  : "REPLACE(REPLACE(REPLACE(m.numero_documento,'.',''),'-',''),' ','') = REPLACE(REPLACE(REPLACE(a.manual_document,'.',''),'-',''),' ','')"
+                }
+              )
             LIMIT 1
           )
         END,

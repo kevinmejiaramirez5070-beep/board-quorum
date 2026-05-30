@@ -254,13 +254,17 @@ class Member {
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     // Normalizar el parámetro de entrada: solo dígitos
     const docNorm = documentNumber ? String(documentNumber).replace(/\D/g, '') : documentNumber;
-    // Buscar tanto el valor exacto como el valor con formato (por datos históricos con comas)
+    // Normalizar también el lado de la BD para tolerar documentos guardados con formato
+    // (ej: "52.209.188" en BD debe coincidir con "52209188" en input)
+    const dbNormExpr = isPostgreSQL
+      ? "regexp_replace(numero_documento, '[^0-9]', '', 'g')"
+      : "REPLACE(REPLACE(REPLACE(REPLACE(numero_documento, '.', ''), '-', ''), ' ', ''), ',', '')";
     const [rows] = await db.execute(
-      `SELECT id, name, numero_documento, tipo_documento, position, rol_organico, 
+      `SELECT id, name, numero_documento, tipo_documento, position, rol_organico,
               cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante,
               member_type, principal_id
-       FROM members 
-       WHERE (numero_documento = ? OR numero_documento = ?)
+       FROM members
+       WHERE (${dbNormExpr} = ? OR numero_documento = ?)
          AND client_id = ? AND ${activeCondition}`,
       [docNorm, documentNumber, clientId]
     );
