@@ -189,7 +189,7 @@ const VotingResults = () => {
     y = kv(doc, language === 'es' ? 'Tipo de órgano' : 'Organ type', meetingTypeLabel, y, margin);
     y = kv(doc, language === 'es' ? 'Sesión' : 'Session', meeting?.title || '-', y, margin);
     y = kv(doc, language === 'es' ? 'Fecha' : 'Date', meetingDate, y, margin);
-    y = kv(doc, language === 'es' ? 'ID Reunión / ID Votación' : 'Meeting ID / Voting ID',
+    y = kv(doc, language === 'es' ? 'Referencia interna del sistema' : 'Internal system reference',
       `${meetingId} / ${votingId}`, y, margin);
     y = kv(doc, language === 'es' ? 'Asunto votado' : 'Matter voted', voting.title, y, margin);
     y += 4;
