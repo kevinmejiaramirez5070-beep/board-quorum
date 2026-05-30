@@ -97,6 +97,22 @@ exports.updateMeeting = async (req, res) => {
   }
 };
 
+exports.updateMeetingStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = ['scheduled', 'active', 'completed', 'archived'];
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({ message: `Estado no válido. Valores permitidos: ${allowed.join(', ')}` });
+    }
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+    await Meeting.update(req.params.id, { status });
+    res.json({ message: 'Estado actualizado', status });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.deleteMeeting = async (req, res) => {
   try {
     const meetingId = parseInt(req.params.id);

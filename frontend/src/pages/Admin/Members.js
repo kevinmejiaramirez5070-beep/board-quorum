@@ -8,7 +8,7 @@ import './Members.css';
 
 const Members = () => {
   const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { user, client } = useAuth();
   const navigate = useNavigate();
   const [members, setMembers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -66,7 +66,12 @@ const Members = () => {
   const loadProducts = async () => {
     try {
       const response = await api.get('/products');
-      setProducts(response.data || []);
+      const list = response.data || [];
+      setProducts(list);
+      // Filtrar por el primer producto por defecto (no mostrar todos mezclados)
+      if (list.length > 0) {
+        setProductFilter(String(list[0].id));
+      }
     } catch (error) {
       console.error('Error loading products:', error);
     }
@@ -225,6 +230,11 @@ const Members = () => {
     <div className="members-page">
       <div className="container">
         <div className="page-header">
+          {client?.name && (
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {client.name}
+            </p>
+          )}
           <h1>{t('memberManagement')}</h1>
           {canEditMembers && (
             <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>

@@ -205,6 +205,23 @@ const MeetingDetail = () => {
     }
   };
 
+  const handleFinalizeMeeting = async () => {
+    const msg1 = language === 'es'
+      ? `¿Finalizar la reunión "${meeting.title}"?\n\nEsto la moverá al estado "Finalizada". Las votaciones activas deberían cerrarse primero.`
+      : `Finalize meeting "${meeting.title}"?\n\nThis will move it to "Completed" status. Active votings should be closed first.`;
+    if (!window.confirm(msg1)) return;
+    const msg2 = language === 'es'
+      ? '¿Confirmas que deseas finalizar esta reunión? Esta acción no se puede deshacer fácilmente.'
+      : 'Confirm you want to finalize this meeting? This action is not easily reversible.';
+    if (!window.confirm(msg2)) return;
+    try {
+      await meetingService.updateStatus(meetingIdParam, 'completed');
+      setMeeting(prev => ({ ...prev, status: 'completed' }));
+    } catch (error) {
+      alert(error.response?.data?.message || (language === 'es' ? 'Error al finalizar la reunión' : 'Error finalizing meeting'));
+    }
+  };
+
   const handleInstallSession = async () => {
     try {
       setErrorMessage(null);
@@ -738,6 +755,15 @@ const MeetingDetail = () => {
         <div className="meeting-header">
           <h1>{meeting.title}</h1>
           <span className={`status status-${meeting.status}`}>{getStatusLabel(meeting.status)}</span>
+          {(canAuthorizedLive || canAdminPrep) && meeting.status !== 'completed' && meeting.status !== 'archived' && (
+            <button
+              className="btn btn-danger"
+              onClick={handleFinalizeMeeting}
+              style={{ marginLeft: 'auto', padding: '8px 20px', fontSize: '14px' }}
+            >
+              {language === 'es' ? 'Finalizar Reunión' : 'Finalize Meeting'}
+            </button>
+          )}
         </div>
 
         <div className="meeting-info">

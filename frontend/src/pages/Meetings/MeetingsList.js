@@ -10,7 +10,7 @@ import './MeetingsList.css';
 const MeetingsList = () => {
   const { productId } = useParams();
   const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { user, client } = useAuth();
   const navigate = useNavigate();
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,8 +93,8 @@ const MeetingsList = () => {
       return;
     }
     if (step === 2) {
-      if (confirmText.trim() !== meeting.title.trim()) {
-        setDeleteModal(d => ({ ...d, error: language === 'es' ? 'El título no coincide. Escríbelo exactamente.' : 'Title does not match. Type it exactly.' }));
+      if (confirmText.trim().toUpperCase() !== 'SI') {
+        setDeleteModal(d => ({ ...d, error: language === 'es' ? 'Debes escribir SI para continuar.' : 'You must type YES to continue.' }));
         return;
       }
       setDeleteModal(d => ({ ...d, step: 3, error: '' }));
@@ -174,6 +174,11 @@ const MeetingsList = () => {
           <div className="header-content" style={{ paddingLeft: '0', marginLeft: '0' }}>
             {product ? (
               <>
+                {client?.name && (
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {client.name}
+                  </p>
+                )}
                 <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>{product.name}</h1>
                 <p className="page-subtitle">
                   {language === 'es' ? 'Gestiona las reuniones de este órgano' : 'Manage meetings for this body'}
@@ -413,18 +418,17 @@ const MeetingsList = () => {
               <>
                 <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '12px' }}>🔒</div>
                 <h3 style={{ color: '#f87171', margin: '0 0 12px', textAlign: 'center', fontSize: '18px' }}>
-                  {language === 'es' ? 'Confirma escribiendo el título' : 'Confirm by typing the title'}
+                  {language === 'es' ? 'Confirmación requerida' : 'Confirmation required'}
                 </h3>
                 <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '13px', textAlign: 'center', margin: '0 0 16px' }}>
-                  {language === 'es' ? 'Escribe exactamente:' : 'Type exactly:'}{' '}
-                  <strong style={{ color: 'var(--text-primary, #f1f5f9)' }}>{deleteModal.meeting?.title}</strong>
+                  {language === 'es' ? 'Escribe ' : 'Type '}<strong style={{ color: 'var(--text-primary, #f1f5f9)', fontSize: '15px' }}>SI</strong>{language === 'es' ? ' para confirmar.' : ' to confirm.'}
                 </p>
                 <input
                   type="text"
                   autoFocus
                   value={deleteModal.confirmText}
                   onChange={e => setDeleteModal(d => ({ ...d, confirmText: e.target.value, error: '' }))}
-                  placeholder={deleteModal.meeting?.title}
+                  placeholder="SI"
                   style={{
                     width: '100%', padding: '10px 14px', borderRadius: '8px', fontSize: '14px',
                     border: deleteModal.error ? '1.5px solid #ef4444' : '1.5px solid var(--border, rgba(255,255,255,0.15))',
@@ -470,7 +474,7 @@ const MeetingsList = () => {
               </button>
               <button
                 onClick={handleDeleteStep}
-                disabled={deleteModal.deleting || (deleteModal.step === 2 && !deleteModal.confirmText.trim())}
+                disabled={deleteModal.deleting || (deleteModal.step === 2 && deleteModal.confirmText.trim().toUpperCase() !== 'SI')}
                 style={{
                   flex: 1, padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 700,
                   background: deleteModal.step === 3 ? '#dc2626' : '#ef4444',
