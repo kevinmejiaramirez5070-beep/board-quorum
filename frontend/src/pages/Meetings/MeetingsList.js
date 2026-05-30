@@ -17,6 +17,7 @@ const MeetingsList = () => {
   const [product, setProduct] = useState(null);
   const [requestStatuses, setRequestStatuses] = useState({});
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchText, setSearchText] = useState('');
   const [deleteModal, setDeleteModal] = useState({
     open: false, step: 1, meeting: null, confirmText: '', deleting: false, error: ''
   });
@@ -145,9 +146,18 @@ const MeetingsList = () => {
     if (pA !== pB) return pA - pB;
     return new Date(b.date) - new Date(a.date);
   });
-  const filteredMeetings = statusFilter === 'all'
+  const byStatus = statusFilter === 'all'
     ? sortedMeetings
     : sortedMeetings.filter(m => m.status === statusFilter);
+
+  const q = searchText.trim().toLowerCase();
+  const filteredMeetings = q
+    ? byStatus.filter(m =>
+        (m.title || '').toLowerCase().includes(q) ||
+        (m.location || '').toLowerCase().includes(q) ||
+        (m.type || '').toLowerCase().includes(q)
+      )
+    : byStatus;
 
   const filterLabels = {
     all: language === 'es' ? 'Todas' : 'All',
@@ -182,6 +192,24 @@ const MeetingsList = () => {
             </Link>
           )}
         </div>
+
+        {/* Buscador */}
+        {meetings.length > 0 && (
+          <div style={{ marginBottom: '14px' }}>
+            <input
+              type="text"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder={language === 'es' ? 'Buscar reunión por título, lugar o tipo...' : 'Search meeting by title, location or type...'}
+              style={{
+                width: '100%', padding: '9px 14px', borderRadius: '8px', fontSize: '14px',
+                border: '1.5px solid var(--border, rgba(255,255,255,0.12))',
+                background: 'var(--bg-input, rgba(255,255,255,0.05))',
+                color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        )}
 
         {/* Filtros por estado */}
         {meetings.length > 0 && (
@@ -240,7 +268,9 @@ const MeetingsList = () => {
             </div>
             {filteredMeetings.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary, #94a3b8)', fontSize: '14px' }}>
-                {language === 'es' ? 'No hay reuniones con ese estado.' : 'No meetings with that status.'}
+                {q
+                  ? (language === 'es' ? `Sin resultados para "${searchText}".` : `No results for "${searchText}".`)
+                  : (language === 'es' ? 'No hay reuniones con ese estado.' : 'No meetings with that status.')}
               </div>
             )}
             <div className="meetings-grid">

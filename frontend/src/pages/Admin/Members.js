@@ -94,10 +94,29 @@ const Members = () => {
     setFormData(updated);
   };
 
+  // Detección de documento duplicado en tiempo real
+  const duplicateDoc = formData.numero_documento && formData.numero_documento.length >= 4
+    ? members.find(m =>
+        m.id !== editingId &&
+        m.numero_documento &&
+        String(m.numero_documento).replace(/\D/g, '') === String(formData.numero_documento).replace(/\D/g, '')
+      )
+    : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Bloquear si hay documento duplicado
+    if (duplicateDoc) {
+      setSaveError(
+        language === 'es'
+          ? `Ya existe el miembro "${duplicateDoc.name}" con ese número de documento.`
+          : `Member "${duplicateDoc.name}" already has that document number.`
+      );
+      return;
+    }
+
     try {
-      // Mapear cargo a position para el backend y limpiar campos vacíos
       // Determinar member_type basado en tipo_participante
       let member_type = 'principal';
       if (formData.tipo_participante === 'SUPLENTE') {
@@ -106,14 +125,16 @@ const Members = () => {
         member_type = 'junta_vigilancia';
       }
       
+      // Normalización: limpiar espacios, solo dígitos en documento
+      const normDoc = (formData.numero_documento || '').replace(/\D/g, '').trim();
       const dataToSend = {
         product_id: formData.product_id ? parseInt(formData.product_id) : null,
-        tipo_documento: formData.tipo_documento || null,
-        numero_documento: formData.numero_documento || null,
+        tipo_documento: (formData.tipo_documento || '').trim() || null,
+        numero_documento: normDoc || null,
         name: formData.name.trim(),
-        rol_organico: formData.rol_organico || null,
-        position: formData.cargo || null,
-        cargo_funcional: formData.cargo || null,
+        rol_organico: (formData.rol_organico || '').trim() || null,
+        position: (formData.cargo || '').trim() || null,
+        cargo_funcional: (formData.cargo || '').trim() || null,
         role: formData.role || 'member',
         member_type: member_type,
         principal_id: formData.tipo_participante === 'SUPLENTE' && formData.principal_id ? parseInt(formData.principal_id, 10) : null,
@@ -341,7 +362,19 @@ const Members = () => {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       placeholder={language === 'es' ? 'EJ: 1234567890' : 'EX: 1234567890'}
+                      style={duplicateDoc ? { borderColor: '#f59e0b' } : undefined}
                     />
+                    {duplicateDoc && (
+                      <div style={{
+                        marginTop: '5px', padding: '7px 11px', borderRadius: '6px',
+                        background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)',
+                        color: '#f59e0b', fontSize: '12.5px', lineHeight: 1.4
+                      }}>
+                        {language === 'es'
+                          ? `Ya existe: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'sin cargo'})`
+                          : `Already exists: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'no position'})`}
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
