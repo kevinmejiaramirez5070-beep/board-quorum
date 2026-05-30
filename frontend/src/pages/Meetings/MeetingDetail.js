@@ -1269,12 +1269,12 @@ const MeetingDetail = () => {
                   )}
 
                   {/* Separador visual */}
-                  {(meeting?.session_installed || !canAuthorizedLive) && canAdminPrep && (
+                  {(meeting?.session_installed || !canAuthorizedLive) && (canAdminPrep || canAuthorizedLive) && (
                     <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>→</span>
                   )}
 
-                  {/* Paso 2: Nueva Votación — solo habilitado si sesión está instalada */}
-                  {canAdminPrep && (
+                  {/* Paso 2: Nueva Votación — admin y autorizado pueden crear */}
+                  {(canAdminPrep || canAuthorizedLive) && (
                     <button
                       className={meeting?.session_installed ? 'btn btn-primary' : 'btn btn-secondary'}
                       onClick={() => {
