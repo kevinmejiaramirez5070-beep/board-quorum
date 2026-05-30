@@ -10,33 +10,40 @@ export const AuthProvider = ({ children }) => {
   const [needsOperatorValidation, setNeedsOperatorValidation] = useState(false);
 
   useEffect(() => {
-    // Cargar usuario y cliente desde localStorage al iniciar
-    const storedUser = localStorage.getItem('user');
-    const storedClient = localStorage.getItem('client');
-    const storedToken = localStorage.getItem('token');
-    
-    if (storedUser && storedToken) {
-      const userData = JSON.parse(storedUser);
-      setUser(userData);
+    const init = async () => {
+      const storedUser = localStorage.getItem('user');
+      const storedClient = localStorage.getItem('client');
+      const storedToken = localStorage.getItem('token');
 
-      // Admin Master NO debe tener cliente asociado (usa colores oficiales)
-      if (userData.role === 'admin_master') {
-        setClient(null);
-        localStorage.removeItem('client');
-        console.log('Admin Master detectado - cliente removido (usa colores oficiales)');
-      } else if (storedClient) {
-        const clientData = JSON.parse(storedClient);
-        setClient(clientData);
-        console.log('Cliente cargado desde localStorage:', clientData);
-      } else {
-        console.warn('⚠️ No hay cliente guardado en localStorage');
-      }
+      if (storedUser && storedToken) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
 
-      if (userData.role === 'authorized' && !sessionStorage.getItem('operatorValidated')) {
-        setNeedsOperatorValidation(true);
+        if (userData.role === 'admin_master') {
+          setClient(null);
+          localStorage.removeItem('client');
+        } else if (storedClient) {
+          setClient(JSON.parse(storedClient));
+        } else if (userData.client_id) {
+          // Sin cliente en localStorage: obtenerlo del servidor
+          try {
+            const res = await api.get(`/clients/${userData.client_id}`);
+            if (res.data) {
+              setClient(res.data);
+              localStorage.setItem('client', JSON.stringify(res.data));
+            }
+          } catch (e) {
+            console.error('Error obteniendo cliente:', e);
+          }
+        }
+
+        if (userData.role === 'authorized' && !sessionStorage.getItem('operatorValidated')) {
+          setNeedsOperatorValidation(true);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    init();
   }, []);
 
   const login = async (email, password) => {
