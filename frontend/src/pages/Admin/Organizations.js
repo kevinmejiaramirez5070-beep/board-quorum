@@ -32,6 +32,9 @@ const Organizations = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [togglingId, setTogglingId] = useState(null);
+  // Modal de gestión de usuarios
+  const [usersModal, setUsersModal] = useState({ open: false, org: null, users: [], loading: false });
+  const [editingUser, setEditingUser] = useState(null); // { id, email, newEmail, newPassword, saving, error }
   // SEG-01: protección para eliminar (3 capas)
   const [seg01, setSeg01] = useState({
     open: false,
@@ -256,6 +259,40 @@ const Organizations = () => {
     } catch (error) {
       setSeg01(prev => ({ ...prev, deleting: false }));
       setError(error.response?.data?.message || t('errorDeletingOrganization'));
+    }
+  };
+
+  const openUsersModal = async (org) => {
+    setUsersModal({ open: true, org, users: [], loading: true });
+    setEditingUser(null);
+    try {
+      const res = await api.get(`/auth/users?client_id=${org.id}`);
+      setUsersModal(prev => ({ ...prev, users: res.data || [], loading: false }));
+    } catch (e) {
+      setUsersModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const saveUserCredentials = async () => {
+    if (!editingUser) return;
+    setEditingUser(prev => ({ ...prev, saving: true, error: '' }));
+    try {
+      const body = {};
+      if (editingUser.newEmail && editingUser.newEmail !== editingUser.email) body.email = editingUser.newEmail;
+      if (editingUser.newPassword) body.password = editingUser.newPassword;
+      if (!body.email && !body.password) {
+        setEditingUser(prev => ({ ...prev, saving: false, error: language === 'es' ? 'No hay cambios para guardar.' : 'Nothing to save.' }));
+        return;
+      }
+      await api.patch(`/auth/users/${editingUser.id}`, body);
+      // Actualizar lista local
+      setUsersModal(prev => ({
+        ...prev,
+        users: prev.users.map(u => u.id === editingUser.id ? { ...u, email: body.email || u.email } : u)
+      }));
+      setEditingUser(null);
+    } catch (e) {
+      setEditingUser(prev => ({ ...prev, saving: false, error: e.response?.data?.message || 'Error al guardar' }));
     }
   };
 
@@ -516,23 +553,30 @@ const Organizations = () => {
                                 </td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <button 
+                                    <button
                                       className="btn-enter-client"
                                       onClick={() => {
-                                        // Por ahora redirigir a productos, pero debería ser a una vista específica del cliente
                                         window.location.href = `/products?client=${org.id}`;
                                       }}
                                     >
                                       {language === 'es' ? 'Entrar →' : 'Enter →'}
                                     </button>
-                                    <button 
+                                    <button
+                                      className="btn-edit-client"
+                                      onClick={() => openUsersModal(org)}
+                                      title={language === 'es' ? 'Gestionar usuarios' : 'Manage users'}
+                                      style={{ fontSize: '15px' }}
+                                    >
+                                      👥
+                                    </button>
+                                    <button
                                       className="btn-edit-client"
                                       onClick={() => handleEdit(org)}
                                       title={language === 'es' ? 'Editar' : 'Edit'}
                                     >
                                       ✏️
                                     </button>
-                                    <button 
+                                    <button
                                       className="btn-delete-client"
                                       onClick={() => handleDelete(org.id)}
                                       title={language === 'es' ? 'Eliminar' : 'Delete'}
@@ -709,6 +753,132 @@ const Organizations = () => {
                       : (language === 'es' ? 'Eliminar a papelera' : 'Move to trash')}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de gestión de usuarios */}
+      {usersModal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 6000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--surface, #1e293b)', borderRadius: '14px', width: '100%',
+            maxWidth: '560px', padding: '28px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+            border: '1px solid var(--border, rgba(255,255,255,0.1))'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>
+                👥 {language === 'es' ? 'Usuarios de' : 'Users of'} <span style={{ color: 'var(--primary, #6366f1)' }}>{usersModal.org?.name}</span>
+              </h2>
+              <button
+                onClick={() => { setUsersModal({ open: false, org: null, users: [], loading: false }); setEditingUser(null); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}
+              >✕</button>
+            </div>
+
+            {usersModal.loading ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>Cargando...</p>
+            ) : usersModal.users.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>
+                {language === 'es' ? 'No hay usuarios registrados.' : 'No users found.'}
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {usersModal.users.map(u => {
+                  const isEditing = editingUser?.id === u.id;
+                  const roleLabel = u.role === 'admin' ? 'Admin' : u.role === 'authorized' ? 'Autorizado' : u.role;
+                  return (
+                    <div key={u.id} style={{
+                      background: 'var(--bg-card, rgba(255,255,255,0.04))', borderRadius: '10px',
+                      padding: '14px 16px', border: '1px solid var(--border, rgba(255,255,255,0.08))'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isEditing ? '12px' : 0 }}>
+                        <div>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>{u.name}</span>
+                          <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)', background: 'rgba(99,102,241,0.15)', padding: '2px 8px', borderRadius: '10px' }}>{roleLabel}</span>
+                          {!isEditing && <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{u.email}</p>}
+                        </div>
+                        {!isEditing && (
+                          <button
+                            onClick={() => setEditingUser({ id: u.id, email: u.email, newEmail: u.email, newPassword: '', saving: false, error: '' })}
+                            style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,0.15))', color: 'var(--text-secondary)', borderRadius: '7px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' }}
+                          >
+                            {language === 'es' ? 'Editar' : 'Edit'}
+                          </button>
+                        )}
+                      </div>
+
+                      {isEditing && (
+                        <div>
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 600 }}>
+                              {language === 'es' ? 'Nuevo correo' : 'New email'}
+                            </label>
+                            <input
+                              type="email"
+                              value={editingUser.newEmail}
+                              onChange={e => setEditingUser(prev => ({ ...prev, newEmail: e.target.value, error: '' }))}
+                              style={{
+                                width: '100%', padding: '8px 12px', borderRadius: '7px', fontSize: '13px',
+                                border: '1.5px solid var(--border, rgba(255,255,255,0.15))',
+                                background: 'var(--bg-input, rgba(255,255,255,0.05))', color: 'var(--text-primary)',
+                                outline: 'none', boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 600 }}>
+                              {language === 'es' ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'New password (leave blank to keep)'}
+                            </label>
+                            <input
+                              type="password"
+                              value={editingUser.newPassword}
+                              onChange={e => setEditingUser(prev => ({ ...prev, newPassword: e.target.value, error: '' }))}
+                              placeholder={language === 'es' ? 'Mín. 6 caracteres' : 'Min. 6 characters'}
+                              style={{
+                                width: '100%', padding: '8px 12px', borderRadius: '7px', fontSize: '13px',
+                                border: '1.5px solid var(--border, rgba(255,255,255,0.15))',
+                                background: 'var(--bg-input, rgba(255,255,255,0.05))', color: 'var(--text-primary)',
+                                outline: 'none', boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                          {editingUser.error && (
+                            <p style={{ color: '#f87171', fontSize: '12px', margin: '0 0 10px' }}>{editingUser.error}</p>
+                          )}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={saveUserCredentials}
+                              disabled={editingUser.saving}
+                              style={{
+                                flex: 1, padding: '8px', borderRadius: '7px', fontSize: '13px', fontWeight: 600,
+                                background: 'var(--primary, #6366f1)', color: '#fff', border: 'none',
+                                cursor: editingUser.saving ? 'not-allowed' : 'pointer', opacity: editingUser.saving ? 0.7 : 1
+                              }}
+                            >
+                              {editingUser.saving ? '...' : (language === 'es' ? 'Guardar' : 'Save')}
+                            </button>
+                            <button
+                              onClick={() => setEditingUser(null)}
+                              disabled={editingUser.saving}
+                              style={{
+                                padding: '8px 16px', borderRadius: '7px', fontSize: '13px',
+                                background: 'transparent', color: 'var(--text-secondary)',
+                                border: '1px solid var(--border, rgba(255,255,255,0.12))', cursor: 'pointer'
+                              }}
+                            >
+                              {language === 'es' ? 'Cancelar' : 'Cancel'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

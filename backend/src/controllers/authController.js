@@ -167,6 +167,40 @@ exports.validateMember = async (req, res) => {
   }
 };
 
+exports.getUsersByClient = async (req, res) => {
+  try {
+    const { client_id } = req.query;
+    if (!client_id) return res.status(400).json({ message: 'client_id requerido' });
+    const users = await User.findAllByClient(client_id);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateUserCredentials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, password } = req.body;
+    if (!email && !password) return res.status(400).json({ message: 'Debe enviar email o password' });
+
+    if (email) {
+      const existing = await User.findByEmail(email);
+      if (existing && String(existing.id) !== String(id)) {
+        return res.status(400).json({ message: 'Ese correo ya está en uso por otro usuario' });
+      }
+      await User.updateEmail(id, email);
+    }
+    if (password) {
+      if (password.length < 6) return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+      await User.updatePassword(id, password);
+    }
+    res.json({ message: 'Usuario actualizado' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.changeEmail = async (req, res) => {
   try {
     const { newEmail, password } = req.body;
