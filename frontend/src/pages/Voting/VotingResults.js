@@ -78,7 +78,7 @@ const VotingResults = () => {
       doc.text(lines, x + 1, y);
       x += widths[i];
     });
-    const rowH = 6;
+    const rowH = 8;
     return y + rowH;
   };
 
@@ -218,7 +218,7 @@ const VotingResults = () => {
 
     // ── 4.3 BASE DE VOTANTES ───────────────────────────────────────────────
     y = checkPage(doc, y, 50);
-    y = sectionTitle(doc, language === 'es' ? '4.3 Base de votantes (eligible_voters_set)' : '4.3 Voter Base', y, pageWidth);
+    y = sectionTitle(doc, language === 'es' ? '4.3 Votantes habilitados' : '4.3 Eligible Voters', y, pageWidth);
     if (quorumDetail?.breakdown?.length) {
       const bCols = language === 'es'
         ? ['Nombre', 'Rol', 'Tipo', 'Puede votar', 'Justificación']
@@ -316,8 +316,8 @@ const VotingResults = () => {
     y = checkPage(doc, y, 40);
     y = sectionTitle(doc, language === 'es' ? '4.7 Detalle de votación' : '4.7 Voting Detail', y, pageWidth);
     const dCols = language === 'es'
-      ? ['Nombre', 'Rol', 'Tipo de voto', 'Sentido', 'Base válida']
-      : ['Name', 'Role', 'Vote type', 'Direction', 'Valid base'];
+      ? ['Nombre', 'Rol', 'Tipo de voto', 'Sentido', 'Voto valido']
+      : ['Name', 'Role', 'Vote type', 'Direction', 'Valid vote'];
     const dW = [50, 36, 34, 38, 24];
     y = tableHeader(doc, dCols, y, margin, dW, pageWidth);
 
@@ -351,32 +351,32 @@ const VotingResults = () => {
       y += 4;
     }
 
-    // ── 4.9 VALIDACIONES AUTOMÁTICAS ──────────────────────────────────────
-    y = checkPage(doc, y, 45);
-    y = sectionTitle(doc, language === 'es' ? '4.9 Validaciones automáticas' : '4.9 Automatic Validations', y, pageWidth);
+    // ── 4.9 CONTROLES DE INTEGRIDAD ───────────────────────────────────────
+    y = checkPage(doc, y, 60);
+    y = sectionTitle(doc, language === 'es' ? '4.9 Controles de integridad de la votacion' : '4.9 Voting Integrity Controls', y, pageWidth);
     const validations = language === 'es' ? [
-      '[OK] Solo votaron personas registradas como presentes y aprobadas en asistencia.',
-      '[OK] No se registraron votos de personas no asistentes (NOT_PRESENT bloqueado).',
-      '[OK] No se registraron votos duplicados (ALREADY_VOTED bloqueado).',
-      '[OK] Suplentes con principal presente fueron bloqueados (SUPLENTE_SIN_VOTO).',
-      '[OK] Cargos con suplente ya votado fueron bloqueados (CARGO_YA_VOTADO).',
-      '[OK] Roles sin derecho a voto fueron bloqueados (NO_VOTE).',
-      '[OK] La Junta de Vigilancia emitio un unico voto institucional (JV_VOTED).',
+      '[OK] Solo votaron participantes presentes y validados.',
+      '[OK] No se registraron votos de participantes ausentes.',
+      '[OK] No se registraron votos duplicados.',
+      '[OK] Los suplentes con principal presente no pudieron votar.',
+      '[OK] No se registraron votos duplicados por cargo.',
+      '[OK] Los participantes sin derecho a voto no pudieron votar.',
+      '[OK] La Junta de Vigilancia emitio un unico voto institucional.',
     ] : [
-      '[OK] Only persons registered as present and approved in attendance were allowed to vote.',
-      '[OK] No votes from non-attendees were recorded (NOT_PRESENT blocked).',
-      '[OK] No duplicate votes were recorded (ALREADY_VOTED blocked).',
-      '[OK] Substitutes with present principal were blocked (SUPLENTE_SIN_VOTO).',
-      '[OK] Positions with already-voted substitute were blocked (CARGO_YA_VOTADO).',
-      '[OK] Roles without voting rights were blocked (NO_VOTE).',
-      '[OK] The Oversight Board cast a single institutional vote (JV_VOTED).',
+      '[OK] Only present and validated participants were allowed to vote.',
+      '[OK] No votes from absent participants were recorded.',
+      '[OK] No duplicate votes were recorded.',
+      '[OK] Substitutes with present principal were not allowed to vote.',
+      '[OK] No duplicate votes per position were recorded.',
+      '[OK] Participants without voting rights were not allowed to vote.',
+      '[OK] The Oversight Board cast a single institutional vote.',
     ];
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     validations.forEach(v => {
-      y = checkPage(doc, y, 8);
+      y = checkPage(doc, y, 12);
       doc.text(v, margin, y);
-      y += LH;
+      y += LH + 3;
     });
     y += 4;
 
