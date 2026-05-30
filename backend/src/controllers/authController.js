@@ -181,9 +181,12 @@ exports.getUsersByClient = async (req, res) => {
 exports.updateUserCredentials = async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, password } = req.body;
-    if (!email && !password) return res.status(400).json({ message: 'Debe enviar email o password' });
+    const { email, password, name } = req.body;
+    if (!email && !password && !name) return res.status(400).json({ message: 'Debe enviar al menos un campo a actualizar' });
 
+    if (name) {
+      await User.updateName(id, name.trim());
+    }
     if (email) {
       const existing = await User.findByEmail(email);
       if (existing && String(existing.id) !== String(id)) {

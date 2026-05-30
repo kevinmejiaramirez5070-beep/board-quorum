@@ -70,6 +70,13 @@ class User {
     );
   }
 
+  static async updateName(userId, newName) {
+    await db.execute(
+      'UPDATE users SET name = ? WHERE id = ?',
+      [newName, userId]
+    );
+  }
+
   static async getPasswordHash(userId) {
     const [rows] = await db.execute(
       'SELECT password FROM users WHERE id = ?',

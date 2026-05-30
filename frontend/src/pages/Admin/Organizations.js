@@ -278,6 +278,7 @@ const Organizations = () => {
     setEditingUser(prev => ({ ...prev, saving: true, error: '' }));
     try {
       const body = {};
+      if (editingUser.newName && editingUser.newName.trim() !== editingUser.name) body.name = editingUser.newName.trim();
       if (editingUser.newEmail && editingUser.newEmail !== editingUser.email) body.email = editingUser.newEmail;
       if (editingUser.newPassword) body.password = editingUser.newPassword;
       if (!body.email && !body.password) {
@@ -288,7 +289,7 @@ const Organizations = () => {
       // Actualizar lista local
       setUsersModal(prev => ({
         ...prev,
-        users: prev.users.map(u => u.id === editingUser.id ? { ...u, email: body.email || u.email } : u)
+        users: prev.users.map(u => u.id === editingUser.id ? { ...u, name: body.name || u.name, email: body.email || u.email } : u)
       }));
       setEditingUser(null);
     } catch (e) {
@@ -804,7 +805,7 @@ const Organizations = () => {
                         </div>
                         {!isEditing && (
                           <button
-                            onClick={() => setEditingUser({ id: u.id, email: u.email, newEmail: u.email, newPassword: '', saving: false, error: '' })}
+                            onClick={() => setEditingUser({ id: u.id, name: u.name, newName: u.name, email: u.email, newEmail: u.email, newPassword: '', saving: false, error: '' })}
                             style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,0.15))', color: 'var(--text-secondary)', borderRadius: '7px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' }}
                           >
                             {language === 'es' ? 'Editar' : 'Edit'}
@@ -814,6 +815,22 @@ const Organizations = () => {
 
                       {isEditing && (
                         <div>
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 600 }}>
+                              {language === 'es' ? 'Nombre' : 'Name'}
+                            </label>
+                            <input
+                              type="text"
+                              value={editingUser.newName}
+                              onChange={e => setEditingUser(prev => ({ ...prev, newName: e.target.value, error: '' }))}
+                              style={{
+                                width: '100%', padding: '8px 12px', borderRadius: '7px', fontSize: '13px',
+                                border: '1.5px solid var(--border, rgba(255,255,255,0.15))',
+                                background: 'var(--bg-input, rgba(255,255,255,0.05))', color: 'var(--text-primary)',
+                                outline: 'none', boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
                           <div style={{ marginBottom: '10px' }}>
                             <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 600 }}>
                               {language === 'es' ? 'Nuevo correo' : 'New email'}
