@@ -65,23 +65,61 @@ class AssemblyMembersService {
     const find = (regexes) =>
       headers.find(h => regexes.some(rx => rx.test(h.toUpperCase().trim())));
 
-    const colNombre = find([/NOMBRE/, /DELEGAD/, /APELLIDO/]);
-    const colDoc = find([/DOCUMENTO/, /C[EÉ]DULA/, /CEDULA/, /IDENTIFIC/, /\bCC\b/, /\bNIT\b/]);
+    // El maestro de ASOCOLCI trae MADRE y PADRE en la MISMA fila (una fila por curso/delegación).
+    // Detectamos ambas columnas; el delegado de la fila es el progenitor que tenga cédula
+    // (se prefiere la madre; si no tiene, se usa el padre). Se conserva el otro como contacto secundario.
+    const colDocMadre = find([/CC.*MADRE/, /C[EÉ]DULA.*MADRE/, /DOC.*MADRE/]);
+    const colNameMadre = find([/(APELLIDO|NOMBRE).*MADRE/]);
+    const colDocPadre = find([/CC.*PADRE/, /C[EÉ]DULA.*PADRE/, /DOC.*PADRE/]);
+    const colNamePadre = find([/(APELLIDO|NOMBRE).*PADRE/]);
+    const dualParent = colDocMadre && colDocPadre;
+
+    // Formato genérico (una fila = un delegado, columna única de documento/nombre)
+    const colNombre = find([/^NOMBRE/, /DELEGAD/, /APELLIDOS_NOMBRES$/]);
+    const colDoc = find([/^DOCUMENTO/, /^C[EÉ]DULA/, /^CEDULA/, /IDENTIFIC/, /N[UÚ]MERO.*DOC/]);
     const colTipoDoc = find([/TIPO.*DOCUMENTO/, /TIPO.*ID/]);
-    const colTipo = find([/TIPO.*PARTICIP/, /^TIPO$/, /PRINCIPAL.*SUPLENTE/, /CALIDAD/, /ROL$/]);
+    const colTipo = find([/TIPO.*PARTICIP/, /^ROL$/, /^TIPO$/, /PRINCIPAL.*SUPLENTE/, /CALIDAD/]);
     const colCurso = find([/CURSO/, /GRADO/, /ROL.*ORG/, /GRUPO/]);
     const colEmail = find([/CORREO/, /EMAIL/, /MAIL/]);
 
-    return rows.map((r, idx) => ({
-      _row: idx + 2, // fila real en el excel (1 = encabezado)
-      name: colNombre ? this._norm(r[colNombre]) : '',
-      numero_documento: colDoc ? this.normalizeDocument(r[colDoc]) : '',
-      tipo_documento: colTipoDoc ? (this._norm(r[colTipoDoc]) || 'CC') : 'CC',
-      member_type: this._detectMemberType(colTipo ? r[colTipo] : ''),
-      rol_organico: colCurso ? this._norm(r[colCurso]).toUpperCase() : '',
-      email: colEmail ? (this._norm(r[colEmail]) || null) : null,
-      _rawTipo: colTipo ? this._norm(r[colTipo]) : ''
-    }));
+    return rows.map((r, idx) => {
+      let name = '';
+      let numero_documento = '';
+      let secondary_name = null;
+      let secondary_document = null;
+
+      if (dualParent) {
+        const docMadre = this.normalizeDocument(r[colDocMadre]);
+        const nameMadre = colNameMadre ? this._norm(r[colNameMadre]) : '';
+        const docPadre = this.normalizeDocument(r[colDocPadre]);
+        const namePadre = colNamePadre ? this._norm(r[colNamePadre]) : '';
+        // Preferir el progenitor con cédula (madre primero)
+        if (docMadre) {
+          name = nameMadre; numero_documento = docMadre;
+          if (docPadre) { secondary_name = namePadre; secondary_document = docPadre; }
+        } else if (docPadre) {
+          name = namePadre; numero_documento = docPadre;
+        } else {
+          name = nameMadre || namePadre; numero_documento = '';
+        }
+      } else {
+        name = colNombre ? this._norm(r[colNombre]) : '';
+        numero_documento = colDoc ? this.normalizeDocument(r[colDoc]) : '';
+      }
+
+      return {
+        _row: idx + 2, // fila real en el excel (1 = encabezado)
+        name,
+        numero_documento,
+        secondary_name,
+        secondary_document,
+        tipo_documento: colTipoDoc ? (this._norm(r[colTipoDoc]) || 'CC') : 'CC',
+        member_type: this._detectMemberType(colTipo ? r[colTipo] : ''),
+        rol_organico: colCurso ? this._norm(r[colCurso]).toUpperCase() : '',
+        email: colEmail ? (this._norm(r[colEmail]) || null) : null,
+        _rawTipo: colTipo ? this._norm(r[colTipo]) : ''
+      };
+    });
   }
 
   /**
@@ -172,6 +210,13 @@ class AssemblyMembersService {
     const activeVal = isPG ? 'true' : '1';
     const returning = isPG ? ' RETURNING id' : '';
 
+    // ¿Existen las columnas del segundo progenitor? (se agregan por auto-migración)
+    let hasSecondary = false;
+    try {
+      await db.execute(`SELECT secondary_document FROM members LIMIT 1`);
+      hasSecondary = true;
+    } catch (e) { hasSecondary = false; }
+
     let ok = 0, skipped = 0, errors = 0;
     const errorDetail = [];
 
@@ -183,6 +228,8 @@ class AssemblyMembersService {
         const pv = cq; // puede_votar = cuenta_quorum por defecto (Regla 8)
         const tipoParticipante = r.member_type === 'suplente' ? 'SUPLENTE'
           : r.member_type === 'junta_vigilancia' ? 'JUNTA_DE_VIGILANCIA' : 'PRINCIPAL';
+        const secDoc = r.secondary_document || null;
+        const secName = r.secondary_name || null;
 
         // ¿Existe ya? (numero_documento + product_id)
         const [existing] = await db.execute(
@@ -193,24 +240,33 @@ class AssemblyMembersService {
         if (existing && existing.length > 0) {
           if (mode === 'insert_only') { skipped++; continue; }
           // upsert → actualizar campos base (no toca principal_id aquí; se recalcula en link)
+          const secSet = hasSecondary ? ', secondary_document = ?, secondary_name = ?' : '';
+          const params = hasSecondary
+            ? [r.name, r.email, r.tipo_documento, r.rol_organico, r.member_type, tipoParticipante, secDoc, secName, existing[0].id]
+            : [r.name, r.email, r.tipo_documento, r.rol_organico, r.member_type, tipoParticipante, existing[0].id];
           await db.execute(
             `UPDATE members SET
                name = ?, email = ?, tipo_documento = ?, rol_organico = ?,
-               member_type = ?, tipo_participante = ?,
+               member_type = ?, tipo_participante = ?${secSet},
                cuenta_quorum = ${cq}, puede_votar = ${pv},
                active = ${activeVal}, updated_at = NOW()
              WHERE id = ?`,
-            [r.name, r.email, r.tipo_documento, r.rol_organico, r.member_type, tipoParticipante, existing[0].id]
+            params
           );
           ok++;
         } else {
+          const secCols = hasSecondary ? ', secondary_document, secondary_name' : '';
+          const secVals = hasSecondary ? ', ?, ?' : '';
+          const params = hasSecondary
+            ? [clientId, productId, r.name, r.email, r.member_type, r.tipo_documento, r.numero_documento, r.rol_organico, tipoParticipante, secDoc, secName]
+            : [clientId, productId, r.name, r.email, r.member_type, r.tipo_documento, r.numero_documento, r.rol_organico, tipoParticipante];
           await db.execute(
             `INSERT INTO members (
                client_id, product_id, name, email, role, position,
                member_type, principal_id, tipo_documento, numero_documento,
-               rol_organico, tipo_participante, cuenta_quorum, puede_votar, active, created_at
-             ) VALUES (?, ?, ?, ?, 'member', NULL, ?, NULL, ?, ?, ?, ?, ${cq}, ${pv}, ${activeVal}, NOW())${returning}`,
-            [clientId, productId, r.name, r.email, r.member_type, r.tipo_documento, r.numero_documento, r.rol_organico, tipoParticipante]
+               rol_organico, tipo_participante${secCols}, cuenta_quorum, puede_votar, active, created_at
+             ) VALUES (?, ?, ?, ?, 'member', NULL, ?, NULL, ?, ?, ?, ?${secVals}, ${cq}, ${pv}, ${activeVal}, NOW())${returning}`,
+            params
           );
           ok++;
         }

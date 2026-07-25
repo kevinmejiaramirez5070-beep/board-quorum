@@ -107,7 +107,24 @@ async function ensureAssemblyM2Tables() {
         created_at ${tsDefault}
       )`
     );
-    console.log('✅ [migration] Tablas M2 Asamblea verificadas (assembly_import_log, assembly_master_snapshot)');
+
+    // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
+    // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
+    // en asistencia se pueda validar con cualquiera de las dos cédulas.
+    if (isPostgreSQL) {
+      await db.execute(`ALTER TABLE members ADD COLUMN IF NOT EXISTS secondary_document VARCHAR(50) NULL`);
+      await db.execute(`ALTER TABLE members ADD COLUMN IF NOT EXISTS secondary_name VARCHAR(255) NULL`);
+    } else {
+      const [c1] = await db.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'members' AND COLUMN_NAME = 'secondary_document'`
+      );
+      if (c1.length === 0) {
+        await db.execute(`ALTER TABLE members ADD COLUMN secondary_document VARCHAR(50) NULL`);
+        await db.execute(`ALTER TABLE members ADD COLUMN secondary_name VARCHAR(255) NULL`);
+      }
+    }
+    console.log('✅ [migration] Tablas M2 Asamblea verificadas (assembly_import_log, assembly_master_snapshot, secondary_*)');
   } catch (err) {
     console.error('⚠️  [migration] ensureAssemblyM2Tables falló (no crítico):', err.message);
   }
