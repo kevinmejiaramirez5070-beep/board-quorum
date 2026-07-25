@@ -106,6 +106,21 @@ exports.updateMeetingStatus = async (req, res) => {
     }
     const meeting = await Meeting.findById(req.params.id, req.user.client_id);
     if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+
+    // Regla 14 (M2): congelar el maestro al abrir una sesión de Asamblea (pending → active).
+    // Solo aplica a reuniones tipo asamblea con product_id — no afecta Junta Directiva.
+    if (status === 'active' && meeting.status !== 'active' && meeting.product_id) {
+      const QuorumService = require('../services/quorumService');
+      if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+        try {
+          const AssemblyMembersService = require('../services/assemblyMembersService');
+          await AssemblyMembersService.snapshotMaster(req.params.id, meeting.product_id);
+        } catch (snapErr) {
+          console.warn('[assembly] snapshotMaster falló (no bloqueante):', snapErr.message);
+        }
+      }
+    }
+
     await Meeting.update(req.params.id, { status });
     res.json({ message: 'Estado actualizado', status });
   } catch (error) {

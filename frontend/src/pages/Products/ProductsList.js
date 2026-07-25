@@ -130,10 +130,18 @@ const ProductsList = () => {
                     </div>
                   )}
                 </div>
-                <div className="product-card-footer">
+                <div className="product-card-footer" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button className="btn btn-primary">
                     {language === 'es' ? 'Ver Reuniones' : 'View Meetings'} →
                   </button>
+                  {/^asamblea/i.test(product.name || '') || /asamblea/i.test(product.type || '') ? (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/assembly/${product.id}/master`); }}
+                    >
+                      {language === 'es' ? '👥 Delegados' : '👥 Delegates'}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))}

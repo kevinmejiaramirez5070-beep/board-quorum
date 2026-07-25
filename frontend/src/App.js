@@ -18,6 +18,7 @@ import MeetingDetail from './pages/Meetings/MeetingDetail';
 import CreateMeeting from './pages/Meetings/CreateMeeting';
 import EditMeeting from './pages/Meetings/EditMeeting';
 import ProductsList from './pages/Products/ProductsList';
+import AssemblyMaster from './pages/Assembly/AssemblyMaster';
 import RegisterAttendance from './pages/Meetings/RegisterAttendance';
 import VotingDetail from './pages/Voting/VotingDetail';
 import VotingResults from './pages/Voting/VotingResults';
@@ -169,13 +170,21 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/products/:productId/meetings" 
+            <Route
+              path="/assembly/:productId/master"
+              element={
+                <ProtectedRoute>
+                  <AssemblyMaster />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products/:productId/meetings"
               element={
                 <ProtectedRoute>
                   <MeetingsList />
                 </ProtectedRoute>
-              } 
+              }
             />
             <Route 
               path="/products/:productId/meetings/new" 

@@ -71,6 +71,48 @@ async function fixPostgresSequences() {
   }
 }
 
+// Migración: crear tablas del Módulo 2 (Asamblea) si no existen
+// assembly_import_log (log de cargas) y assembly_master_snapshot (congelamiento histórico)
+async function ensureAssemblyM2Tables() {
+  try {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const idType = isPostgreSQL ? 'SERIAL PRIMARY KEY' : 'INT AUTO_INCREMENT PRIMARY KEY';
+    const jsonType = isPostgreSQL ? 'JSONB' : 'JSON';
+    const tsDefault = isPostgreSQL ? 'TIMESTAMP DEFAULT NOW()' : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS assembly_import_log (
+        id ${idType},
+        product_id INT NOT NULL,
+        client_id INT NOT NULL,
+        operator_id INT,
+        filename VARCHAR(255),
+        total_rows INT,
+        rows_ok INT,
+        rows_error INT,
+        rows_skipped INT,
+        errors ${jsonType},
+        status VARCHAR(20),
+        created_at ${tsDefault}
+      )`
+    );
+
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS assembly_master_snapshot (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        product_id INT NOT NULL,
+        snapshot ${jsonType} NOT NULL,
+        total_principals INT NOT NULL,
+        created_at ${tsDefault}
+      )`
+    );
+    console.log('✅ [migration] Tablas M2 Asamblea verificadas (assembly_import_log, assembly_master_snapshot)');
+  } catch (err) {
+    console.error('⚠️  [migration] ensureAssemblyM2Tables falló (no crítico):', err.message);
+  }
+}
+
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
@@ -116,6 +158,7 @@ try {
   app.use('/api/clients', require('./routes/clients'));
   app.use('/api/products', require('./routes/products'));
   app.use('/api/contact', require('./routes/contact'));
+  app.use('/api/assembly', require('./routes/assembly'));
   console.log('✅ All routes loaded successfully');
 } catch (error) {
   console.error('❌ Error loading routes:', error);
@@ -139,5 +182,6 @@ app.listen(PORT, async () => {
   await fixNonVotingRoles();
   await addCargoFuncionalColumn();
   await fixPostgresSequences();
+  await ensureAssemblyM2Tables();
 });
 
