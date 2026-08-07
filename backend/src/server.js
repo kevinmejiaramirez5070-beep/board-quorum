@@ -125,6 +125,59 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M6 — Orden del Día (cabecera, puntos y trazabilidad)
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS meeting_agenda (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        tipo_sesion VARCHAR(20) NOT NULL DEFAULT 'ordinaria',
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        total_puntos INT NOT NULL DEFAULT 0,
+        puntos_completados INT NOT NULL DEFAULT 0,
+        publicado_at TIMESTAMP NULL,
+        publicado_por INT,
+        cerrado_at TIMESTAMP NULL,
+        cerrado_por INT,
+        created_at ${tsDefault},
+        updated_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS agenda_items (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        numero INT NOT NULL,
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        tipo VARCHAR(30) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+        approval_vote_id INT,
+        election_id INT,
+        emergente ${isPostgreSQL ? 'BOOLEAN NOT NULL DEFAULT false' : 'TINYINT(1) NOT NULL DEFAULT 0'},
+        resultado_resumen TEXT,
+        iniciado_at TIMESTAMP NULL,
+        completado_at TIMESTAMP NULL,
+        iniciado_por INT,
+        completado_por INT,
+        notas TEXT,
+        created_at ${tsDefault},
+        updated_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS agenda_log (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        agenda_item_id INT,
+        event_type VARCHAR(50) NOT NULL,
+        operator_id INT,
+        status_antes VARCHAR(20),
+        status_despues VARCHAR(20),
+        detalle TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.

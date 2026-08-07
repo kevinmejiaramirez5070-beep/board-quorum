@@ -7,6 +7,7 @@ import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
 import { displayNameWithAccents } from '../../utils/nameDisplay';
 import AssemblyQuorumPanel from '../Assembly/AssemblyQuorumPanel';
+import AssemblyAgendaPanel from '../Assembly/AssemblyAgendaPanel';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -783,9 +784,12 @@ const MeetingDetail = () => {
           )}
         </div>
 
-        {/* M1 — Panel de quórum de Asamblea (solo reuniones tipo asamblea) */}
+        {/* M1 + M6 — Paneles de Asamblea (solo reuniones tipo asamblea) */}
         {/asamblea/i.test(String(meeting.type || '')) && (
-          <AssemblyQuorumPanel meetingId={meetingIdParam} />
+          <>
+            <AssemblyQuorumPanel meetingId={meetingIdParam} />
+            <AssemblyAgendaPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
+          </>
         )}
 
         {canAuthorizedLive && (

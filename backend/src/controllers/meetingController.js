@@ -121,6 +121,19 @@ exports.updateMeetingStatus = async (req, res) => {
       }
     }
 
+    // Al finalizar/archivar una sesión de asamblea, cerrar el Orden del Día (inmutable).
+    if ((status === 'completed' || status === 'archived') && meeting.product_id) {
+      const QuorumService = require('../services/quorumService');
+      if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+        try {
+          const AgendaService = require('../services/assemblyAgendaService');
+          await AgendaService.closeAgenda(req.params.id, req.user.id);
+        } catch (agErr) {
+          console.warn('[assembly] closeAgenda falló (no bloqueante):', agErr.message);
+        }
+      }
+    }
+
     await Meeting.update(req.params.id, { status });
     res.json({ message: 'Estado actualizado', status });
   } catch (error) {

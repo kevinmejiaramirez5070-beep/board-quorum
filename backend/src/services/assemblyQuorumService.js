@@ -200,7 +200,24 @@ class AssemblyQuorumService {
       .filter(c => c.representado)
       .map(c => ({ member_id: c.votante_id, nombre: c.votante_nombre, curso: c.curso, tipo_votante: c.tipo_votante }));
 
+    // M6 — estado de la agenda (si existe)
+    let agenda_status = null;
+    try {
+      const AgendaService = require('./assemblyAgendaService');
+      const agenda = await AgendaService.getAgendaWithProgress(meetingId);
+      if (agenda) {
+        agenda_status = {
+          status: agenda.status,
+          total_puntos: agenda.total_puntos,
+          puntos_completados: agenda.puntos_completados,
+          porcentaje_avance: agenda.porcentaje_avance,
+          punto_en_curso: agenda.punto_en_curso
+        };
+      }
+    } catch (e) { /* agenda aún no creada */ }
+
     return {
+      agenda_status,
       cursos_habilitados,
       cursos_representados,
       principales_presentes,

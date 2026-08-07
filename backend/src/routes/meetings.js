@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { auth, isAdmin, isAuthorizedLive } = require('../middleware/auth');
+const { auth, isAdmin, isAuthorizedLive, isAuthorized } = require('../middleware/auth');
 const meetingController = require('../controllers/meetingController');
 const joinRequestController = require('../controllers/joinRequestController');
+const agendaController = require('../controllers/assemblyAgendaController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -16,6 +17,20 @@ router.get('/:id/validate-installation', auth, meetingController.validateInstall
 router.get('/:id/assembly-quorum', auth, meetingController.getAssemblyQuorum);
 router.get('/:id/assembly-courses', auth, meetingController.getAssemblyCourses);
 router.post('/:id/assembly-quorum/refresh', auth, isAuthorizedLive, meetingController.refreshAssemblyQuorum);
+
+// M6 — Orden del Día
+router.get('/:id/agenda', auth, isAuthorized, agendaController.getAgenda);
+router.post('/:id/agenda', auth, isAuthorized, agendaController.createAgenda);
+router.post('/:id/agenda/load-template', auth, isAdmin, agendaController.loadTemplate);
+router.post('/:id/agenda/publish', auth, isAuthorized, agendaController.publishAgenda);
+router.post('/:id/agenda/items', auth, isAuthorized, agendaController.addItem);
+router.put('/:id/agenda/items/:itemId', auth, isAdmin, agendaController.updateItem);
+router.delete('/:id/agenda/items/:itemId', auth, isAdmin, agendaController.removeItem);
+router.post('/:id/agenda/items/:itemId/start', auth, isAuthorized, agendaController.startItem);
+router.post('/:id/agenda/items/:itemId/complete', auth, isAuthorized, agendaController.completeItem);
+router.post('/:id/agenda/items/:itemId/skip', auth, isAdmin, agendaController.skipItem);
+router.post('/:id/agenda/items/:itemId/link-vote', auth, isAuthorized, agendaController.linkVote);
+router.post('/:id/agenda/items/:itemId/link-election', auth, isAuthorized, agendaController.linkElection);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);
