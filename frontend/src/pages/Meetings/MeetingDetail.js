@@ -117,8 +117,13 @@ const MeetingDetail = () => {
       const votingsData = Array.isArray(votingsRes.data) ? votingsRes.data : [];
       setVotings(votingsData);
       
-      // VOT-LINK fix: link apunta a la reunión (votación activa dinámica), no a un ID fijo
-      if (votingsData.length > 0) {
+      // VOT-LINK fix: link apunta a la reunión (votación activa dinámica), no a un ID fijo.
+      // MD-01: mostrar el link desde que la sesión está instalada o hay reunión activa,
+      // para compartirlo UNA sola vez (sirve para todas las votaciones).
+      const sesionLista = meetingRes.data?.session_installed === true
+        || meetingRes.data?.session_installed === 1
+        || meetingRes.data?.status === 'active';
+      if (votingsData.length > 0 || sesionLista) {
         const link = `${window.location.origin}/public/meeting/${meetingIdParam}/vote`;
         setVotingLink(link);
       } else {
@@ -885,9 +890,9 @@ const MeetingDetail = () => {
                   <div className="link-content">
                     <h4>{language === 'es' ? 'Link de Votaciones' : 'Voting Link'}</h4>
                     <p className="link-description">
-                      {language === 'es' 
-                        ? 'Comparte este link para que los participantes puedan votar'
-                        : 'Share this link so participants can vote'}
+                      {language === 'es'
+                        ? 'Compártelo una sola vez: este mismo link sirve para TODAS las votaciones de la reunión. Cada vez que actives una votación, los participantes verán la que esté activa — no necesitas reenviar el enlace.'
+                        : 'Share it once: this same link works for ALL votings in the meeting. Each time you activate a voting, participants see the active one — no need to resend the link.'}
                     </p>
                     <a 
                       href={votingLink}

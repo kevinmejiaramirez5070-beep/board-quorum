@@ -101,6 +101,17 @@ exports.activateVoting = async (req, res) => {
       });
     }
 
+    // MD-01: solo una votación activa por reunión a la vez (el link compartido
+    // resuelve siempre la votación activa). Si ya hay otra activa, se bloquea.
+    const meetingVotings = await Voting.findByMeeting(voting.meeting_id);
+    const otraActiva = meetingVotings.find(v => v.status === 'active' && String(v.id) !== String(req.params.id));
+    if (otraActiva) {
+      return res.status(409).json({
+        message: `Ya hay una votación activa ("${otraActiva.title}"). Ciérrala antes de activar otra.`,
+        activeVotingId: otraActiva.id
+      });
+    }
+
     await Voting.updateStatus(req.params.id, 'active');
     res.json({ message: 'Voting activated' });
   } catch (error) {
