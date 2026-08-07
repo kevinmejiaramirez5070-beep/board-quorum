@@ -1,5 +1,26 @@
 const Attendance = require('../models/Attendance');
 
+// M1 — registra un evento de quórum solo si la reunión es de tipo asamblea.
+// No bloquea el flujo principal si algo falla.
+async function logAssemblyQuorumEvent(meetingId, eventType, memberId, operatorId, detalle) {
+  try {
+    const db = require('../config/database');
+    const [rows] = await db.execute(`SELECT type, product_id FROM meetings WHERE id = ? LIMIT 1`, [meetingId]);
+    const meeting = rows[0];
+    if (!meeting || !meeting.product_id) return;
+    const QuorumService = require('../services/quorumService');
+    if (QuorumService.normalizeMeetingType(meeting.type) !== 'asamblea') return;
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    const panel = await AssemblyQuorumService.getFullAssemblyPanel(meetingId);
+    await AssemblyQuorumService.logQuorumEvent(
+      meetingId, eventType, memberId || null, operatorId || null,
+      {}, { cursos: panel.cursos_representados, estado: panel.estado }, detalle || ''
+    );
+  } catch (e) {
+    console.warn('[assembly] logAssemblyQuorumEvent falló:', e.message);
+  }
+}
+
 exports.getAttendance = async (req, res) => {
   try {
     const attendance = await Attendance.findByMeeting(req.params.meetingId);
@@ -135,8 +156,9 @@ exports.confirmAttendance = async (req, res) => {
     };
 
     const attendanceId = await Attendance.create(data);
-    res.status(201).json({ 
-      id: attendanceId, 
+    await logAssemblyQuorumEvent(meetingId, 'INGRESO_DELEGADO', member.id, null, `Ingreso ${member.name}`);
+    res.status(201).json({
+      id: attendanceId,
       message: 'Asistencia registrada exitosamente',
       member: {
         name: member.name,
@@ -248,7 +270,10 @@ exports.registerPublicAttendance = async (req, res) => {
 exports.approvePendingAttendance = async (req, res) => {
   try {
     const attendanceId = req.params.id;
+    const db = require('../config/database');
+    const [rows] = await db.execute(`SELECT meeting_id, member_id FROM attendance WHERE id = ? LIMIT 1`, [attendanceId]);
     await Attendance.approveAttendance(attendanceId);
+    if (rows[0]) await logAssemblyQuorumEvent(rows[0].meeting_id, 'APROBACION_PENDIENTE', rows[0].member_id, req.user?.id, 'Aprobación de asistencia');
     res.json({ success: true, id: attendanceId });
   } catch (error) {
     res.status(500).json({ message: error.message || 'Error al aprobar asistencia' });
@@ -258,7 +283,10 @@ exports.approvePendingAttendance = async (req, res) => {
 exports.rejectPendingAttendance = async (req, res) => {
   try {
     const attendanceId = req.params.id;
+    const db = require('../config/database');
+    const [rows] = await db.execute(`SELECT meeting_id, member_id FROM attendance WHERE id = ? LIMIT 1`, [attendanceId]);
     await Attendance.rejectAttendance(attendanceId);
+    if (rows[0]) await logAssemblyQuorumEvent(rows[0].meeting_id, 'RECHAZO_PENDIENTE', rows[0].member_id, req.user?.id, 'Rechazo de asistencia');
     res.json({ success: true, id: attendanceId });
   } catch (error) {
     res.status(500).json({ message: error.message || 'Error al rechazar asistencia' });

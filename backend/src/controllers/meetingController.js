@@ -320,3 +320,47 @@ exports.getQuorumDetail = async (req, res) => {
   }
 };
 
+// ── M1 — Motor de Quórum de Asamblea (panel por cursos representados) ─────────
+
+exports.getAssemblyQuorum = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    const panel = await AssemblyQuorumService.getFullAssemblyPanel(req.params.id, meeting.client_id, meeting.product_id);
+    res.json(panel);
+  } catch (error) {
+    console.error('Error in getAssemblyQuorum:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAssemblyCourses = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    const courses = await AssemblyQuorumService.getCourseRepresentationStatus(req.params.id);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Herramienta auxiliar: recalcula y registra un evento manual de refresco (no es el mecanismo principal)
+exports.refreshAssemblyQuorum = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    const panel = await AssemblyQuorumService.getFullAssemblyPanel(req.params.id, meeting.client_id, meeting.product_id);
+    await AssemblyQuorumService.logQuorumEvent(
+      req.params.id, 'MANUAL_REFRESH', null, req.user.id,
+      {}, { cursos: panel.cursos_representados, estado: panel.estado }, 'Refresco manual'
+    );
+    res.json(panel);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

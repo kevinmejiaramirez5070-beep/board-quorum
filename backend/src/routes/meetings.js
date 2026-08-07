@@ -12,6 +12,11 @@ router.get('/:id/quorum', auth, meetingController.getQuorum);
 router.get('/:id/quorum-detail', auth, meetingController.getQuorumDetail);
 router.get('/:id/validate-installation', auth, meetingController.validateInstallation);
 
+// M1 — Quórum de Asamblea (panel por cursos representados)
+router.get('/:id/assembly-quorum', auth, meetingController.getAssemblyQuorum);
+router.get('/:id/assembly-courses', auth, meetingController.getAssemblyCourses);
+router.post('/:id/assembly-quorum/refresh', auth, isAuthorizedLive, meetingController.refreshAssemblyQuorum);
+
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);
 router.put('/:id', auth, isAdmin, meetingController.updateMeeting);

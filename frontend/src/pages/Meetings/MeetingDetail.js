@@ -6,6 +6,7 @@ import { meetingService } from '../../services/meetingService';
 import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
 import { displayNameWithAccents } from '../../utils/nameDisplay';
+import AssemblyQuorumPanel from '../Assembly/AssemblyQuorumPanel';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -781,6 +782,11 @@ const MeetingDetail = () => {
             </div>
           )}
         </div>
+
+        {/* M1 — Panel de quórum de Asamblea (solo reuniones tipo asamblea) */}
+        {/asamblea/i.test(String(meeting.type || '')) && (
+          <AssemblyQuorumPanel meetingId={meetingIdParam} />
+        )}
 
         {canAuthorizedLive && (
           <div style={{ marginBottom: '24px', textAlign: 'right' }}>

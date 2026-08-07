@@ -108,6 +108,23 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M1 — Trazabilidad de quórum de asamblea (Regla 9)
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS quorum_log (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        member_id INT,
+        operator_id INT,
+        cursos_antes INT,
+        cursos_despues INT,
+        estado_antes VARCHAR(20),
+        estado_despues VARCHAR(20),
+        detalle TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.
@@ -124,7 +141,7 @@ async function ensureAssemblyM2Tables() {
         await db.execute(`ALTER TABLE members ADD COLUMN secondary_name VARCHAR(255) NULL`);
       }
     }
-    console.log('✅ [migration] Tablas M2 Asamblea verificadas (assembly_import_log, assembly_master_snapshot, secondary_*)');
+    console.log('✅ [migration] Tablas Asamblea verificadas (assembly_import_log, assembly_master_snapshot, quorum_log, secondary_*)');
   } catch (err) {
     console.error('⚠️  [migration] ensureAssemblyM2Tables falló (no crítico):', err.message);
   }
