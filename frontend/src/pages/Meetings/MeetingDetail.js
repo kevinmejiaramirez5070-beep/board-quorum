@@ -9,6 +9,7 @@ import { displayNameWithAccents } from '../../utils/nameDisplay';
 import AssemblyQuorumPanel from '../Assembly/AssemblyQuorumPanel';
 import AssemblyAgendaPanel from '../Assembly/AssemblyAgendaPanel';
 import AssemblyRolesPanel from '../Assembly/AssemblyRolesPanel';
+import AssemblyPowersPanel from '../Assembly/AssemblyPowersPanel';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -790,6 +791,7 @@ const MeetingDetail = () => {
           <>
             <AssemblyQuorumPanel meetingId={meetingIdParam} />
             <AssemblyAgendaPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
+            <AssemblyPowersPanel meetingId={meetingIdParam} productId={meeting.product_id} />
             <AssemblyRolesPanel meetingId={meetingIdParam} />
           </>
         )}

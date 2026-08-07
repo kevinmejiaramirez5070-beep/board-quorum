@@ -10,6 +10,11 @@ async function logAssemblyQuorumEvent(meetingId, eventType, memberId, operatorId
     if (!meeting || !meeting.product_id) return;
     const QuorumService = require('../services/quorumService');
     if (QuorumService.normalizeMeetingType(meeting.type) !== 'asamblea') return;
+    // M3 — reevaluar poderes (activar/suspender) tras el cambio de asistencia
+    try {
+      const AssemblyPowersService = require('../services/assemblyPowersService');
+      await AssemblyPowersService.evaluatePowerOnAttendanceChange(meetingId);
+    } catch (pe) { /* tabla de poderes puede no existir */ }
     const AssemblyQuorumService = require('../services/assemblyQuorumService');
     const panel = await AssemblyQuorumService.getFullAssemblyPanel(meetingId);
     await AssemblyQuorumService.logQuorumEvent(

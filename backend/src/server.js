@@ -178,6 +178,27 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M3 — Poderes / Transferencia de Representación
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS representation_powers (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        product_id INT NOT NULL,
+        poderdante_id INT NOT NULL,
+        apoderado_id INT NOT NULL,
+        curso VARCHAR(100) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'registered',
+        registered_by INT,
+        registered_at ${tsDefault},
+        activated_at TIMESTAMP NULL,
+        suspended_at TIMESTAMP NULL,
+        revoked_at TIMESTAMP NULL,
+        revoked_by INT,
+        referencia_documental VARCHAR(255),
+        notas TEXT
+      )`
+    );
+
     // M7 — Roles de Asamblea (autoridad de sesión) + trazabilidad
     await db.execute(
       `CREATE TABLE IF NOT EXISTS session_roles (

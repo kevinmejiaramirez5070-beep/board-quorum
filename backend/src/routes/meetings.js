@@ -5,6 +5,7 @@ const meetingController = require('../controllers/meetingController');
 const joinRequestController = require('../controllers/joinRequestController');
 const agendaController = require('../controllers/assemblyAgendaController');
 const rolesController = require('../controllers/assemblyRolesController');
+const powersController = require('../controllers/assemblyPowersController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -39,6 +40,11 @@ router.get('/:id/roles', auth, isAuthorized, rolesController.getRoles);
 router.post('/:id/roles', auth, isAuthorized, rolesController.assignRole);
 router.get('/:id/roles/:roleType', auth, isAuthorized, rolesController.getRoleByType);
 router.delete('/:id/roles/:sessionRoleId', auth, isAuthorized, rolesController.revokeRole);
+
+// M3 — Poderes / Transferencia de Representación (sin DELETE: revocación pendiente VF-06)
+router.get('/:id/powers/apoderado/:memberId', auth, isAuthorized, powersController.getApoderadoLoad);
+router.get('/:id/powers', auth, isAuthorized, powersController.getPowers);
+router.post('/:id/powers', auth, isAuthorized, powersController.registerPower);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);

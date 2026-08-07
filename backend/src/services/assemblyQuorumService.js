@@ -68,6 +68,7 @@ class AssemblyQuorumService {
     // Indexar presentes por curso
     const principalByCurso = new Map();
     const suplenteByCurso = new Map();
+    const presentIds = new Set(present.map(p => Number(p.member_id)));
     for (const p of present) {
       const curso = this._norm(p.rol_organico);
       if (p.member_type === 'principal') {
@@ -77,24 +78,47 @@ class AssemblyQuorumService {
       }
     }
 
+    // M3 — poderes: por curso, si hay poder con apoderado presente (nivel 3 de la jerarquía)
+    const powerByCurso = new Map();
+    try {
+      const [powers] = await db.execute(
+        `SELECT rp.id AS power_id, UPPER(TRIM(rp.curso)) AS curso, rp.apoderado_id, apo.name AS apoderado_nombre
+         FROM representation_powers rp LEFT JOIN members apo ON apo.id = rp.apoderado_id
+         WHERE rp.meeting_id = ? AND rp.status IN ('registered','active','suspended')`,
+        [meetingId]
+      );
+      for (const pw of powers) {
+        const curso = this._norm(pw.curso);
+        if (!powerByCurso.has(curso) && presentIds.has(Number(pw.apoderado_id))) powerByCurso.set(curso, pw);
+      }
+    } catch (e) { /* tabla de poderes aún no existe */ }
+
     return cursos.map(curso => {
       const principal = principalByCurso.get(curso);
       const suplente = suplenteByCurso.get(curso);
+      const power = powerByCurso.get(curso);
       if (principal) {
         return {
           curso, representado: true,
           votante_id: principal.member_id, votante_nombre: principal.name,
-          tipo_votante: 'principal', acting_as_principal: false
+          tipo_votante: 'principal', acting_as_principal: false, power_id: null, apoderado_id: null
         };
       }
       if (suplente) {
         return {
           curso, representado: true,
           votante_id: suplente.member_id, votante_nombre: suplente.name,
-          tipo_votante: 'suplente', acting_as_principal: true
+          tipo_votante: 'suplente', acting_as_principal: true, power_id: null, apoderado_id: null
         };
       }
-      return { curso, representado: false, votante_id: null, votante_nombre: null, tipo_votante: null, acting_as_principal: false };
+      if (power) {
+        return {
+          curso, representado: true,
+          votante_id: power.apoderado_id, votante_nombre: power.apoderado_nombre,
+          tipo_votante: 'apoderado', acting_as_principal: false, power_id: power.power_id, apoderado_id: power.apoderado_id
+        };
+      }
+      return { curso, representado: false, votante_id: null, votante_nombre: null, tipo_votante: null, acting_as_principal: false, power_id: null, apoderado_id: null };
     });
   }
 
@@ -181,20 +205,10 @@ class AssemblyQuorumService {
     const cursos_representados = status.filter(c => c.representado).length;
     const principales_presentes = status.filter(c => c.representado && c.tipo_votante === 'principal').length;
     const suplentes_actuando = status.filter(c => c.representado && c.tipo_votante === 'suplente').length;
+    // M3 — cursos representados por poder (apoderado presente)
+    const representaciones_por_poder = status.filter(c => c.representado && c.tipo_votante === 'apoderado').length;
 
     const moment = await this.getQuorumMoment(meetingId, cid, pid);
-
-    // Poderes activos (Módulo 3) — 0 si la tabla aún no existe
-    let representaciones_por_poder = 0;
-    try {
-      const isPG = this.isPostgreSQL;
-      const activeCond = isPG ? "status = 'active'" : "status = 'active'";
-      const [pw] = await db.execute(
-        `SELECT COUNT(*) AS n FROM assembly_powers WHERE meeting_id = ? AND ${activeCond}`,
-        [meetingId]
-      );
-      representaciones_por_poder = Number(pw[0]?.n || 0);
-    } catch (e) { /* tabla M3 aún no existe */ }
 
     const votantes_activos = status
       .filter(c => c.representado)

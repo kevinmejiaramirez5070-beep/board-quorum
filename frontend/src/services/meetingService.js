@@ -36,6 +36,9 @@ export const meetingService = {
   getRolesForActa: (id) => api.get(`/meetings/${id}/roles/acta`),
   assignRole: (id, data) => api.post(`/meetings/${id}/roles`, data),
   revokeRole: (id, sessionRoleId) => api.delete(`/meetings/${id}/roles/${sessionRoleId}`),
+  // M3 — Poderes
+  getPowers: (id) => api.get(`/meetings/${id}/powers`),
+  registerPower: (id, data) => api.post(`/meetings/${id}/powers`, data),
   setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
   getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };
