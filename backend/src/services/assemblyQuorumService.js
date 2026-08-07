@@ -216,8 +216,22 @@ class AssemblyQuorumService {
       }
     } catch (e) { /* agenda aún no creada */ }
 
+    // M7 — roles de sesión activos
+    let roles_activos = null;
+    try {
+      const RolesService = require('./assemblyRolesService');
+      const roles = await RolesService.getSessionRoles(meetingId);
+      roles_activos = {
+        presidente: roles.presidente_asamblea?.person_name || null,
+        secretario: roles.secretario_asamblea?.person_name || null,
+        comision_verificadora: roles.comision_verificadora.map(m => m.person_name),
+        comision_aprobadora: roles.comision_aprobadora.map(m => m.person_name)
+      };
+    } catch (e) { /* tabla roles aún no existe */ }
+
     return {
       agenda_status,
+      roles_activos,
       cursos_habilitados,
       cursos_representados,
       principales_presentes,

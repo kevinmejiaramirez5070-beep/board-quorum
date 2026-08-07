@@ -178,6 +178,41 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M7 — Roles de Asamblea (autoridad de sesión) + trazabilidad
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS session_roles (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        role_type VARCHAR(50) NOT NULL,
+        user_id INT,
+        person_name VARCHAR(255),
+        person_type VARCHAR(20) NOT NULL DEFAULT 'interno',
+        agenda_item_id INT,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        assigned_at ${tsDefault},
+        assigned_by INT,
+        revoked_at TIMESTAMP NULL,
+        revoked_by INT,
+        notas TEXT,
+        created_at ${tsDefault},
+        updated_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS roles_log (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        session_role_id INT,
+        event_type VARCHAR(50) NOT NULL,
+        role_type VARCHAR(50),
+        operator_id INT,
+        person_id INT,
+        person_name VARCHAR(255),
+        detalle TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.

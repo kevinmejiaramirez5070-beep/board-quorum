@@ -31,6 +31,11 @@ export const meetingService = {
   startAgendaItem: (id, itemId) => api.post(`/meetings/${id}/agenda/items/${itemId}/start`),
   completeAgendaItem: (id, itemId, resultado_resumen) => api.post(`/meetings/${id}/agenda/items/${itemId}/complete`, { resultado_resumen }),
   skipAgendaItem: (id, itemId) => api.post(`/meetings/${id}/agenda/items/${itemId}/skip`),
+  // M7 — Roles de Asamblea
+  getRoles: (id) => api.get(`/meetings/${id}/roles`),
+  getRolesForActa: (id) => api.get(`/meetings/${id}/roles/acta`),
+  assignRole: (id, data) => api.post(`/meetings/${id}/roles`, data),
+  revokeRole: (id, sessionRoleId) => api.delete(`/meetings/${id}/roles/${sessionRoleId}`),
   setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
   getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };

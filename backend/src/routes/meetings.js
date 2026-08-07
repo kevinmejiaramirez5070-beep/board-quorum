@@ -4,6 +4,7 @@ const { auth, isAdmin, isAuthorizedLive, isAuthorized } = require('../middleware
 const meetingController = require('../controllers/meetingController');
 const joinRequestController = require('../controllers/joinRequestController');
 const agendaController = require('../controllers/assemblyAgendaController');
+const rolesController = require('../controllers/assemblyRolesController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -31,6 +32,13 @@ router.post('/:id/agenda/items/:itemId/complete', auth, isAuthorized, agendaCont
 router.post('/:id/agenda/items/:itemId/skip', auth, isAdmin, agendaController.skipItem);
 router.post('/:id/agenda/items/:itemId/link-vote', auth, isAuthorized, agendaController.linkVote);
 router.post('/:id/agenda/items/:itemId/link-election', auth, isAuthorized, agendaController.linkElection);
+
+// M7 — Roles de Asamblea (acta antes de :roleType para evitar colisión de rutas)
+router.get('/:id/roles/acta', auth, isAdmin, rolesController.getRolesForActa);
+router.get('/:id/roles', auth, isAuthorized, rolesController.getRoles);
+router.post('/:id/roles', auth, isAuthorized, rolesController.assignRole);
+router.get('/:id/roles/:roleType', auth, isAuthorized, rolesController.getRoleByType);
+router.delete('/:id/roles/:sessionRoleId', auth, isAuthorized, rolesController.revokeRole);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);

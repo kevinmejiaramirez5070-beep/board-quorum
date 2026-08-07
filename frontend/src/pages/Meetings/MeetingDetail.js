@@ -8,6 +8,7 @@ import { votingService } from '../../services/votingService';
 import { displayNameWithAccents } from '../../utils/nameDisplay';
 import AssemblyQuorumPanel from '../Assembly/AssemblyQuorumPanel';
 import AssemblyAgendaPanel from '../Assembly/AssemblyAgendaPanel';
+import AssemblyRolesPanel from '../Assembly/AssemblyRolesPanel';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -789,6 +790,7 @@ const MeetingDetail = () => {
           <>
             <AssemblyQuorumPanel meetingId={meetingIdParam} />
             <AssemblyAgendaPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
+            <AssemblyRolesPanel meetingId={meetingIdParam} />
           </>
         )}
 
