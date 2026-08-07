@@ -59,6 +59,44 @@ exports.updateAttendance = async (req, res) => {
   }
 };
 
+// MD-02 — Registro masivo de asistencia (varios miembros en una operación)
+exports.registerBulkAttendance = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { member_ids, status = 'present' } = req.body;
+    if (!Array.isArray(member_ids) || member_ids.length === 0) {
+      return res.status(400).json({ message: 'member_ids debe ser un arreglo con al menos un miembro' });
+    }
+
+    let registered = 0, skipped = 0;
+    const errors = [];
+    for (const memberId of member_ids) {
+      try {
+        // Evitar duplicado: si ya existe registro para el miembro, se omite
+        const existing = await Attendance.findByMemberAndMeeting(meetingId, memberId);
+        if (existing) { skipped++; continue; }
+        await Attendance.create({
+          meeting_id: meetingId,
+          member_id: parseInt(memberId),
+          status,
+          arrival_time: new Date()
+        });
+        registered++;
+      } catch (e) {
+        errors.push({ member_id: memberId, motivo: e.message });
+      }
+    }
+
+    // Recalcular quórum de asamblea si aplica (una sola vez al final)
+    await logAssemblyQuorumEvent(meetingId, 'REGISTRO_MASIVO', null, req.user?.id, `Registro masivo (${registered})`);
+
+    res.status(201).json({ message: 'Registro masivo procesado', registered, skipped, errors });
+  } catch (error) {
+    console.error('Error in registerBulkAttendance:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // PASO 1: Verificar cédula (nuevo sistema seguro)
 exports.verifyDocument = async (req, res) => {
   try {

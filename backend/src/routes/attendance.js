@@ -6,6 +6,7 @@ const attendanceController = require('../controllers/attendanceController');
 // Rutas autenticadas
 router.get('/meeting/:meetingId', auth, attendanceController.getAttendance);
 router.post('/meeting/:meetingId', auth, attendanceController.registerAttendance);
+router.post('/meeting/:meetingId/bulk', auth, attendanceController.registerBulkAttendance);
 router.put('/:id', auth, attendanceController.updateAttendance);
 
 // Nuevas rutas públicas seguras (sistema de verificación por cédula)
