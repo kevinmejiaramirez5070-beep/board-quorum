@@ -178,6 +178,64 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M4 — Procesos Electorales (voto nominal). NOTA: se usa election_votes
+    // (NO 'votes', que ya existe para Junta Directiva) para no romper JD.
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS elections (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        product_id INT NOT NULL,
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        punto_orden_dia INT,
+        tipo_eleccion VARCHAR(30) NOT NULL DEFAULT 'unipersonal',
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        required_majority VARCHAR(20) NOT NULL DEFAULT 'simple',
+        total_padron INT,
+        votos_emitidos INT DEFAULT 0,
+        abierta_por INT,
+        cerrada_por INT,
+        opened_at TIMESTAMP NULL,
+        closed_at TIMESTAMP NULL,
+        resultado ${jsonType},
+        notas TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS election_candidates (
+        id ${idType},
+        election_id INT NOT NULL,
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        votos INT DEFAULT 0,
+        created_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS election_voters (
+        id ${idType},
+        election_id INT NOT NULL,
+        member_id INT NOT NULL,
+        tipo_votante VARCHAR(30) NOT NULL,
+        vota_por_curso VARCHAR(100),
+        power_id INT,
+        ha_votado ${isPostgreSQL ? 'BOOLEAN DEFAULT false' : 'TINYINT(1) DEFAULT 0'}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS election_votes (
+        id ${idType},
+        election_id INT NOT NULL,
+        voter_id INT NOT NULL,
+        candidate_id INT,
+        voto_nulo ${isPostgreSQL ? 'BOOLEAN DEFAULT false' : 'TINYINT(1) DEFAULT 0'},
+        nota_nulo TEXT,
+        emitido_at ${tsDefault},
+        registrado_por INT
+      )`
+    );
+
     // M5 — Votaciones de Aprobación Documental (voto nominal)
     await db.execute(
       `CREATE TABLE IF NOT EXISTS approval_votes (

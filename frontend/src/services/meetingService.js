@@ -47,6 +47,16 @@ export const meetingService = {
   closeApprovalVote: (id, avId) => api.post(`/meetings/${id}/approval-votes/${avId}/close`),
   getApprovalResults: (id, avId) => api.get(`/meetings/${id}/approval-votes/${avId}/results`),
   getApprovalPadron: (id, avId) => api.get(`/meetings/${id}/approval-votes/${avId}/padron`),
+  // M4 — Elecciones
+  getElections: (id) => api.get(`/meetings/${id}/elections`),
+  createElection: (id, data) => api.post(`/meetings/${id}/elections`, data),
+  addCandidate: (id, eId, data) => api.post(`/meetings/${id}/elections/${eId}/candidates`, data),
+  getCandidates: (id, eId) => api.get(`/meetings/${id}/elections/${eId}/candidates`),
+  openElection: (id, eId) => api.post(`/meetings/${id}/elections/${eId}/open`),
+  castElectionVote: (id, eId, body) => api.post(`/meetings/${id}/elections/${eId}/vote`, body),
+  closeElection: (id, eId) => api.post(`/meetings/${id}/elections/${eId}/close`),
+  getElectionResults: (id, eId) => api.get(`/meetings/${id}/elections/${eId}/results`),
+  getElectionPadron: (id, eId) => api.get(`/meetings/${id}/elections/${eId}/padron`),
   setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
   getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };

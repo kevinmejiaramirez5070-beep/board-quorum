@@ -7,6 +7,7 @@ const agendaController = require('../controllers/assemblyAgendaController');
 const rolesController = require('../controllers/assemblyRolesController');
 const powersController = require('../controllers/assemblyPowersController');
 const approvalController = require('../controllers/assemblyApprovalController');
+const electionsController = require('../controllers/assemblyElectionsController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -55,6 +56,17 @@ router.get('/:id/approval-votes/:approvalVoteId/padron', auth, isAuthorized, app
 router.post('/:id/approval-votes/:approvalVoteId/open', auth, isAuthorized, approvalController.open);
 router.post('/:id/approval-votes/:approvalVoteId/vote', auth, isAuthorized, approvalController.vote);
 router.post('/:id/approval-votes/:approvalVoteId/close', auth, isAuthorized, approvalController.close);
+
+// M4 — Procesos Electorales
+router.get('/:id/elections', auth, isAuthorized, electionsController.list);
+router.post('/:id/elections', auth, isAuthorized, electionsController.create);
+router.get('/:id/elections/:electionId/results', auth, isAuthorized, electionsController.results);
+router.get('/:id/elections/:electionId/padron', auth, isAuthorized, electionsController.padron);
+router.get('/:id/elections/:electionId/candidates', auth, isAuthorized, electionsController.candidates);
+router.post('/:id/elections/:electionId/candidates', auth, isAuthorized, electionsController.addCandidate);
+router.post('/:id/elections/:electionId/open', auth, isAuthorized, electionsController.open);
+router.post('/:id/elections/:electionId/vote', auth, isAuthorized, electionsController.vote);
+router.post('/:id/elections/:electionId/close', auth, isAuthorized, electionsController.close);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);

@@ -247,6 +247,21 @@ class AssemblyQuorumService {
       }
     } catch (e) { /* tabla M5 aún no existe */ }
 
+    // M4 — elección abierta
+    let eleccion_activa = null;
+    try {
+      const ElectionsService = require('./assemblyElectionsService');
+      const list = await ElectionsService.getElectionsByMeeting(meetingId);
+      const open = list.find(e => e.status === 'open');
+      if (open) {
+        eleccion_activa = {
+          election_id: open.election_id, nombre: open.nombre,
+          votos_emitidos: open.votos_emitidos, total_padron: open.total_padron,
+          progreso: open.total_padron > 0 ? Math.round((Number(open.votos_emitidos || 0) / open.total_padron) * 100) : 0
+        };
+      }
+    } catch (e) { /* tabla M4 aún no existe */ }
+
     // M7 — roles de sesión activos
     let roles_activos = null;
     try {
@@ -264,6 +279,7 @@ class AssemblyQuorumService {
       agenda_status,
       roles_activos,
       votacion_documental_activa,
+      eleccion_activa,
       cursos_habilitados,
       cursos_representados,
       principales_presentes,
