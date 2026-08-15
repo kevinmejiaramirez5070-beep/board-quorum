@@ -39,6 +39,14 @@ export const meetingService = {
   // M3 — Poderes
   getPowers: (id) => api.get(`/meetings/${id}/powers`),
   registerPower: (id, data) => api.post(`/meetings/${id}/powers`, data),
+  // M5 — Votaciones documentales
+  getApprovalVotes: (id) => api.get(`/meetings/${id}/approval-votes`),
+  createApprovalVote: (id, data) => api.post(`/meetings/${id}/approval-votes`, data),
+  openApprovalVote: (id, avId) => api.post(`/meetings/${id}/approval-votes/${avId}/open`),
+  castApprovalVote: (id, avId, voter_id, voto_tipo) => api.post(`/meetings/${id}/approval-votes/${avId}/vote`, { voter_id, voto_tipo }),
+  closeApprovalVote: (id, avId) => api.post(`/meetings/${id}/approval-votes/${avId}/close`),
+  getApprovalResults: (id, avId) => api.get(`/meetings/${id}/approval-votes/${avId}/results`),
+  getApprovalPadron: (id, avId) => api.get(`/meetings/${id}/approval-votes/${avId}/padron`),
   setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
   getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };

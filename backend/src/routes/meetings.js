@@ -6,6 +6,7 @@ const joinRequestController = require('../controllers/joinRequestController');
 const agendaController = require('../controllers/assemblyAgendaController');
 const rolesController = require('../controllers/assemblyRolesController');
 const powersController = require('../controllers/assemblyPowersController');
+const approvalController = require('../controllers/assemblyApprovalController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -45,6 +46,15 @@ router.delete('/:id/roles/:sessionRoleId', auth, isAuthorized, rolesController.r
 router.get('/:id/powers/apoderado/:memberId', auth, isAuthorized, powersController.getApoderadoLoad);
 router.get('/:id/powers', auth, isAuthorized, powersController.getPowers);
 router.post('/:id/powers', auth, isAuthorized, powersController.registerPower);
+
+// M5 — Votaciones de Aprobación Documental
+router.get('/:id/approval-votes', auth, isAuthorized, approvalController.list);
+router.post('/:id/approval-votes', auth, isAuthorized, approvalController.create);
+router.get('/:id/approval-votes/:approvalVoteId/results', auth, isAuthorized, approvalController.results);
+router.get('/:id/approval-votes/:approvalVoteId/padron', auth, isAuthorized, approvalController.padron);
+router.post('/:id/approval-votes/:approvalVoteId/open', auth, isAuthorized, approvalController.open);
+router.post('/:id/approval-votes/:approvalVoteId/vote', auth, isAuthorized, approvalController.vote);
+router.post('/:id/approval-votes/:approvalVoteId/close', auth, isAuthorized, approvalController.close);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);

@@ -178,6 +178,54 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M5 — Votaciones de Aprobación Documental (voto nominal)
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS approval_votes (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        product_id INT NOT NULL,
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        punto_orden_dia INT,
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        required_majority VARCHAR(20) NOT NULL DEFAULT 'simple',
+        total_padron INT,
+        votos_a_favor INT DEFAULT 0,
+        votos_en_contra INT DEFAULT 0,
+        abstenciones INT DEFAULT 0,
+        no_participo INT DEFAULT 0,
+        abierta_por INT,
+        cerrada_por INT,
+        opened_at TIMESTAMP NULL,
+        closed_at TIMESTAMP NULL,
+        resultado ${jsonType},
+        decision VARCHAR(20),
+        notas TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS approval_voters (
+        id ${idType},
+        approval_vote_id INT NOT NULL,
+        member_id INT NOT NULL,
+        tipo_votante VARCHAR(30) NOT NULL,
+        vota_por_curso VARCHAR(100),
+        power_id INT,
+        ha_votado ${isPostgreSQL ? 'BOOLEAN DEFAULT false' : 'TINYINT(1) DEFAULT 0'}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS approval_vote_records (
+        id ${idType},
+        approval_vote_id INT NOT NULL,
+        voter_id INT NOT NULL,
+        voto_tipo VARCHAR(15) NOT NULL,
+        emitido_at ${tsDefault},
+        registrado_por INT
+      )`
+    );
+
     // M3 — Poderes / Transferencia de Representación
     await db.execute(
       `CREATE TABLE IF NOT EXISTS representation_powers (

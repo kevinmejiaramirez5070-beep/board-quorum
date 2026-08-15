@@ -230,6 +230,23 @@ class AssemblyQuorumService {
       }
     } catch (e) { /* agenda aún no creada */ }
 
+    // M5 — votación documental abierta
+    let votacion_documental_activa = null;
+    try {
+      const ApprovalService = require('./assemblyApprovalService');
+      const list = await ApprovalService.getApprovalVotesByMeeting(meetingId);
+      const open = list.find(v => v.status === 'open');
+      if (open) {
+        const emitidos = Number(open.votos_a_favor || 0) + Number(open.votos_en_contra || 0) + Number(open.abstenciones || 0);
+        votacion_documental_activa = {
+          approval_vote_id: open.approval_vote_id, nombre: open.nombre, punto_orden_dia: open.punto_orden_dia,
+          votos_a_favor: open.votos_a_favor, votos_en_contra: open.votos_en_contra, abstenciones: open.abstenciones,
+          total_padron: open.total_padron,
+          progreso: open.total_padron > 0 ? Math.round((emitidos / open.total_padron) * 100) : 0
+        };
+      }
+    } catch (e) { /* tabla M5 aún no existe */ }
+
     // M7 — roles de sesión activos
     let roles_activos = null;
     try {
@@ -246,6 +263,7 @@ class AssemblyQuorumService {
     return {
       agenda_status,
       roles_activos,
+      votacion_documental_activa,
       cursos_habilitados,
       cursos_representados,
       principales_presentes,
