@@ -8,6 +8,7 @@ const rolesController = require('../controllers/assemblyRolesController');
 const powersController = require('../controllers/assemblyPowersController');
 const approvalController = require('../controllers/assemblyApprovalController');
 const electionsController = require('../controllers/assemblyElectionsController');
+const actaController = require('../controllers/assemblyActaController');
 
 // Todos los usuarios autenticados pueden ver reuniones
 router.get('/', auth, meetingController.getAllMeetings);
@@ -67,6 +68,15 @@ router.post('/:id/elections/:electionId/candidates', auth, isAuthorized, electio
 router.post('/:id/elections/:electionId/open', auth, isAuthorized, electionsController.open);
 router.post('/:id/elections/:electionId/vote', auth, isAuthorized, electionsController.vote);
 router.post('/:id/elections/:electionId/close', auth, isAuthorized, electionsController.close);
+
+// M8 — Acta y Expediente (admin / admin_master; cierre definitivo solo admin_master)
+router.get('/:id/acta/preview', auth, isAdmin, actaController.preview);
+router.get('/:id/acta/preconditions', auth, isAdmin, actaController.preconditions);
+router.get('/:id/acta/narratives', auth, isAdmin, actaController.getNarratives);
+router.get('/:id/acta/pdf', auth, isAdmin, actaController.pdf);
+router.post('/:id/acta', auth, isAdmin, actaController.init);
+router.post('/:id/acta/narratives/:agendaItemId', auth, isAdmin, actaController.saveNarrative);
+router.post('/:id/acta/close', auth, isAdmin, actaController.close);
 
 // Solo admin puede crear/editar/eliminar reuniones (antes del evento)
 router.post('/', auth, isAdmin, meetingController.createMeeting);

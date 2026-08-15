@@ -178,6 +178,55 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // M8 — Acta y Expediente (PDF en BD: pdf_base64 + hash SHA-256, VF-03 confirmado)
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS actas (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        version_borrador INT NOT NULL DEFAULT 0,
+        tipo_sesion VARCHAR(20) NOT NULL DEFAULT 'ordinaria',
+        numero_sesion VARCHAR(50),
+        lugar VARCHAR(255),
+        modalidad VARCHAR(30) DEFAULT 'presencial',
+        hora_inicio TIMESTAMP NULL,
+        hora_cierre TIMESTAMP NULL,
+        contenido_json ${jsonType},
+        pdf_base64 TEXT,
+        pdf_hash VARCHAR(128),
+        generada_por INT,
+        generada_at TIMESTAMP NULL,
+        cerrada_por INT,
+        cerrada_at TIMESTAMP NULL,
+        notas_internas TEXT,
+        created_at ${tsDefault},
+        updated_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS acta_narratives (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        agenda_item_id INT NOT NULL,
+        narrative_text TEXT,
+        ingresado_por INT,
+        ingresado_at ${tsDefault},
+        actualizado_at ${tsDefault}
+      )`
+    );
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS acta_log (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        acta_id INT,
+        event_type VARCHAR(50) NOT NULL,
+        operator_id INT,
+        version INT,
+        detalle TEXT,
+        created_at ${tsDefault}
+      )`
+    );
+
     // M4 — Procesos Electorales (voto nominal). NOTA: se usa election_votes
     // (NO 'votes', que ya existe para Junta Directiva) para no romper JD.
     await db.execute(

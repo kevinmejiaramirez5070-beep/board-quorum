@@ -12,6 +12,7 @@ import AssemblyRolesPanel from '../Assembly/AssemblyRolesPanel';
 import AssemblyPowersPanel from '../Assembly/AssemblyPowersPanel';
 import AssemblyApprovalPanel from '../Assembly/AssemblyApprovalPanel';
 import AssemblyElectionsPanel from '../Assembly/AssemblyElectionsPanel';
+import AssemblyActaPanel from '../Assembly/AssemblyActaPanel';
 import jsPDF from 'jspdf';
 import './MeetingDetail.css';
 
@@ -802,6 +803,7 @@ const MeetingDetail = () => {
             <AssemblyElectionsPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
             <AssemblyPowersPanel meetingId={meetingIdParam} productId={meeting.product_id} />
             <AssemblyRolesPanel meetingId={meetingIdParam} />
+            <AssemblyActaPanel meetingId={meetingIdParam} />
           </>
         )}
 

@@ -57,6 +57,13 @@ export const meetingService = {
   closeElection: (id, eId) => api.post(`/meetings/${id}/elections/${eId}/close`),
   getElectionResults: (id, eId) => api.get(`/meetings/${id}/elections/${eId}/results`),
   getElectionPadron: (id, eId) => api.get(`/meetings/${id}/elections/${eId}/padron`),
+  // M8 — Acta y Expediente
+  initActa: (id, data) => api.post(`/meetings/${id}/acta`, data || {}),
+  getActaPreconditions: (id) => api.get(`/meetings/${id}/acta/preconditions`),
+  getActaNarratives: (id) => api.get(`/meetings/${id}/acta/narratives`),
+  saveActaNarrative: (id, itemId, narrative_text) => api.post(`/meetings/${id}/acta/narratives/${itemId}`, { narrative_text }),
+  downloadActaPDF: (id) => api.get(`/meetings/${id}/acta/pdf`, { responseType: 'blob' }),
+  closeActa: (id) => api.post(`/meetings/${id}/acta/close`),
   setJvRepresentative: (id, memberId) => api.post(`/meetings/${id}/jv-representative`, { member_id: memberId }),
   getJvRepresentative: (id) => api.get(`/meetings/${id}/jv-representative`)
 };
