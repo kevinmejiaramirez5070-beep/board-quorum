@@ -31,6 +31,14 @@
   --background: #F9FAFB;
   --surface: #FFFFFF;
   --surface-dark: var(--gray-dark);
+
+  /* Superficies de los paneles de Asamblea.
+     Faltaban por definir, asi que caian siempre al fallback oscuro del codigo
+     (#1e293b) y en tema claro quedaba texto oscuro sobre tarjeta oscura. */
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #F3F4F6;
+  --bg-input: #FFFFFF;
+  --track: rgba(10, 10, 10, 0.10);
   
   /* Text */
   --text-primary: var(--black-deep);
@@ -212,6 +220,12 @@ h3 {
   --background: #0A0A0A;
   --surface: #1F2937;
   --surface-dark: #111827;
+
+  /* Superficies de los paneles de Asamblea */
+  --bg-card: #1F2937;
+  --bg-card-alt: #111827;
+  --bg-input: #111827;
+  --track: rgba(255, 255, 255, 0.10);
   
   /* Text */
   --text-primary: #FFFFFF;

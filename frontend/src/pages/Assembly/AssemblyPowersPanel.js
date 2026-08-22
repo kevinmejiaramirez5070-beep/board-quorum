@@ -57,9 +57,9 @@ const AssemblyPowersPanel = ({ meetingId, productId }) => {
   const statusInfo = (s) => ({
     active: { t: language === 'es' ? 'ACTIVO' : 'ACTIVE', c: '#10b981' },
     registered: { t: language === 'es' ? 'PENDIENTE' : 'PENDING', c: '#f59e0b' },
-    suspended: { t: language === 'es' ? 'SUSPENDIDO' : 'SUSPENDED', c: '#94a3b8' },
+    suspended: { t: language === 'es' ? 'SUSPENDIDO' : 'SUSPENDED', c: '#6B7280' },
     revoked: { t: language === 'es' ? 'REVOCADO' : 'REVOKED', c: '#ef4444' }
-  }[s] || { t: s, c: '#94a3b8' });
+  }[s] || { t: s, c: '#6B7280' });
 
   const activos = powers.filter(p => p.status === 'active').length;
   const pendientes = powers.filter(p => p.status === 'registered').length;
@@ -82,7 +82,7 @@ const AssemblyPowersPanel = ({ meetingId, productId }) => {
               {language === 'es' ? '+ Registrar poder' : '+ Register proxy'}
             </button>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-card-alt, rgba(255,255,255,0.03))', padding: 12, borderRadius: 8 }}>
               <label style={{ fontSize: 12, color: 'var(--text-secondary,#94a3b8)' }}>{language === 'es' ? 'Poderdante (Principal ausente)' : 'Grantor (Principal)'}</label>
               <select style={selStyle} value={form.poderdante_id} onChange={e => setForm(f => ({ ...f, poderdante_id: e.target.value }))}>
                 <option value="">{language === 'es' ? 'Seleccionar...' : 'Select...'}</option>

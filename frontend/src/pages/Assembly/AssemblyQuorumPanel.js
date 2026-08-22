@@ -41,7 +41,7 @@ const AssemblyQuorumPanel = ({ meetingId }) => {
     MOMENTO_1: { label: language === 'es' ? 'MOMENTO 1 — Quórum pleno' : 'MOMENT 1 — Full quorum', color: '#10b981', icon: '✅' },
     MOMENTO_2: { label: language === 'es' ? 'MOMENTO 2 — Segunda convocatoria' : 'MOMENT 2', color: '#f59e0b', icon: '⚠️' },
     SIN_QUORUM: { label: language === 'es' ? 'SIN QUÓRUM' : 'NO QUORUM', color: '#ef4444', icon: '❌' }
-  }[panel.estado] || { label: panel.estado, color: '#94a3b8', icon: '•' };
+  }[panel.estado] || { label: panel.estado, color: '#6B7280', icon: '•' };
 
   const wrap = { background: 'var(--bg-card, #1e293b)', border: `1px solid ${estadoInfo.color}55`, borderRadius: 12, padding: 18, marginBottom: 16 };
   const grid = { display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 14 };
@@ -71,7 +71,7 @@ const AssemblyQuorumPanel = ({ meetingId }) => {
       </div>
 
       {/* Barra hacia el umbral de Momento 1 */}
-      <div style={{ marginTop: 12, height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ marginTop: 12, height: 8, background: 'var(--track, rgba(255,255,255,0.08))', borderRadius: 6, overflow: 'hidden' }}>
         <div style={{
           height: '100%',
           width: `${Math.min(100, panel.quorum_m1 ? (panel.cursos_representados / panel.quorum_m1) * 100 : 0)}%`,

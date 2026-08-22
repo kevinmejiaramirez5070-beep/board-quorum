@@ -69,10 +69,10 @@ const AssemblyAgendaPanel = ({ meetingId, meetingStatus }) => {
   }
 
   const statusInfo = {
-    draft: { label: language === 'es' ? 'BORRADOR' : 'DRAFT', color: '#94a3b8' },
+    draft: { label: language === 'es' ? 'BORRADOR' : 'DRAFT', color: '#6B7280' },
     published: { label: language === 'es' ? 'PUBLICADO' : 'PUBLISHED', color: '#10b981' },
     closed: { label: language === 'es' ? 'CERRADO' : 'CLOSED', color: '#64748b' }
-  }[agenda.status] || { label: agenda.status, color: '#94a3b8' };
+  }[agenda.status] || { label: agenda.status, color: '#6B7280' };
 
   const itemIcon = (s) => s === 'completado' ? '✅' : s === 'en_curso' ? '▶️' : s === 'omitido' ? '⊘' : '⏳';
   const tipoLabel = (t) => ({
@@ -96,7 +96,7 @@ const AssemblyAgendaPanel = ({ meetingId, meetingStatus }) => {
       </div>
 
       {/* barra de avance */}
-      <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+      <div style={{ height: 6, background: 'var(--track, rgba(255,255,255,0.08))', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
         <div style={{ height: '100%', width: `${agenda.porcentaje_avance}%`, background: '#10b981', transition: 'width .4s' }} />
       </div>
 

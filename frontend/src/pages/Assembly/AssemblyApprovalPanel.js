@@ -65,10 +65,10 @@ const AssemblyApprovalPanel = ({ meetingId, meetingStatus }) => {
   const inputStyle = { padding: '7px 10px', borderRadius: 7, fontSize: 13, border: '1.5px solid var(--border,rgba(255,255,255,0.15))', background: 'var(--bg-input,rgba(255,255,255,0.05))', color: 'var(--text-primary)', outline: 'none' };
   const statusInfo = (s, decision) => ({
     open: { t: language === 'es' ? 'ABIERTA' : 'OPEN', c: '#10b981', icon: '✅' },
-    draft: { t: language === 'es' ? 'BORRADOR' : 'DRAFT', c: '#94a3b8', icon: '📋' },
+    draft: { t: language === 'es' ? 'BORRADOR' : 'DRAFT', c: '#6B7280', icon: '📋' },
     closed: { t: decision || (language === 'es' ? 'CERRADA' : 'CLOSED'), c: decision === 'APROBADO' ? '#10b981' : '#ef4444', icon: '🔒' },
     tied: { t: language === 'es' ? 'EMPATE' : 'TIED', c: '#f59e0b', icon: '⚖️' }
-  }[s] || { t: s, c: '#94a3b8', icon: '•' });
+  }[s] || { t: s, c: '#6B7280', icon: '•' });
 
   const sessionActive = meetingStatus === 'active';
   const hayAbierta = votes.some(v => v.status === 'open');
@@ -87,7 +87,7 @@ const AssemblyApprovalPanel = ({ meetingId, meetingStatus }) => {
       {error && <div style={{ color: '#f87171', fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
       {showForm && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, background: 'var(--bg-card-alt, rgba(255,255,255,0.03))', padding: 12, borderRadius: 8 }}>
           <input style={{ ...inputStyle, flex: 1, minWidth: 180 }} placeholder={language === 'es' ? 'Nombre (ej: Estados Financieros 2025)' : 'Name'} value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
           <input style={{ ...inputStyle, width: 90 }} type="number" placeholder={language === 'es' ? 'Punto #' : 'Point #'} value={form.punto_orden_dia} onChange={e => setForm(f => ({ ...f, punto_orden_dia: e.target.value }))} />
           <button className="btn btn-primary btn-sm" disabled={busy} onClick={createVote}>{language === 'es' ? 'Crear' : 'Create'}</button>
@@ -128,7 +128,7 @@ const AssemblyApprovalPanel = ({ meetingId, meetingStatus }) => {
 
             {/* Padrón + votación individual */}
             {padron && padron.avId === v.approval_vote_id && v.status === 'open' && (
-              <div style={{ marginTop: 10, maxHeight: 300, overflowY: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: 8 }}>
+              <div style={{ marginTop: 10, maxHeight: 300, overflowY: 'auto', background: 'var(--bg-card-alt, rgba(255,255,255,0.02))', borderRadius: 8, padding: 8 }}>
                 {padron.list.map(p => (
                   <div key={p.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px', borderBottom: '1px solid var(--border,rgba(255,255,255,0.04))' }}>
                     <span style={{ flex: 1, fontSize: 13 }}>{p.vota_por_curso} — {p.nombre} {p.ha_votado && '✔'}</span>
