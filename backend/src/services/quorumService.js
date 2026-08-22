@@ -67,6 +67,19 @@ class QuorumService {
    */
   static async validateQuorumForInstallation(meetingId, meetingType, totalMembers = null) {
     const mt = this.normalizeMeetingType(meetingType);
+
+    // MD-01: en Asamblea el quórum se mide en posiciones de representación,
+    // no en personas presentes. Se reutiliza el mismo motor que alimenta el panel.
+    if (mt === 'asamblea') {
+      const meeting = await Meeting.findById(meetingId, null);
+      if (meeting) {
+        const asm = await this.getAssemblyQuorumInfo(meetingId, meeting);
+        if (asm) {
+          return { valid: asm.valid, present: asm.present, required: asm.required, message: asm.message };
+        }
+      }
+    }
+
     const present = await this.countPresentWithVote(meetingId);
 
     let totalForAssembly = totalMembers;
@@ -173,6 +186,66 @@ class QuorumService {
   }
 
   /**
+   * MD-01 — Quórum de Asamblea sobre POSICIONES de representación.
+   *
+   * Universo (N) = Delegados Principales habilitados en el maestro vigente.
+   * Presentes    = cursos representados (un curso aporta máximo 1 representación:
+   *                Principal presente, o Suplente cuando el Principal está ausente).
+   *
+   *   quorum_inicial    = FLOOR(N / 2) + 1
+   *   momento_siguiente = CEIL(N * 0.20)
+   *
+   * Ambos umbrales salen del maestro vigente. Ninguno está fijo en código.
+   * Devuelve null si el maestro aún no tiene principales marcados, para que el
+   * llamador conserve el comportamiento anterior.
+   */
+  static async getAssemblyQuorumInfo(meetingId, meeting) {
+    const AssemblyQuorumService = require('./assemblyQuorumService');
+    const productId = meeting.product_id ?? null;
+    if (productId == null) return null;
+
+    const total = await AssemblyQuorumService.getTotalPrincipals(productId);
+    if (!total || total <= 0) return null;
+
+    const present = await AssemblyQuorumService.getRepresentedCoursesCount(meetingId);
+    const quorumInicial = Math.floor(total / 2) + 1;
+    const quorumSiguiente = Math.ceil(total * 0.20);
+
+    const MomentService = require('./assemblyMomentService');
+    const momentoSiguiente = await MomentService.getMomentState(meetingId);
+    const enMomentoSiguiente = !!momentoSiguiente?.aplicado;
+
+    const required = enMomentoSiguiente ? quorumSiguiente : quorumInicial;
+    const valid = present >= required;
+    const percentage = Math.round((present / total) * 100);
+
+    const regimen = enMomentoSiguiente ? 'Momento Siguiente (20%)' : 'quórum inicial (mitad más uno)';
+    const message = valid
+      ? `Quórum válido: ${present} representaciones presentes de ${total} posiciones habilitadas (mínimo requerido ${required} — ${regimen}).`
+      : `Quórum insuficiente: ${present} representaciones presentes de ${total} posiciones habilitadas (mínimo requerido ${required} — ${regimen}).`;
+
+    return {
+      present,
+      required,
+      total,
+      percentage,
+      valid,
+      met: valid,
+      type: meeting.type,
+      typeNormalized: 'asamblea',
+      organLabel: 'Asamblea General',
+      quorumRule: enMomentoSiguiente ? 'assembly_momento_siguiente_20' : 'assembly_positions_majority',
+      // Detalle propio de Asamblea (el universo NO cambia entre regímenes)
+      total_principales: total,
+      quorum_inicial: quorumInicial,
+      quorum_momento_siguiente: quorumSiguiente,
+      momento_siguiente: momentoSiguiente,
+      unidad_computo: 'posicion_representacion',
+      message
+    };
+  }
+
+  /**
    * Obtiene información completa del quórum para una reunión (BUG-01, BUG-02).
    * Total dinámico desde BD (elegibles con cuenta_quorum). Si total sale 0, fallback a client_id solo.
    */
@@ -192,6 +265,12 @@ class QuorumService {
     let organLabel;
 
     if (mt === 'asamblea') {
+      // MD-01: el universo es la POSICIÓN de representación (Delegado Principal habilitado),
+      // no la cantidad de personas cargadas. Suplentes, Administración, Contabilidad y
+      // Revisoría Fiscal NO aumentan el universo. Presentes = cursos representados.
+      const asm = await this.getAssemblyQuorumInfo(meetingId, meeting);
+      if (asm) return asm;
+      // Maestro sin principales marcados: se conserva el comportamiento anterior
       total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
       if (total === 0) total = await Member.countEligibleForQuorum(clientId, null);
       required = this.calculateRequiredQuorum('asamblea', total);

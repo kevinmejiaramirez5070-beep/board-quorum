@@ -22,6 +22,33 @@ class AssemblyQuorumService {
     return String(s ?? '').toUpperCase().trim();
   }
 
+  /**
+   * MD-05 — Tipos de participante que asisten pero NO generan representación.
+   *
+   * Administración, Contabilidad y Revisoría Fiscal pueden estar presentes y quedar
+   * registrados en la Asamblea, pero no crean posición de representación, no
+   * aumentan el universo de elegibles, no cuentan para quórum y no votan por esa
+   * condición. Se listan en varias grafías porque el maestro se carga desde XLSX.
+   */
+  static get NON_COMPUTABLE_TIPOS() {
+    return [
+      'ADMINISTRACION', 'ADMINISTRACIÓN',
+      'CONTABILIDAD',
+      'REVISORIA_FISCAL', 'REVISORIA FISCAL', 'REVISORÍA FISCAL', 'REVISORIA', 'REVISORÍA'
+    ];
+  }
+
+  /** Fragmento SQL que excluye a los participantes no computables. */
+  static _nonComputableSQL(alias = 'm') {
+    const lista = this.NON_COMPUTABLE_TIPOS.map(t => `'${t}'`).join(', ');
+    return `(${alias}.tipo_participante IS NULL OR UPPER(TRIM(${alias}.tipo_participante)) NOT IN (${lista}))`;
+  }
+
+  /** ¿Este participante queda fuera del cómputo por su tipo? (MD-05) */
+  static isNonComputable(tipoParticipante) {
+    return this.NON_COMPUTABLE_TIPOS.includes(this._norm(tipoParticipante));
+  }
+
   /** Obtiene product_id y client_id de la reunión. */
   static async _getMeetingContext(meetingId) {
     const [rows] = await db.execute(
@@ -47,9 +74,10 @@ class AssemblyQuorumService {
 
     // Todos los cursos habilitados = cursos con al menos un principal activo en el maestro
     const [courseRows] = await db.execute(
-      `SELECT DISTINCT rol_organico FROM members
-       WHERE product_id = ? AND member_type = 'principal' AND ${isPG ? 'active = true' : 'active = 1'}
-         AND rol_organico IS NOT NULL AND rol_organico <> ''`,
+      `SELECT DISTINCT rol_organico FROM members m
+       WHERE m.product_id = ? AND m.member_type = 'principal' AND ${isPG ? 'm.active = true' : 'm.active = 1'}
+         AND m.rol_organico IS NOT NULL AND m.rol_organico <> ''
+         AND ${this._nonComputableSQL('m')}`,
       [productId]
     );
     const cursos = courseRows.map(r => this._norm(r.rol_organico));
@@ -61,7 +89,8 @@ class AssemblyQuorumService {
        FROM attendance a
        JOIN members m ON m.id = a.member_id
        WHERE a.meeting_id = ? AND a.status = 'present'
-         AND m.product_id = ? AND ${activeCond} AND ${pendingOk}`,
+         AND m.product_id = ? AND ${activeCond} AND ${pendingOk}
+         AND ${this._nonComputableSQL('m')}`,
       [meetingId, productId]
     );
 
@@ -132,8 +161,9 @@ class AssemblyQuorumService {
   static async getTotalPrincipals(productId) {
     const isPG = this.isPostgreSQL;
     const [rows] = await db.execute(
-      `SELECT COUNT(*) AS n FROM members
-       WHERE product_id = ? AND member_type = 'principal' AND ${isPG ? 'active = true' : 'active = 1'}`,
+      `SELECT COUNT(*) AS n FROM members m
+       WHERE m.product_id = ? AND m.member_type = 'principal' AND ${isPG ? 'm.active = true' : 'm.active = 1'}
+         AND ${this._nonComputableSQL('m')}`,
       [productId]
     );
     return Number(rows[0]?.n || 0);
@@ -151,15 +181,31 @@ class AssemblyQuorumService {
     const quorum_m2 = total_principales > 0 ? Math.ceil(total_principales * 0.20) : 0;
     const cursos_representados = await this.getRepresentedCoursesCount(meetingId);
 
+    // MD-02: el régimen del 20 % NO se activa solo. Requiere que un usuario
+    // operativo haya aplicado expresamente el Momento Siguiente. Mientras eso no
+    // ocurra, la Asamblea se evalúa siempre contra el quórum inicial.
+    let momentoSiguiente = null;
+    try {
+      const MomentService = require('./assemblyMomentService');
+      momentoSiguiente = await MomentService.getMomentState(meetingId);
+    } catch (e) { /* tabla MD-02 aún no disponible */ }
+    const enMomentoSiguiente = !!momentoSiguiente?.aplicado;
+
+    const requerido = enMomentoSiguiente ? quorum_m2 : quorum_m1;
     let momento = null;
     let estado = 'SIN_QUORUM';
-    if (total_principales > 0 && cursos_representados >= quorum_m1) {
-      momento = 1; estado = 'MOMENTO_1';
-    } else if (total_principales > 0 && cursos_representados >= quorum_m2) {
-      momento = 2; estado = 'MOMENTO_2';
+    if (total_principales > 0 && cursos_representados >= requerido) {
+      momento = enMomentoSiguiente ? 2 : 1;
+      estado = enMomentoSiguiente ? 'MOMENTO_2' : 'MOMENTO_1';
     }
 
-    return { momento, estado, cursos_representados, quorum_m1, quorum_m2, total_principales };
+    return {
+      momento, estado, cursos_representados,
+      quorum_m1, quorum_m2, total_principales,
+      quorum_requerido: requerido,
+      en_momento_siguiente: enMomentoSiguiente,
+      momento_siguiente: momentoSiguiente
+    };
   }
 
   /** Lista de votantes activos: un votante por curso representado (padrón base M3/M4/M5). */
@@ -289,6 +335,9 @@ class AssemblyQuorumService {
       estado: moment.estado,
       quorum_m1: moment.quorum_m1,
       quorum_m2: moment.quorum_m2,
+      quorum_requerido: moment.quorum_requerido,
+      en_momento_siguiente: moment.en_momento_siguiente,
+      momento_siguiente: moment.momento_siguiente,
       total_principales: moment.total_principales,
       votantes_activos,
       cursos: status,

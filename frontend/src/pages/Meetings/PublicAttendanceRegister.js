@@ -10,6 +10,9 @@ const PublicAttendanceRegister = () => {
   const { meetingId } = useParams();
   const { t, language } = useLanguage();
   const [meeting, setMeeting] = useState(null);
+  // MD-05 — las categorías de participante no Delegado son propias de Asamblea.
+  // Junta Directiva conserva las suyas.
+  const isAsamblea = String(meeting?.type || '').toLowerCase().trim().replace(/-/g, '_') === 'asamblea';
   const [step, setStep] = useState('verify'); // 'verify', 'confirm', 'notFound', 'relation', 'manualOrg', 'manualGuest', 'manualAdmin', 'registered'
   const [formData, setFormData] = useState({
     cedula: '',
@@ -29,6 +32,14 @@ const PublicAttendanceRegister = () => {
   useEffect(() => {
     loadMeeting();
   }, [meetingId]);
+
+  // MD-05 — el valor por defecto 'Junta Directiva' no existe como categoría de
+  // participante en Asamblea. Se ajusta en cuanto se conoce el tipo de reunión.
+  useEffect(() => {
+    if (!isAsamblea) return;
+    const validas = ['Administración', 'Contabilidad', 'Revisoría Fiscal'];
+    setFormData(prev => (validas.includes(prev.organo) ? prev : { ...prev, organo: 'Administración' }));
+  }, [isAsamblea]);
 
   const loadMeeting = async () => {
     try {
@@ -448,11 +459,32 @@ const PublicAttendanceRegister = () => {
                   onChange={handleChange}
                   className="input"
                 >
-                  <option value="Junta Directiva">Junta Directiva</option>
-                  <option value="Junta de Vigilancia">Junta de Vigilancia</option>
-                  <option value="Contabilidad">Contabilidad</option>
-                  <option value="Revisoría">Revisoría</option>
+                  {/* MD-05 §8 — en Asamblea, quien no es Delegado solo puede registrarse
+                      como Administración, Contabilidad o Revisoría Fiscal. Ninguna de esas
+                      condiciones cuenta para quórum ni vota. La calidad de Delegado
+                      Principal o Suplente NO se autodeclara: sale del maestro vigente. */}
+                  {isAsamblea ? (
+                    <>
+                      <option value="Administración">Administración</option>
+                      <option value="Contabilidad">Contabilidad</option>
+                      <option value="Revisoría Fiscal">Revisoría Fiscal</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Junta Directiva">Junta Directiva</option>
+                      <option value="Junta de Vigilancia">Junta de Vigilancia</option>
+                      <option value="Contabilidad">Contabilidad</option>
+                      <option value="Revisoría">Revisoría</option>
+                    </>
+                  )}
                 </select>
+                {isAsamblea && (
+                  <p style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.5 }}>
+                    {language === 'es'
+                      ? 'Estas condiciones registran asistencia, pero no cuentan para quórum ni votan. Si usted es Delegado y su documento no fue reconocido, informe a la mesa para el registro de contingencia.'
+                      : 'These roles register attendance but do not count towards quorum and cannot vote.'}
+                  </p>
+                )}
               </div>
 
               <div className="form-group">

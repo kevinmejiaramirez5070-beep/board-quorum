@@ -79,6 +79,8 @@ async function ensureAssemblyM2Tables() {
     const idType = isPostgreSQL ? 'SERIAL PRIMARY KEY' : 'INT AUTO_INCREMENT PRIMARY KEY';
     const jsonType = isPostgreSQL ? 'JSONB' : 'JSON';
     const tsDefault = isPostgreSQL ? 'TIMESTAMP DEFAULT NOW()' : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+    const boolType = isPostgreSQL ? 'BOOLEAN' : 'TINYINT(1)';
+    const falseVal = isPostgreSQL ? 'false' : '0';
 
     await db.execute(
       `CREATE TABLE IF NOT EXISTS assembly_import_log (
@@ -389,9 +391,49 @@ async function ensureAssemblyM2Tables() {
       )`
     );
 
+    // MD-02 — Momento Siguiente: activación, control y trazabilidad
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS assembly_moment_events (
+        id ${idType},
+        meeting_id INT NOT NULL,
+        operator_id INT,
+        operator_name VARCHAR(255),
+        operator_role VARCHAR(50),
+        applied_at TIMESTAMP,
+        hora_oficial TIMESTAMP,
+        hora_limite TIMESTAMP,
+        elegibles INT,
+        quorum_inicial INT,
+        presentes_al_aplicar INT,
+        quorum_momento_siguiente INT,
+        alcanzado ${boolType} DEFAULT ${falseVal},
+        alcanzado_at TIMESTAMP NULL,
+        presentes_al_alcanzar INT,
+        cerrado_sin_quorum ${boolType} DEFAULT ${falseVal},
+        cerrado_at TIMESTAMP NULL,
+        created_at ${tsDefault}
+      )`
+    );
+
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.
+    // MD-05 §11 — trazabilidad del registro manual de contingencia:
+    // motivo por el que se registró a mano y usuario operativo que lo hizo.
+    if (isPostgreSQL) {
+      await db.execute(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS manual_motivo TEXT NULL`);
+      await db.execute(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS registered_by INT NULL`);
+    } else {
+      const [ca] = await db.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'attendance' AND COLUMN_NAME = 'manual_motivo'`
+      );
+      if (ca.length === 0) {
+        await db.execute(`ALTER TABLE attendance ADD COLUMN manual_motivo TEXT NULL`);
+        await db.execute(`ALTER TABLE attendance ADD COLUMN registered_by INT NULL`);
+      }
+    }
+
     if (isPostgreSQL) {
       await db.execute(`ALTER TABLE members ADD COLUMN IF NOT EXISTS secondary_document VARCHAR(50) NULL`);
       await db.execute(`ALTER TABLE members ADD COLUMN IF NOT EXISTS secondary_name VARCHAR(255) NULL`);
@@ -405,7 +447,7 @@ async function ensureAssemblyM2Tables() {
         await db.execute(`ALTER TABLE members ADD COLUMN secondary_name VARCHAR(255) NULL`);
       }
     }
-    console.log('✅ [migration] Tablas Asamblea verificadas (assembly_import_log, assembly_master_snapshot, quorum_log, secondary_*)');
+    console.log('✅ [migration] Tablas Asamblea verificadas (assembly_import_log, assembly_master_snapshot, quorum_log, assembly_moment_events, secondary_*)');
   } catch (err) {
     console.error('⚠️  [migration] ensureAssemblyM2Tables falló (no crítico):', err.message);
   }

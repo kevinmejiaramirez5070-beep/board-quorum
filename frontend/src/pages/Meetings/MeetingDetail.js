@@ -34,7 +34,12 @@ const MeetingDetail = () => {
   const [showQuorumProjection, setShowQuorumProjection] = useState(false);
   const [quorumDetail, setQuorumDetail] = useState(null);
   const [showQuorumDetail, setShowQuorumDetail] = useState(false);
+  const [applyingMoment, setApplyingMoment] = useState(false);
   const quorumIntervalRef = useRef(null);
+
+  // MD-03 — usuarios operativos de Asamblea: Admin Maestro, Administración 1 y 2,
+  // y Revisoría Fiscal. Los cuatro pueden ejecutar materialmente el Momento Siguiente.
+  const isAssemblyOperator = ['admin_master', 'admin', 'authorized'].includes(user?.role);
 
   const getStatusLabel = (status) => {
     const labels = {
@@ -155,6 +160,38 @@ const MeetingDetail = () => {
       setQuorum(quorumRes.data);
     } catch (quorumError) {
       console.warn('Error loading quorum (non-critical):', quorumError);
+    }
+  };
+
+  // MD-02 — Aplicar Momento Siguiente. Exige confirmación explícita (MD-03 §8)
+  // para evitar activaciones accidentales y dejar evidencia de una acción consciente.
+  const handleApplyMomentoSiguiente = async () => {
+    const ms = quorum?.momento_siguiente;
+    const horaLimite = ms?.hora_limite ? new Date(ms.hora_limite).toLocaleString('es-CO') : '—';
+    const confirmMsg = language === 'es'
+      ? '¿Confirma aplicar Momento Siguiente conforme a la indicación de Revisoría Fiscal?\n\n' +
+        `Elegibles: ${quorum?.total ?? '—'}\n` +
+        `Quórum inicial requerido: ${quorum?.quorum_inicial ?? '—'}\n` +
+        `Representaciones presentes: ${quorum?.present ?? '—'}\n` +
+        `Nuevo mínimo (20 %): ${quorum?.quorum_momento_siguiente ?? '—'}\n` +
+        `Hora límite: ${horaLimite}\n\n` +
+        'Quedará registrado su usuario, la fecha y la hora de esta acción.'
+      : 'Confirm applying Momento Siguiente as instructed by the Statutory Auditor?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setApplyingMoment(true);
+    setErrorMessage(null);
+    try {
+      await meetingService.applyMomentoSiguiente(meetingIdParam);
+      await loadQuorum();
+    } catch (err) {
+      setErrorMessage(
+        err.response?.data?.message ||
+        (language === 'es' ? 'No fue posible aplicar el Momento Siguiente.' : 'Could not apply Momento Siguiente.')
+      );
+    } finally {
+      setApplyingMoment(false);
     }
   };
 
@@ -361,6 +398,63 @@ const MeetingDetail = () => {
         : (language === 'es' ? 'Quorum no alcanzado' : 'Quorum not reached'), 
         margin, yPos);
       yPos += lineHeight * 2;
+    }
+
+    // ── MD-02 · Momento Siguiente (trazabilidad obligatoria en el PDF) ───────
+    if (quorum && quorum.momento_siguiente && quorum.momento_siguiente.aplicado) {
+      const ms = quorum.momento_siguiente;
+      if (yPos > doc.internal.pageSize.getHeight() - 70) { doc.addPage(); yPos = margin; }
+
+      const fmt = (v) => v ? new Date(v).toLocaleString('es-CO') : '—';
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MOMENTO SIGUIENTE', margin, yPos);
+      yPos += lineHeight * 1.2;
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const filasMS = [
+        ['Hora convocada:', fmt(ms.hora_oficial)],
+        ['Aplicado por:', `${ms.aplicado_por_nombre || '—'}${ms.aplicado_por_rol ? ` (${ms.aplicado_por_rol})` : ''}`],
+        ['Hora de aplicacion:', fmt(ms.aplicado_at)],
+        ['Elegibles:', String(ms.elegibles ?? '—')],
+        ['Quorum inicial requerido:', String(ms.quorum_inicial ?? '—')],
+        ['Presentes al momento de aplicacion:', String(ms.presentes_al_aplicar ?? '—')],
+        ['Minimo Momento Siguiente (20%):', String(ms.quorum_momento_siguiente ?? '—')],
+        ['Hora limite:', fmt(ms.hora_limite)]
+      ];
+      for (const [etiqueta, valor] of filasMS) {
+        if (yPos > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); yPos = margin; }
+        doc.text(etiqueta, margin, yPos);
+        doc.text(String(valor), margin + 75, yPos);
+        yPos += lineHeight * 0.85;
+      }
+
+      yPos += lineHeight * 0.4;
+      doc.setFont('helvetica', 'bold');
+      if (ms.alcanzado) {
+        doc.text('Resultado final: QUORUM DE MOMENTO SIGUIENTE ALCANZADO', margin, yPos);
+        yPos += lineHeight * 0.85;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Hora exacta del resultado: ${fmt(ms.alcanzado_at)}`, margin, yPos);
+        yPos += lineHeight * 0.85;
+        doc.text(`Representaciones presentes al alcanzarlo: ${ms.presentes_al_alcanzar ?? '—'}`, margin, yPos);
+      } else if (ms.cerrado_sin_quorum) {
+        doc.text('Resultado final: MOMENTO SIGUIENTE FINALIZADO - QUORUM NO ALCANZADO', margin, yPos);
+        yPos += lineHeight * 0.85;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Hora de cierre: ${fmt(ms.cerrado_at)}`, margin, yPos);
+      } else {
+        doc.text('Resultado final: EN CURSO - quorum aun no alcanzado', margin, yPos);
+      }
+      yPos += lineHeight * 1.1;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('Nota: el quorum alcanzado no equivale a la instalacion de la Asamblea.', margin, yPos);
+      doc.setFontSize(9);
+      yPos += lineHeight * 1.6;
     }
 
     // ── Detalle de quórum (trazabilidad) ─────────────────────────────────────
@@ -1001,6 +1095,70 @@ const MeetingDetail = () => {
                 : (language === 'es' ? '✗ Quórum no alcanzado' : '✗ Quorum not reached')
               }
             </div>
+
+            {/* MD-02 — Momento Siguiente: acción visible, controlada y auditable.
+                No ocurre de forma silenciosa ni automática. */}
+            {quorum.momento_siguiente && (
+              <div className="momento-siguiente-box">
+                {quorum.momento_siguiente.aplicado ? (
+                  <>
+                    <div className="momento-siguiente-title">
+                      ⏱️ {language === 'es' ? 'ESTADO: MOMENTO SIGUIENTE' : 'STATE: MOMENTO SIGUIENTE'}
+                    </div>
+                    <div className="momento-siguiente-grid">
+                      <div><span>{language === 'es' ? 'Elegibles' : 'Eligible'}</span><strong>{quorum.momento_siguiente.elegibles}</strong></div>
+                      <div><span>{language === 'es' ? 'Representaciones presentes' : 'Representations present'}</span><strong>{quorum.present}</strong></div>
+                      <div><span>{language === 'es' ? 'Mínimo requerido actual' : 'Current minimum'}</span><strong>{quorum.momento_siguiente.quorum_momento_siguiente}</strong></div>
+                      <div><span>{language === 'es' ? 'Porcentaje actual' : 'Current percentage'}</span><strong>{quorum.percentage}%</strong></div>
+                      <div><span>{language === 'es' ? 'Quórum inicial requerido' : 'Initial quorum'}</span><strong>{quorum.momento_siguiente.quorum_inicial}</strong></div>
+                      <div><span>{language === 'es' ? 'Presentes al aplicar' : 'Present when applied'}</span><strong>{quorum.momento_siguiente.presentes_al_aplicar}</strong></div>
+                      <div><span>{language === 'es' ? 'Hora oficial de inicio' : 'Official start time'}</span><strong>{quorum.momento_siguiente.hora_oficial ? new Date(quorum.momento_siguiente.hora_oficial).toLocaleString('es-CO') : '—'}</strong></div>
+                      <div><span>{language === 'es' ? 'Hora límite' : 'Deadline'}</span><strong>{quorum.momento_siguiente.hora_limite ? new Date(quorum.momento_siguiente.hora_limite).toLocaleString('es-CO') : '—'}</strong></div>
+                      <div><span>{language === 'es' ? 'Aplicado por' : 'Applied by'}</span><strong>{quorum.momento_siguiente.aplicado_por_nombre || '—'}</strong></div>
+                      <div><span>{language === 'es' ? 'Hora de aplicación' : 'Applied at'}</span><strong>{quorum.momento_siguiente.aplicado_at ? new Date(quorum.momento_siguiente.aplicado_at).toLocaleString('es-CO') : '—'}</strong></div>
+                    </div>
+                    <div className={`momento-siguiente-result ${quorum.momento_siguiente.alcanzado ? 'ok' : quorum.momento_siguiente.cerrado_sin_quorum ? 'err' : 'pend'}`}>
+                      {quorum.momento_siguiente.alcanzado
+                        ? `✓ ${language === 'es' ? 'QUÓRUM DE MOMENTO SIGUIENTE ALCANZADO' : 'MOMENTO SIGUIENTE QUORUM REACHED'} — ${quorum.momento_siguiente.alcanzado_at ? new Date(quorum.momento_siguiente.alcanzado_at).toLocaleString('es-CO') : ''}`
+                        : quorum.momento_siguiente.cerrado_sin_quorum
+                          ? `✗ ${language === 'es' ? 'MOMENTO SIGUIENTE FINALIZADO – QUÓRUM NO ALCANZADO' : 'MOMENTO SIGUIENTE CLOSED – QUORUM NOT REACHED'}`
+                          : `… ${language === 'es' ? 'En curso — quórum aún no alcanzado' : 'In progress — quorum not yet reached'}`}
+                    </div>
+                    <div className="momento-siguiente-note">
+                      {language === 'es'
+                        ? 'Quórum alcanzado no equivale a Asamblea instalada. Son hechos distintos.'
+                        : 'Quorum reached is not the same as assembly installed.'}
+                    </div>
+                  </>
+                ) : isAssemblyOperator && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-warning"
+                      disabled={!quorum.momento_siguiente.disponible || applyingMoment}
+                      onClick={handleApplyMomentoSiguiente}
+                    >
+                      {applyingMoment
+                        ? (language === 'es' ? 'Aplicando…' : 'Applying…')
+                        : `⏱️ ${language === 'es' ? 'APLICAR MOMENTO SIGUIENTE' : 'APPLY MOMENTO SIGUIENTE'}`}
+                    </button>
+                    <div className="momento-siguiente-note">
+                      {quorum.momento_siguiente.motivo_no_disponible === 'antes_de_hora_oficial'
+                        ? (language === 'es'
+                            ? `Disponible a partir de la hora oficial de inicio (${quorum.momento_siguiente.hora_oficial ? new Date(quorum.momento_siguiente.hora_oficial).toLocaleString('es-CO') : '—'}). Hasta entonces rige el quórum inicial.`
+                            : 'Available from the official start time.')
+                        : quorum.momento_siguiente.motivo_no_disponible === 'ventana_vencida'
+                          ? (language === 'es'
+                              ? `La ventana venció a las ${quorum.momento_siguiente.hora_limite ? new Date(quorum.momento_siguiente.hora_limite).toLocaleString('es-CO') : '—'}.`
+                              : 'The window has expired.')
+                          : (language === 'es'
+                              ? `Se aplica por indicación de Revisoría Fiscal. La hora límite (${quorum.momento_siguiente.hora_limite ? new Date(quorum.momento_siguiente.hora_limite).toLocaleString('es-CO') : '—'}) corre desde la hora convocada, no desde este clic.`
+                              : 'Applied as instructed by the Statutory Auditor.')}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {showQuorumDetail && quorumDetail && (
               <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>

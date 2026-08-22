@@ -16,6 +16,12 @@ async function logAssemblyQuorumEvent(meetingId, eventType, memberId, operatorId
       await AssemblyPowersService.evaluatePowerOnAttendanceChange(meetingId);
     } catch (pe) { /* tabla de poderes puede no existir */ }
     const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    // MD-02: si el Momento Siguiente está activo, cada cambio de asistencia puede
+    // ser el que alcance el 20 %. Se reevalúa para dejar la hora exacta registrada.
+    try {
+      const MomentService = require('../services/assemblyMomentService');
+      await MomentService.evaluateMomentOutcome(meetingId);
+    } catch (me) { /* tabla MD-02 puede no existir aún */ }
     const panel = await AssemblyQuorumService.getFullAssemblyPanel(meetingId);
     await AssemblyQuorumService.logQuorumEvent(
       meetingId, eventType, memberId || null, operatorId || null,
@@ -70,27 +76,48 @@ exports.registerBulkAttendance = async (req, res) => {
 
     let registered = 0, skipped = 0;
     const errors = [];
+    // MD-04: el modo masivo NO es una lógica paralela. Usa exactamente el mismo
+    // Attendance.create del registro individual, y el efecto sobre quórum lo sigue
+    // resolviendo el motor por curso (un curso aporta máximo una representación).
+    const resultados = [];
     for (const memberId of member_ids) {
       try {
         // Evitar duplicado: si ya existe registro para el miembro, se omite
         const existing = await Attendance.findByMemberAndMeeting(meetingId, memberId);
-        if (existing) { skipped++; continue; }
-        await Attendance.create({
+        if (existing) {
+          skipped++;
+          resultados.push({ member_id: Number(memberId), resultado: 'omitido', motivo: 'ya_registrado' });
+          continue;
+        }
+        const attendanceId = await Attendance.create({
           meeting_id: meetingId,
           member_id: parseInt(memberId),
           status,
           arrival_time: new Date()
         });
         registered++;
+        resultados.push({ member_id: Number(memberId), resultado: 'registrado', attendance_id: attendanceId });
       } catch (e) {
         errors.push({ member_id: memberId, motivo: e.message });
+        resultados.push({ member_id: Number(memberId), resultado: 'error', motivo: e.message });
       }
     }
 
-    // Recalcular quórum de asamblea si aplica (una sola vez al final)
-    await logAssemblyQuorumEvent(meetingId, 'REGISTRO_MASIVO', null, req.user?.id, `Registro masivo (${registered})`);
+    // MD-04: cada asistencia debe quedar individualmente trazable, aunque la
+    // operación se haya ejecutado en bloque.
+    const detalleIndividual = resultados
+      .map(r => `${r.member_id}:${r.resultado}`)
+      .join(', ');
 
-    res.status(201).json({ message: 'Registro masivo procesado', registered, skipped, errors });
+    // Recalcular quórum de asamblea si aplica (una sola vez al final)
+    await logAssemblyQuorumEvent(
+      meetingId, 'REGISTRO_MASIVO', null, req.user?.id,
+      `Registro masivo por usuario ${req.user?.id ?? 's/id'}: ` +
+      `${registered} registrados, ${skipped} omitidos, ${errors.length} con error. ` +
+      `Detalle [${detalleIndividual}]`
+    );
+
+    res.status(201).json({ message: 'Registro masivo procesado', registered, skipped, errors, resultados });
   } catch (error) {
     console.error('Error in registerBulkAttendance:', error);
     res.status(500).json({ message: error.message });
@@ -218,7 +245,7 @@ exports.confirmAttendance = async (req, res) => {
 exports.registerManualAttendance = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const { cedula, nombre_completo, cargo } = req.body;
+    const { cedula, nombre_completo, cargo, motivo } = req.body;
 
     if (!cedula || !nombre_completo || !cargo) {
       return res.status(400).json({ message: 'Cédula, nombre completo y cargo son requeridos' });
@@ -247,7 +274,11 @@ exports.registerManualAttendance = async (req, res) => {
       pending_approval: true,
       manual_name: nombre_completo,
       manual_position: cargo,
-      manual_document: cedula
+      manual_document: cedula,
+      // MD-05 §9-11 — el registro manual es una contingencia: queda pendiente de
+      // aprobación y con el motivo declarado, para poder revisarse después.
+      manual_motivo: motivo || null,
+      registered_by: req.user?.id ?? null
     };
 
     const attendanceId = await Attendance.create(data);

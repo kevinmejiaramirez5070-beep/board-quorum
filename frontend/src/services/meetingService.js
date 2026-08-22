@@ -22,6 +22,9 @@ export const meetingService = {
   getAssemblyQuorum: (id) => api.get(`/meetings/${id}/assembly-quorum`),
   getAssemblyCourses: (id) => api.get(`/meetings/${id}/assembly-courses`),
   refreshAssemblyQuorum: (id) => api.post(`/meetings/${id}/assembly-quorum/refresh`),
+  // MD-02 — Momento Siguiente
+  getMomentoSiguiente: (id) => api.get(`/meetings/${id}/assembly-quorum/momento-siguiente`),
+  applyMomentoSiguiente: (id) => api.post(`/meetings/${id}/assembly-quorum/momento-siguiente`, { confirmado: true }),
   // M6 — Orden del Día
   getAgenda: (id) => api.get(`/meetings/${id}/agenda`),
   createAgenda: (id, tipo_sesion) => api.post(`/meetings/${id}/agenda`, { tipo_sesion }),

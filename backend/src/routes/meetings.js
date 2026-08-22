@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { auth, isAdmin, isAuthorizedLive, isAuthorized } = require('../middleware/auth');
+const { auth, isAdmin, isAuthorizedLive, isAuthorized, isAssemblyOperator } = require('../middleware/auth');
 const meetingController = require('../controllers/meetingController');
 const joinRequestController = require('../controllers/joinRequestController');
 const agendaController = require('../controllers/assemblyAgendaController');
@@ -22,6 +22,12 @@ router.get('/:id/validate-installation', auth, meetingController.validateInstall
 router.get('/:id/assembly-quorum', auth, meetingController.getAssemblyQuorum);
 router.get('/:id/assembly-courses', auth, meetingController.getAssemblyCourses);
 router.post('/:id/assembly-quorum/refresh', auth, isAuthorizedLive, meetingController.refreshAssemblyQuorum);
+
+// MD-02 — Momento Siguiente (acción visible, confirmada y trazada).
+// Ejecutable por cualquiera de los cuatro usuarios operativos de Asamblea (MD-03),
+// siempre por indicación de Revisoría Fiscal.
+router.get('/:id/assembly-quorum/momento-siguiente', auth, meetingController.getMomentoSiguiente);
+router.post('/:id/assembly-quorum/momento-siguiente', auth, isAssemblyOperator, meetingController.applyMomentoSiguiente);
 
 // M6 — Orden del Día
 router.get('/:id/agenda', auth, isAuthorized, agendaController.getAgenda);

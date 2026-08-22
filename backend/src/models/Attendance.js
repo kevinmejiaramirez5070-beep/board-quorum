@@ -31,7 +31,9 @@ class Attendance {
   static async create(data) {
     const { 
       meeting_id, member_id, status, arrival_time, acting_as_principal = 0,
-      pending_approval = false, manual_name = null, manual_position = null, manual_document = null
+      pending_approval = false, manual_name = null, manual_position = null, manual_document = null,
+      // MD-05 §11 — trazabilidad del registro manual de contingencia
+      manual_motivo = null, registered_by = null
     } = data;
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const pendingValue = isPostgreSQL ? (pending_approval ? 'true' : 'false') : (pending_approval ? 1 : 0);
@@ -42,10 +44,10 @@ class Attendance {
     
     const [result] = await db.execute(
       `INSERT INTO attendance (meeting_id, member_id, status, arrival_time, acting_as_principal, 
-        pending_approval, manual_name, manual_position, manual_document, created_at)
-       VALUES (?, ?, ?, ?, ?, ${pendingValue}, ?, ?, ?, NOW())${returningClause}`,
+        pending_approval, manual_name, manual_position, manual_document, manual_motivo, registered_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ${pendingValue}, ?, ?, ?, ?, ?, NOW())${returningClause}`,
       [meeting_id, memberIdValue, status, arrival_time, acting_as_principal, 
-       manual_name, manual_position, manual_document]
+       manual_name, manual_position, manual_document, manual_motivo, registered_by]
     );
     
     if (isPostgreSQL) {

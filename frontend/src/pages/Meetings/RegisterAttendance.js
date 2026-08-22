@@ -142,6 +142,26 @@ const RegisterAttendance = () => {
                   <span style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
                     {member.rol_organico || member.position || member.role || 'Miembro'}
                   </span>
+                  {/* MD-04 §9 — en Asamblea el rol Principal/Suplente es relevante para
+                      comprobar el efecto sobre el quórum: un curso aporta máximo una
+                      representación aunque se registren las dos personas. */}
+                  {member.member_type && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      color: member.member_type === 'principal' ? '#047857' : '#B45309',
+                      background: member.member_type === 'principal'
+                        ? 'rgba(16,185,129,0.14)'
+                        : 'rgba(245,158,11,0.14)'
+                    }}>
+                      {member.member_type}
+                    </span>
+                  )}
                 </label>
               ))}
             </div>

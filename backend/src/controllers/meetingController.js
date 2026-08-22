@@ -360,6 +360,57 @@ exports.getAssemblyCourses = async (req, res) => {
   }
 };
 
+// MD-02 — Estado del Momento Siguiente (para pintar el botón y la ventana de tiempo).
+exports.getMomentoSiguiente = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+    const MomentService = require('../services/assemblyMomentService');
+    // Reevaluar antes de responder: puede haberse alcanzado el 20% o vencido la ventana.
+    await MomentService.evaluateMomentOutcome(req.params.id);
+    const state = await MomentService.getMomentState(req.params.id);
+    res.json(state || { aplicado: false, disponible: false });
+  } catch (error) {
+    console.error('Error in getMomentoSiguiente:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// MD-02 — Aplica el Momento Siguiente. Exige confirmación explícita del usuario.
+exports.applyMomentoSiguiente = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id, req.user.client_id);
+    if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
+
+    const MomentService = require('../services/assemblyMomentService');
+    const state = await MomentService.applyMomentoSiguiente(
+      req.params.id,
+      { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role },
+      { confirmado: req.body?.confirmado === true }
+    );
+
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+    const panel = await AssemblyQuorumService.getFullAssemblyPanel(
+      req.params.id, meeting.client_id, meeting.product_id
+    );
+
+    res.json({ success: true, momento_siguiente: state, panel });
+  } catch (error) {
+    const codigosCliente = [
+      'CONFIRMACION_REQUERIDA', 'YA_APLICADO', 'ANTES_DE_HORA_OFICIAL',
+      'VENTANA_VENCIDA', 'TIPO_INVALIDO', 'SIN_MAESTRO'
+    ];
+    if (codigosCliente.includes(error.code)) {
+      return res.status(400).json({ message: error.message, code: error.code });
+    }
+    if (error.code === 'NOT_FOUND') {
+      return res.status(404).json({ message: error.message });
+    }
+    console.error('Error in applyMomentoSiguiente:', error);
+    res.status(500).json({ message: 'No fue posible aplicar el Momento Siguiente.' });
+  }
+};
+
 // Herramienta auxiliar: recalcula y registra un evento manual de refresco (no es el mecanismo principal)
 exports.refreshAssemblyQuorum = async (req, res) => {
   try {
