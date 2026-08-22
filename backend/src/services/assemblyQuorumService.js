@@ -157,8 +157,53 @@ class AssemblyQuorumService {
     return status.filter(c => c.representado).length;
   }
 
+  /**
+   * Diagnostica por qué el universo de elegibles sale en cero.
+   * Sin esto el panel muestra "0" sin decir qué falta, y quien opera la Asamblea
+   * no puede distinguir "nadie ha llegado" de "el maestro no está cargado".
+   */
+  static async getUniverseDiagnostic(meetingId) {
+    const ctx = await this._getMeetingContext(meetingId);
+    if (!ctx) return { ok: false, motivo: 'REUNION_NO_ENCONTRADA' };
+
+    if (ctx.product_id == null) {
+      return {
+        ok: false,
+        motivo: 'SIN_PRODUCTO',
+        mensaje: 'La reunión no tiene un órgano (producto) asignado, así que no hay ' +
+                 'maestro de Delegados del cual calcular el universo de elegibles. ' +
+                 'Asigne el producto de Asamblea General a esta reunión.'
+      };
+    }
+
+    const total = await this.getTotalPrincipals(ctx.product_id);
+    if (total > 0) return { ok: true, motivo: null, product_id: ctx.product_id, total_principales: total };
+
+    const isPG = this.isPostgreSQL;
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) AS n FROM members
+       WHERE product_id = ? AND ${isPG ? 'active = true' : 'active = 1'}`,
+      [ctx.product_id]
+    );
+    const cargados = Number(rows[0]?.n || 0);
+
+    return {
+      ok: false,
+      product_id: ctx.product_id,
+      motivo: cargados === 0 ? 'MAESTRO_VACIO' : 'SIN_PRINCIPALES',
+      miembros_cargados: cargados,
+      mensaje: cargados === 0
+        ? 'El órgano asignado a esta reunión no tiene Delegados cargados. ' +
+          'Importe el maestro de Delegados de la Asamblea (Módulo 2).'
+        : `El órgano tiene ${cargados} registros activos, pero ninguno marcado como ` +
+          'Delegado Principal. Revise la columna de tipo en el maestro importado: ' +
+          'el universo de quórum se cuenta sobre Principales habilitados.'
+    };
+  }
+
   /** Total de principales activos del maestro (base de los umbrales). */
   static async getTotalPrincipals(productId) {
+    if (productId == null) return 0;
     const isPG = this.isPostgreSQL;
     const [rows] = await db.execute(
       `SELECT COUNT(*) AS n FROM members m
@@ -321,7 +366,10 @@ class AssemblyQuorumService {
       };
     } catch (e) { /* tabla roles aún no existe */ }
 
+    const diagnostico = cursos_habilitados === 0 ? await this.getUniverseDiagnostic(meetingId) : null;
+
     return {
+      diagnostico_universo: diagnostico,
       agenda_status,
       roles_activos,
       votacion_documental_activa,

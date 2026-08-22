@@ -49,8 +49,29 @@ const AssemblyQuorumPanel = ({ meetingId }) => {
   const num = { fontSize: 24, fontWeight: 700, color: 'var(--text-primary, #f1f5f9)' };
   const lbl = { fontSize: 11, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 };
 
+  // Sin universo de elegibles el panel mostraba "0 / 0" sin explicar nada.
+  // El diagnóstico distingue "nadie ha llegado" de "falta cargar el maestro".
+  const diag = panel.diagnostico_universo;
+
   return (
     <div style={wrap}>
+      {diag && !diag.ok && (
+        <div style={{
+          background: 'rgba(245,158,11,0.10)',
+          border: '1px solid rgba(245,158,11,0.35)',
+          borderRadius: 9,
+          padding: '11px 14px',
+          marginBottom: 14,
+          fontSize: 12.5,
+          lineHeight: 1.55,
+          color: 'var(--text-primary)'
+        }}>
+          <strong style={{ color: '#B45309' }}>
+            ⚠️ {language === 'es' ? 'No hay universo de elegibles' : 'No eligible universe'}
+          </strong>
+          <div style={{ marginTop: 5 }}>{diag.mensaje}</div>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary,#94a3b8)' }}>
