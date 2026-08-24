@@ -63,10 +63,17 @@ exports.importMembers = async (req, res) => {
     // 3. Cargar
     const loadResult = await AssemblyMembersService.loadMembers(validRows, productId, clientId, operatorId, mode);
 
-    // 4. Vincular suplentes ↔ principales
+    // 4. MD-07 §3 — Carga de REEMPLAZO: los Delegados activos de cargas anteriores
+    // que ya no figuran en el archivo salen del maestro vigente (desactivación
+    // lógica, nunca borrado). Solo aplica en modo upsert, que es el reemplazo.
+    const replaceResult = mode === 'upsert'
+      ? await AssemblyMembersService.deactivateAbsentMembers(productId, validRows)
+      : { desactivados: 0, detalle: [] };
+
+    // 5. Vincular suplentes ↔ principales
     const linkResult = await AssemblyMembersService.linkSuplentesPrincipales(productId);
 
-    // 5. Log
+    // 6. Log
     const allErrors = [...invalidRows, ...loadResult.errorDetail];
     const status = loadResult.errors > 0 || invalidRows.length > 0 ? 'partial' : 'success';
     const logId = await AssemblyMembersService.logImport({
@@ -75,7 +82,7 @@ exports.importMembers = async (req, res) => {
       skipped: loadResult.skipped, errorDetail: allErrors, status
     });
 
-    // 6. Resumen final
+    // 7. Resumen final
     const summary = await AssemblyMembersService.getMasterSummary(productId);
 
     res.json({
@@ -86,6 +93,7 @@ exports.importMembers = async (req, res) => {
       skipped: loadResult.skipped,
       errors: loadResult.errors + invalidRows.length,
       invalidRows,
+      reemplazo: replaceResult,
       link: linkResult,
       summary
     });

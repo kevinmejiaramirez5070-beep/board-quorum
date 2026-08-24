@@ -91,7 +91,7 @@ function check(nombre, real, esperado) {
   console.log('\n=== MD-01 · Universo del quorum (20 principales + 20 suplentes + 3 no computables) ===');
   const total = await AQS.getTotalPrincipals(PRODUCT_ID);
   check('Elegibles', total, 20);
-  check('Minimo requerido FLOOR(N/2)+1', Math.floor(total / 2) + 1, 11);
+  check('Minimo requerido CEIL(N/2)+1', Math.ceil(total / 2) + 1, 11);
   check('Momento Siguiente CEIL(N*0.20)', Math.ceil(total * 0.20), 4);
   let m = await AQS.getQuorumMoment(MEETING_ID);
   check('Presentes iniciales', m.cursos_representados, 0);
@@ -158,11 +158,16 @@ function check(nombre, real, esperado) {
   check('Presentes', m.cursos_representados, 13);
   check('Estado', m.estado, 'MOMENTO_1');
 
-  console.log('\n=== MD-01 §8 · El calculo es dinamico, no hay valores fijos ===');
-  for (const n of [83, 81, 84]) {
-    check(`N=${n} -> quorum inicial`, Math.floor(n / 2) + 1, { 83: 42, 81: 41, 84: 43 }[n]);
-  }
-  check('N=83 -> Momento Siguiente', Math.ceil(83 * 0.20), 17);
+  console.log('\n=== MD-06 · Mitad mas uno = CEIL(N/2)+1, dinamico ===');
+  // OJO: MD-01 §8 daba N=83 -> 42 (formula FLOOR). MD-06 fija N=85 -> 44, que
+  // solo sale con CEIL. Se aplica MD-06 por ser el documento mas reciente y traer
+  // la base real de agosto 2026. Para N par ambas coinciden; difieren en N impar.
+  const qIni = (n) => Math.ceil(n / 2) + 1;
+  check('N=85 -> quorum inicial (base validada)', qIni(85), 44);
+  check('N=85 -> Momento Siguiente', Math.ceil(85 * 0.20), 17);
+  check('N=84 -> quorum inicial', qIni(84), 43);
+  check('N=20 -> quorum inicial', qIni(20), 11);
+  check('N=22 -> quorum inicial', qIni(22), 12);
 
   console.log(`\n${fallos === 0 ? 'TODO OK' : 'HAY FALLOS'} — ${pasos - fallos}/${pasos} comprobaciones pasaron\n`);
   process.exit(fallos === 0 ? 0 : 1);

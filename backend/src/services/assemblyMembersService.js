@@ -280,13 +280,71 @@ class AssemblyMembersService {
   }
 
   /**
+   * MD-07 §3 — La carga del maestro es un REEMPLAZO, no una acumulación.
+   *
+   * Después de cargar la base validada, los Delegados que quedaron activos de
+   * cargas anteriores y que ya no aparecen en el archivo deben salir del maestro
+   * vigente. Se desactivan (active = false); nunca se borran, para conservar la
+   * trazabilidad histórica. Los históricos así no afectan conteos, universo de
+   * elegibles, quórum, votaciones ni representación por curso.
+   *
+   * Devuelve el detalle de lo retirado para poder mostrarlo en el reporte de carga.
+   */
+  static async deactivateAbsentMembers(productId, rows) {
+    const isPG = this.isPostgreSQL;
+    const activeCond = isPG ? 'active = true' : 'active = 1';
+    const falseVal = isPG ? 'false' : '0';
+
+    // Documentos presentes en el archivo cargado (incluye el segundo progenitor,
+    // porque una misma posición puede validarse con cualquiera de las dos cédulas).
+    const enArchivo = new Set();
+    for (const r of rows) {
+      if (r.numero_documento) enArchivo.add(String(r.numero_documento));
+      if (r.secondary_document) enArchivo.add(String(r.secondary_document));
+    }
+
+    const [activos] = await db.execute(
+      `SELECT id, numero_documento, name, member_type, rol_organico
+       FROM members WHERE product_id = ? AND ${activeCond}`,
+      [productId]
+    );
+
+    const sobrantes = activos.filter(m => !enArchivo.has(String(m.numero_documento ?? '')));
+    for (const m of sobrantes) {
+      await db.execute(
+        `UPDATE members SET active = ${falseVal}, updated_at = NOW() WHERE id = ?`,
+        [m.id]
+      );
+    }
+
+    return {
+      desactivados: sobrantes.length,
+      detalle: sobrantes.map(m => ({
+        id: m.id,
+        numero_documento: m.numero_documento,
+        name: m.name,
+        member_type: m.member_type,
+        rol_organico: m.rol_organico,
+        motivo: 'No figura en la base cargada (carga de reemplazo)'
+      }))
+    };
+  }
+
+  /**
    * Vincula principal_id entre Suplentes y sus Principales por mismo rol_organico.
-   * Suplente sin principal en su curso → active = false (V-07/V-08).
+   *
+   * MD-07 §6 — Un Suplente cuyo curso no tiene Principal en la base vigente
+   * CONSERVA su condición de Suplente y permanece activo en el maestro. No se
+   * desactiva y, sobre todo, no se convierte en Principal. Queda con
+   * principal_id = NULL y se reporta como "sin vínculo".
+   *
+   * Esto no afecta el quórum: el universo se cuenta sobre Principales
+   * habilitados (MD-01), así que un curso sin Principal simplemente no forma
+   * parte del universo y su Suplente nunca representa.
    */
   static async linkSuplentesPrincipales(productId) {
     const isPG = this.isPostgreSQL;
     const activeCond = isPG ? 'active = true' : 'active = 1';
-    const falseVal = isPG ? 'false' : '0';
 
     // Principales activos del producto, indexados por curso
     const [principals] = await db.execute(
@@ -304,22 +362,29 @@ class AssemblyMembersService {
     );
 
     let linked = 0, broken = 0;
+    const sinVinculo = [];
     for (const s of suplentes) {
       const principalId = principalByCurso.get(this._norm(s.rol_organico).toUpperCase());
       if (principalId) {
         await db.execute(`UPDATE members SET principal_id = ?, updated_at = NOW() WHERE id = ?`, [principalId, s.id]);
         linked++;
       } else {
-        await db.execute(`UPDATE members SET active = ${falseVal}, updated_at = NOW() WHERE id = ?`, [s.id]);
+        // Sin Principal en su curso: sigue siendo Suplente y sigue activo.
+        await db.execute(`UPDATE members SET principal_id = NULL, updated_at = NOW() WHERE id = ?`, [s.id]);
         broken++;
+        sinVinculo.push({ id: s.id, rol_organico: s.rol_organico });
       }
     }
-    return { linked, broken };
+    return { linked, broken, sin_vinculo: sinVinculo };
   }
 
   /**
    * Resumen del estado del maestro para el producto dado.
-   * maestro_listo = vinculos_rotos === 0 && total_principals > 0.
+   *
+   * MD-07 §6: un Suplente cuyo curso no tiene Principal en la base vigente es
+   * una situación legítima del maestro, no un error de carga. Se informa como
+   * `suplentes_sin_principal` pero NO impide que el maestro quede listo: esos
+   * cursos simplemente no forman parte del universo de quórum.
    */
   static async getMasterSummary(productId) {
     const isPG = this.isPostgreSQL;
@@ -341,7 +406,7 @@ class AssemblyMembersService {
       `SELECT COUNT(DISTINCT rol_organico) AS n FROM members WHERE product_id = ? AND member_type = 'suplente' AND ${activeCond}`,
       [productId]
     );
-    // Vínculos rotos: suplentes activos sin principal_id
+    // Suplentes activos cuyo curso no tiene Principal en la base vigente
     const [vrRows] = await db.execute(
       `SELECT COUNT(*) AS n FROM members
        WHERE product_id = ? AND member_type = 'suplente' AND ${activeCond} AND principal_id IS NULL`,
@@ -352,7 +417,7 @@ class AssemblyMembersService {
     const total_suplentes = Number(tsRows[0]?.n || 0);
     const cursos_con_principal = Number(cpRows[0]?.n || 0);
     const cursos_con_suplente = Number(csRows[0]?.n || 0);
-    const vinculos_rotos = Number(vrRows[0]?.n || 0);
+    const suplentes_sin_principal = Number(vrRows[0]?.n || 0);
     const sin_suplente = Math.max(0, cursos_con_principal - cursos_con_suplente);
 
     // Última carga
@@ -371,9 +436,15 @@ class AssemblyMembersService {
       total_suplentes,
       cursos_con_principal,
       cursos_con_suplente,
-      vinculos_rotos,
+      // Universo de quórum: solo Principales habilitados (MD-01 / MD-06)
+      universo_quorum: total_principals,
+      quorum_inicial: total_principals > 0 ? Math.ceil(total_principals / 2) + 1 : 0,
+      quorum_momento_siguiente: total_principals > 0 ? Math.ceil(total_principals * 0.20) : 0,
+      suplentes_sin_principal,
+      // Se mantiene el nombre anterior por compatibilidad con la UI ya desplegada
+      vinculos_rotos: suplentes_sin_principal,
       sin_suplente,
-      maestro_listo: vinculos_rotos === 0 && total_principals > 0,
+      maestro_listo: total_principals > 0,
       ultima_carga
     };
   }

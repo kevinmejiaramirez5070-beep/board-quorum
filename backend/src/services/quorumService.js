@@ -192,8 +192,10 @@ class QuorumService {
    * Presentes    = cursos representados (un curso aporta máximo 1 representación:
    *                Principal presente, o Suplente cuando el Principal está ausente).
    *
-   *   quorum_inicial    = FLOOR(N / 2) + 1
+   *   quorum_inicial    = CEIL(N / 2) + 1    (MD-06: "mitad más uno")
    *   momento_siguiente = CEIL(N * 0.20)
+   *
+   * Con la base validada de agosto 2026 (N = 85): 44 y 17.
    *
    * Ambos umbrales salen del maestro vigente. Ninguno está fijo en código.
    * Devuelve null si el maestro aún no tiene principales marcados, para que el
@@ -208,7 +210,7 @@ class QuorumService {
     if (!total || total <= 0) return null;
 
     const present = await AssemblyQuorumService.getRepresentedCoursesCount(meetingId);
-    const quorumInicial = Math.floor(total / 2) + 1;
+    const quorumInicial = Math.ceil(total / 2) + 1;
     const quorumSiguiente = Math.ceil(total * 0.20);
 
     const MomentService = require('./assemblyMomentService');

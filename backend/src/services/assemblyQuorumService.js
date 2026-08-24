@@ -8,8 +8,13 @@ const db = require('../config/database');
  * un Suplente presente y aprobado que actúa como principal (Regla 2/3).
  *
  * Umbrales dinámicos desde el maestro vigente (Regla 5), NUNCA hardcodeados:
- *   quorum_m1 = FLOOR(total_principales / 2) + 1
- *   quorum_m2 = CEIL(total_principales * 0.20)
+ *   quorum_m1 = CEIL(total_principales / 2) + 1     (MD-06: "mitad más uno")
+ *   quorum_m2 = CEIL(total_principales * 0.20)      (Momento Siguiente, 20 %)
+ *
+ * MD-06 fija los valores de control de la base validada de agosto 2026:
+ *   N = 85  ->  quorum inicial 44,  Momento Siguiente 17
+ * Para N impar, "la mitad más uno" se toma como el primer entero que supera
+ * (N/2 + 1): 85/2 = 42,5; 42,5 + 1 = 43,5; se exige 44.
  *
  * NO modifica quorumService.js (Junta Directiva intacta).
  */
@@ -222,7 +227,7 @@ class AssemblyQuorumService {
     const ctx = await this._getMeetingContext(meetingId);
     const pid = productId ?? ctx?.product_id;
     const total_principales = await this.getTotalPrincipals(pid);
-    const quorum_m1 = total_principales > 0 ? Math.floor(total_principales / 2) + 1 : 0;
+    const quorum_m1 = total_principales > 0 ? Math.ceil(total_principales / 2) + 1 : 0;
     const quorum_m2 = total_principales > 0 ? Math.ceil(total_principales * 0.20) : 0;
     const cursos_representados = await this.getRepresentedCoursesCount(meetingId);
 

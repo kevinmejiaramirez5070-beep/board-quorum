@@ -9,8 +9,9 @@ const db = require('../config/database');
  *
  * Reglas de fondo:
  *   - El universo de elegibles NO cambia. Cambia únicamente el mínimo requerido:
- *       quorum_inicial    = FLOOR(N / 2) + 1
+ *       quorum_inicial    = CEIL(N / 2) + 1     (MD-06: "mitad más uno")
  *       momento_siguiente = CEIL(N * 0.20)
+ *     Base validada agosto 2026: N = 85 -> 44 y 17.
  *   - La ventana termina UNA HORA DESPUÉS DE LA HORA OFICIAL CONVOCADA,
  *     nunca una hora después del clic.
  *   - Todo queda trazado: quién, cuándo, con qué cifras, y el resultado posterior.
@@ -182,7 +183,9 @@ class AssemblyMomentService {
     }
 
     const presentes = await AssemblyQuorumService.getRepresentedCoursesCount(meetingId);
-    const quorumInicial = Math.floor(elegibles / 2) + 1;
+    // MD-06: "mitad más uno". Para N impar se exige el primer entero que supera
+    // N/2 + 1 (85 -> 42,5 + 1 = 43,5 -> 44).
+    const quorumInicial = Math.ceil(elegibles / 2) + 1;
     const quorumSiguiente = Math.ceil(elegibles * 0.20);
 
     const [ins] = await db.execute(
