@@ -245,7 +245,9 @@ exports.confirmAttendance = async (req, res) => {
 exports.registerManualAttendance = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const { cedula, nombre_completo, cargo, motivo } = req.body;
+    // MD-09 §4 — La persona declara identificación, nombre y curso.
+    // NUNCA se acepta el rol: Principal/Suplente lo asigna el operador al aprobar.
+    const { cedula, nombre_completo, cargo, motivo, curso } = req.body;
 
     if (!cedula || !nombre_completo || !cargo) {
       return res.status(400).json({ message: 'Cédula, nombre completo y cargo son requeridos' });
@@ -278,7 +280,9 @@ exports.registerManualAttendance = async (req, res) => {
       // MD-05 §9-11 — el registro manual es una contingencia: queda pendiente de
       // aprobación y con el motivo declarado, para poder revisarse después.
       manual_motivo: motivo || null,
-      registered_by: req.user?.id ?? null
+      registered_by: req.user?.id ?? null,
+      manual_curso: curso || null,
+      contingencia: true
     };
 
     const attendanceId = await Attendance.create(data);
@@ -340,17 +344,84 @@ exports.registerPublicAttendance = async (req, res) => {
   }
 };
 
+// MD-09 — ¿Esta reunión es de Asamblea? La contingencia de Delegado no encontrado
+// solo aplica ahí; Junta Directiva conserva su validación de pendientes.
+async function esAsamblea(meetingId) {
+  try {
+    const db = require('../config/database');
+    const [rows] = await db.execute(`SELECT type FROM meetings WHERE id = ? LIMIT 1`, [meetingId]);
+    if (!rows[0]) return false;
+    const QuorumService = require('../services/quorumService');
+    return QuorumService.normalizeMeetingType(rows[0].type) === 'asamblea';
+  } catch (e) { return false; }
+}
+
+// La ruta admite a los cuatro usuarios operativos de Asamblea (MD-03). Fuera de
+// Asamblea se conserva la regla anterior — solo admin / admin_master — para no
+// alterar la operacion ya vigente de Junta Directiva (MD-01 §10).
+function puedeDecidir(user, enAsamblea) {
+  if (enAsamblea) return true;
+  return user.role === 'admin' || user.role === 'admin_master';
+}
+
+const CODIGOS_CLIENTE_CONTINGENCIA = [
+  'YA_RESUELTA', 'MOTIVO_REQUERIDO', 'ROL_REQUERIDO', 'CURSO_REQUERIDO',
+  'CURSO_YA_OCUPADO', 'MIEMBRO_INVALIDO', 'DOCUMENTO_INVALIDO', 'SIN_PRODUCTO'
+];
+
+// MD-09 §5 — Solicitudes pendientes de validación, con posibles coincidencias
+// en el maestro para poder corregir en vez de duplicar la identidad.
+exports.listPendingContingencies = async (req, res) => {
+  try {
+    const ContingencyService = require('../services/assemblyContingencyService');
+    const pendientes = await ContingencyService.listPending(req.params.meetingId);
+    res.json(pendientes);
+  } catch (error) {
+    console.error('Error in listPendingContingencies:', error);
+    res.status(500).json({ message: 'No fue posible cargar las solicitudes pendientes.' });
+  }
+};
+
 // Admin valida / rechaza asistencia pendiente (INVITADO / PERSONAL ADMIN / Miembros de órgano)
 exports.approvePendingAttendance = async (req, res) => {
   try {
     const attendanceId = req.params.id;
     const db = require('../config/database');
     const [rows] = await db.execute(`SELECT meeting_id, member_id FROM attendance WHERE id = ? LIMIT 1`, [attendanceId]);
+    if (!rows[0]) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    const enAsamblea = await esAsamblea(rows[0].meeting_id);
+    if (!puedeDecidir(req.user, enAsamblea)) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    // MD-09 §7 — En Asamblea, aprobar significa asignar curso y rol y aplicar las
+    // reglas normales de representación. No basta con quitar el "pendiente".
+    if (enAsamblea) {
+      const ContingencyService = require('../services/assemblyContingencyService');
+      const resultado = await ContingencyService.approve(
+        attendanceId,
+        { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role },
+        {
+          member_id: req.body?.member_id ?? null,
+          curso: req.body?.curso ?? null,
+          rol: req.body?.rol ?? null,
+          motivo: req.body?.motivo ?? ''
+        }
+      );
+      return res.json({ success: true, ...resultado });
+    }
+
     await Attendance.approveAttendance(attendanceId);
-    if (rows[0]) await logAssemblyQuorumEvent(rows[0].meeting_id, 'APROBACION_PENDIENTE', rows[0].member_id, req.user?.id, 'Aprobación de asistencia');
+    await logAssemblyQuorumEvent(rows[0].meeting_id, 'APROBACION_PENDIENTE', rows[0].member_id, req.user?.id, 'Aprobación de asistencia');
     res.json({ success: true, id: attendanceId });
   } catch (error) {
-    res.status(500).json({ message: error.message || 'Error al aprobar asistencia' });
+    if (CODIGOS_CLIENTE_CONTINGENCIA.includes(error.code)) {
+      return res.status(400).json({ message: error.message, code: error.code });
+    }
+    if (error.code === 'NOT_FOUND') return res.status(404).json({ message: error.message });
+    console.error('Error in approvePendingAttendance:', error);
+    res.status(500).json({ message: 'Error al aprobar la asistencia' });
   }
 };
 
@@ -359,11 +430,33 @@ exports.rejectPendingAttendance = async (req, res) => {
     const attendanceId = req.params.id;
     const db = require('../config/database');
     const [rows] = await db.execute(`SELECT meeting_id, member_id FROM attendance WHERE id = ? LIMIT 1`, [attendanceId]);
+    if (!rows[0]) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    const enAsamblea = await esAsamblea(rows[0].meeting_id);
+    if (!puedeDecidir(req.user, enAsamblea)) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    if (enAsamblea) {
+      const ContingencyService = require('../services/assemblyContingencyService');
+      const resultado = await ContingencyService.reject(
+        attendanceId,
+        { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role },
+        { motivo: req.body?.motivo ?? '' }
+      );
+      return res.json({ success: true, ...resultado });
+    }
+
     await Attendance.rejectAttendance(attendanceId);
-    if (rows[0]) await logAssemblyQuorumEvent(rows[0].meeting_id, 'RECHAZO_PENDIENTE', rows[0].member_id, req.user?.id, 'Rechazo de asistencia');
+    await logAssemblyQuorumEvent(rows[0].meeting_id, 'RECHAZO_PENDIENTE', rows[0].member_id, req.user?.id, 'Rechazo de asistencia');
     res.json({ success: true, id: attendanceId });
   } catch (error) {
-    res.status(500).json({ message: error.message || 'Error al rechazar asistencia' });
+    if (CODIGOS_CLIENTE_CONTINGENCIA.includes(error.code)) {
+      return res.status(400).json({ message: error.message, code: error.code });
+    }
+    if (error.code === 'NOT_FOUND') return res.status(404).json({ message: error.message });
+    console.error('Error in rejectPendingAttendance:', error);
+    res.status(500).json({ message: 'Error al rechazar la asistencia' });
   }
 };
 

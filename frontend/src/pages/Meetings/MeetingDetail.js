@@ -7,6 +7,7 @@ import { attendanceService } from '../../services/attendanceService';
 import { votingService } from '../../services/votingService';
 import { displayNameWithAccents } from '../../utils/nameDisplay';
 import AssemblyQuorumPanel from '../Assembly/AssemblyQuorumPanel';
+import AssemblyContingencyPanel from '../Assembly/AssemblyContingencyPanel';
 import AssemblyAgendaPanel from '../Assembly/AssemblyAgendaPanel';
 import AssemblyRolesPanel from '../Assembly/AssemblyRolesPanel';
 import AssemblyPowersPanel from '../Assembly/AssemblyPowersPanel';
@@ -892,6 +893,8 @@ const MeetingDetail = () => {
         {/asamblea/i.test(String(meeting.type || '')) && (
           <>
             <AssemblyQuorumPanel meetingId={meetingIdParam} />
+            {/* MD-09 — solicitudes de validacion de Delegado no encontrado */}
+            <AssemblyContingencyPanel meetingId={meetingIdParam} onChange={loadQuorum} />
             <AssemblyAgendaPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
             <AssemblyApprovalPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />
             <AssemblyElectionsPanel meetingId={meetingIdParam} meetingStatus={meeting.status} />

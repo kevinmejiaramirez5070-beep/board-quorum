@@ -8,6 +8,7 @@ correr en cualquier momento, incluso sin conexión.
 node backend/tests/asamblea-md01-quorum.test.js
 node backend/tests/asamblea-md02-momento.test.js
 node backend/tests/asamblea-md06-md07-base-validada.test.js
+node backend/tests/asamblea-md09-contingencia.test.js
 ```
 
 Cada archivo imprime una línea por comprobación y termina con código de salida 0
@@ -50,6 +51,17 @@ Si el archivo no está, la prueba se salta sin fallar.
   SEGUNDO E, SEXTO G, TERCERO A) conservan su rol, siguen activos y no se
   convierten en Principales.
 - Universo de quórum **85** → quórum inicial **44**, Momento Siguiente **17**.
+
+**`asamblea-md09-contingencia.test.js`** — Delegado no encontrado.
+
+- Una solicitud pendiente no suma quórum, no vota y no ocupa representación.
+- La persona no se autodeclara Principal ni Suplente: lo asigna el operador.
+- Se sugieren coincidencias del maestro para **corregir** el registro existente
+  en lugar de crear una segunda identidad.
+- Aprobar y rechazar exigen motivo, y quedan trazados con usuario y hora.
+- Un curso nunca genera más de una representación, ni siquiera aprobando por
+  contingencia: no deja crear un segundo Principal del mismo curso.
+- Una solicitud no se puede decidir dos veces.
 
 ## Nota sobre la fórmula del quórum inicial
 

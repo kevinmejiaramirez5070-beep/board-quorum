@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { auth, isAdmin } = require('../middleware/auth');
+const { auth, isAdmin, isAssemblyOperator } = require('../middleware/auth');
 const attendanceController = require('../controllers/attendanceController');
 
 // Rutas autenticadas
@@ -17,9 +17,14 @@ router.post('/manual/meeting/:meetingId', attendanceController.registerManualAtt
 // Ruta legacy (mantener para compatibilidad, pero deprecar)
 router.post('/public/meeting/:meetingId', attendanceController.registerPublicAttendance);
 
-// Admin valida / rechaza asistencia pendiente
-router.patch('/:id/approve', auth, isAdmin, attendanceController.approvePendingAttendance);
-router.patch('/:id/reject', auth, isAdmin, attendanceController.rejectPendingAttendance);
+// MD-09 — Solicitudes de validacion pendientes (contingencia de Delegado no encontrado)
+router.get('/meeting/:meetingId/pending', auth, isAssemblyOperator, attendanceController.listPendingContingencies);
+
+// Admin valida / rechaza asistencia pendiente.
+// En Asamblea la decision la puede tomar cualquiera de los cuatro usuarios
+// operativos (MD-03); en Junta Directiva sigue siendo cosa de admin.
+router.patch('/:id/approve', auth, isAssemblyOperator, attendanceController.approvePendingAttendance);
+router.patch('/:id/reject', auth, isAssemblyOperator, attendanceController.rejectPendingAttendance);
 
 module.exports = router;
 

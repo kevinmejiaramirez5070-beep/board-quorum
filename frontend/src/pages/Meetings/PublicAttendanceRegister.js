@@ -21,6 +21,7 @@ const PublicAttendanceRegister = () => {
     telefono: '',
     email: '',
     organo: 'Junta Directiva',
+    curso: '',
     registroTipo: 'ORG_MEMBER' // ORG_MEMBER | INVITADO | PERSONAL_ADMIN
   });
   const [memberData, setMemberData] = useState(null);
@@ -160,7 +161,13 @@ const PublicAttendanceRegister = () => {
         cargo: mappedCargo,
         telefono: formData.telefono,
         email: formData.email,
-        organo: formData.organo
+        organo: formData.organo,
+        // MD-09 §4 — el curso lo declara la persona; el rol Principal/Suplente
+        // NO se autodeclara: lo asigna el operador al validar la solicitud.
+        curso: formData.curso || null,
+        motivo: formData.registroTipo === 'DELEGADO_NO_ENCONTRADO'
+          ? 'Identificación no encontrada en el flujo público'
+          : null
       });
       
       setRegistered(true);
@@ -369,7 +376,7 @@ const PublicAttendanceRegister = () => {
               >
                 {language === 'es' ? 'NO, ME EQUIVOQUÉ (Reintentar)' : 'NO, I MADE A MISTAKE (Retry)'}
               </button>
-              <button 
+              <button
                 onClick={() => setStep('relation')}
                 className="btn btn-warning btn-large"
                 style={{ flex: '1', minWidth: '200px', backgroundColor: '#ffc107', color: '#000', fontWeight: 'bold' }}
@@ -377,6 +384,99 @@ const PublicAttendanceRegister = () => {
                 {language === 'es' ? 'SÍ, ES CORRECTO (Continuar)' : 'YES, IT IS CORRECT (Continue)'}
               </button>
             </div>
+
+            {/* MD-09 §3 — En Asamblea, quien afirma ser Delegado puede pedir
+                validación manual. La solicitud nace pendiente y no produce
+                ningún efecto sobre quórum ni voto hasta que se apruebe. */}
+            {isAsamblea && (
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+                <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '12px', lineHeight: 1.6 }}>
+                  {language === 'es'
+                    ? '¿Usted es Delegado de la Asamblea y su documento no aparece? Puede solicitar validación a la mesa.'
+                    : 'Are you an Assembly Delegate and your ID was not found? You can request manual validation.'}
+                </p>
+                <button
+                  onClick={() => { startManualFlow('DELEGADO_NO_ENCONTRADO'); setStep('solicitarValidacion'); }}
+                  className="btn btn-secondary btn-large"
+                  style={{ width: '100%' }}
+                >
+                  {language === 'es' ? 'SOLICITAR VALIDACIÓN' : 'REQUEST VALIDATION'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MD-09 — Solicitud de validación de Delegado no encontrado.
+            Se piden identificación, apellidos/nombres y curso. NO se pregunta si
+            es Principal o Suplente: esa condición la asigna el operador. */}
+        {step === 'solicitarValidacion' && (
+          <div className="manual-registration-section">
+            <h3 style={{ color: '#0072FF', marginBottom: '10px', fontSize: '20px', fontWeight: 'bold' }}>
+              {language === 'es' ? 'Solicitar validación de Delegado' : 'Request delegate validation'}
+            </h3>
+
+            <div style={{
+              padding: '14px 16px', backgroundColor: '#FEF3C7', borderRadius: '8px',
+              marginBottom: '20px', border: '1px solid #F59E0B'
+            }}>
+              <strong style={{ color: '#92400E', fontSize: '14px' }}>
+                {language === 'es' ? 'Quedará PENDIENTE DE VALIDACIÓN' : 'It will be PENDING VALIDATION'}
+              </strong>
+              <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#78350F', lineHeight: 1.6 }}>
+                {language === 'es'
+                  ? 'Mientras la mesa revisa su solicitud, usted no cuenta para el quórum ni puede votar. La condición de Delegado Principal o Suplente la determina la mesa con la base vigente; no se elige en este formulario.'
+                  : 'While pending, you do not count towards quorum and cannot vote. Principal/Substitute status is assigned by the assembly desk.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleManualRegister} className="manual-form">
+              <div className="form-group">
+                <label className="label">{language === 'es' ? 'Número de identificación' : 'ID number'}</label>
+                <input type="text" value={formData.cedula} className="input" disabled />
+              </div>
+
+              <div className="form-group">
+                <label className="label">{language === 'es' ? 'Apellidos y nombres completos' : 'Full name'} *</label>
+                <input
+                  type="text"
+                  name="nombre_completo"
+                  value={formData.nombre_completo}
+                  onChange={handleChange}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">{language === 'es' ? 'Curso que representa' : 'Course represented'} *</label>
+                <input
+                  type="text"
+                  name="curso"
+                  value={formData.curso}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder={language === 'es' ? 'Ej: QUINTO B' : 'e.g. QUINTO B'}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">{language === 'es' ? 'Número telefónico (opcional)' : 'Phone (optional)'}</label>
+                <input type="text" name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
+                <button type="submit" className="btn btn-primary btn-large" disabled={submitting} style={{ flex: 1, minWidth: '180px' }}>
+                  {submitting
+                    ? (language === 'es' ? 'Enviando…' : 'Sending…')
+                    : (language === 'es' ? 'ENVIAR SOLICITUD' : 'SEND REQUEST')}
+                </button>
+                <button type="button" onClick={handleBackToNotFound} className="btn btn-secondary btn-large" style={{ flex: 1, minWidth: '140px' }}>
+                  {language === 'es' ? 'Volver' : 'Back'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

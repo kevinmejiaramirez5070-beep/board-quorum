@@ -418,19 +418,31 @@ async function ensureAssemblyM2Tables() {
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.
-    // MD-05 §11 — trazabilidad del registro manual de contingencia:
-    // motivo por el que se registró a mano y usuario operativo que lo hizo.
-    if (isPostgreSQL) {
-      await db.execute(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS manual_motivo TEXT NULL`);
-      await db.execute(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS registered_by INT NULL`);
-    } else {
-      const [ca] = await db.execute(
-        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'attendance' AND COLUMN_NAME = 'manual_motivo'`
-      );
-      if (ca.length === 0) {
-        await db.execute(`ALTER TABLE attendance ADD COLUMN manual_motivo TEXT NULL`);
-        await db.execute(`ALTER TABLE attendance ADD COLUMN registered_by INT NULL`);
+    // MD-05 §11 y MD-09 — trazabilidad de la contingencia de Delegado no
+    // encontrado: qué declaró la persona, quién decidió, cuándo y por qué.
+    const colsAttendance = [
+      ['manual_motivo', 'TEXT NULL'],
+      ['registered_by', 'INT NULL'],
+      ['manual_curso', 'VARCHAR(120) NULL'],
+      ['manual_rol', 'VARCHAR(20) NULL'],
+      ['contingencia', `${boolType} DEFAULT ${falseVal}`],
+      ['decision', 'VARCHAR(20) NULL'],
+      ['decision_motivo', 'TEXT NULL'],
+      ['approved_by', 'INT NULL'],
+      ['approved_at', 'TIMESTAMP NULL']
+    ];
+    for (const [col, tipo] of colsAttendance) {
+      if (isPostgreSQL) {
+        await db.execute(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS ${col} ${tipo}`);
+      } else {
+        const [existe] = await db.execute(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'attendance' AND COLUMN_NAME = ?`,
+          [col]
+        );
+        if (existe.length === 0) {
+          await db.execute(`ALTER TABLE attendance ADD COLUMN ${col} ${tipo}`);
+        }
       }
     }
 
