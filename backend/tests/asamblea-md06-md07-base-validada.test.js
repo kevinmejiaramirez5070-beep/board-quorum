@@ -121,10 +121,11 @@ function check(n, real, esp) {
 }
 
 (async () => {
-  if (!fs.existsSync(XLSX_PATH)) {
-    console.log('SALTADA — no se encontro el Excel validado en:\n  ' + XLSX_PATH);
+  if (!XLSX_PATH) {
+    console.log('SALTADA — no se encontro el Excel validado en:\n  ' + DOCS_DIR);
     process.exit(0);
   }
+  console.log('Archivo: ' + path.basename(XLSX_PATH));
 
   console.log('\n=== MD-07 §2 · El parser reproduce la base validada ===');
   const parsed = await AMS.parseImportFile(XLSX_PATH);

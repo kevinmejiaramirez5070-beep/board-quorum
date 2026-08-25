@@ -8,6 +8,8 @@ const SRC = path.resolve(__dirname, '..', 'src');
 const PRODUCT_ID = 7, MEETING_ID = 99;
 // Convocatoria: hace 5 minutos. La ventana sigue abierta (convocatoria + 1 hora).
 const HORA_OFICIAL = new Date(Date.now() - 5 * 60 * 1000);
+// Cuando se fija, la BD simulada devuelve esta hora de pared literal (prueba de zona).
+let WALL_CLOCK = null;
 
 let members = [], id = 1;
 const CURSOS = Array.from({ length: 20 }, (_, i) => `CURSO ${String(i + 1).padStart(2, '0')}`);
@@ -34,7 +36,13 @@ const fakeDb = {
       return [[{ id: MEETING_ID, product_id: PRODUCT_ID, client_id: 1, type: 'asamblea', status: 'scheduled' }]];
     }
     if (q.includes('FROM meetings WHERE id')) {
-      return [[{ id: MEETING_ID, client_id: 1, product_id: PRODUCT_ID, title: 'TEST ASAMBLEA NRO 1', date: HORA_OFICIAL, type: 'asamblea', status: 'scheduled' }]];
+      // Igual que TO_CHAR(date, 'YYYY-MM-DD"T"HH24:MI:SS'): hora de pared, sin zona.
+      const p2 = (n) => String(n).padStart(2, '0');
+      const wall = WALL_CLOCK || (
+        `${HORA_OFICIAL.getFullYear()}-${p2(HORA_OFICIAL.getMonth() + 1)}-${p2(HORA_OFICIAL.getDate())}` +
+        `T${p2(HORA_OFICIAL.getHours())}:${p2(HORA_OFICIAL.getMinutes())}:${p2(HORA_OFICIAL.getSeconds())}`
+      );
+      return [[{ id: MEETING_ID, client_id: 1, product_id: PRODUCT_ID, title: 'TEST ASAMBLEA NRO 1', date: HORA_OFICIAL, date_wall: wall, type: 'asamblea', status: 'scheduled' }]];
     }
     if (q.startsWith('SELECT DISTINCT rol_organico FROM members')) {
       const set = new Set(members.filter(m => m.product_id === params[0] && m.member_type === 'principal' && m.active).map(m => m.rol_organico));
@@ -183,6 +191,23 @@ const hhmm = (d) => d ? new Date(d).toTimeString().slice(0, 5) : '—';
   check('Eventos registrados', quorumLog.includes('MOMENTO_SIGUIENTE_APLICADO'), true);
   check('Evento alcanzado', quorumLog.includes('MOMENTO_SIGUIENTE_ALCANZADO'), true);
   check('Evento cierre', quorumLog.includes('MOMENTO_SIGUIENTE_CERRADO'), true);
+
+  console.log('\n=== MD-08 · Zona horaria: 6:00 p. m. convocada = 6:00 p. m. mostrada ===');
+  // La reunion se crea con <input type="datetime-local">, que entrega hora de pared
+  // sin zona, y meetings.date la guarda tal cual. El servidor de Render corre en
+  // UTC, asi que la convocatoria de las 6:00 p. m. se leia como 6:00 p. m. UTC y
+  // en Colombia terminaba mostrandose como la 1:00 p. m. — 5 horas menos.
+  momentRows = []; momentSeq = 1;
+  WALL_CLOCK = '2026-08-26T18:00:00';
+  const enBogota = (d) => new Date(d).toLocaleString('en-GB', { timeZone: 'America/Bogota', hour12: false });
+  const st4 = await MS.getMomentState(MEETING_ID);
+  console.log('  convocada 18:00 -> hora oficial en Bogota: ' + enBogota(st4.hora_oficial));
+  console.log('  ventana termina  -> hora limite  en Bogota: ' + enBogota(st4.hora_limite));
+  check('Hora oficial se ve 18:00 en Bogota', enBogota(st4.hora_oficial).slice(-8), '18:00:00');
+  check('Hora limite se ve 19:00 en Bogota', enBogota(st4.hora_limite).slice(-8), '19:00:00');
+  check('La ventana dura exactamente 1 hora',
+    new Date(st4.hora_limite) - new Date(st4.hora_oficial), 3600000);
+  WALL_CLOCK = null;
 
   console.log(`\n${fallos === 0 ? 'TODO OK' : 'HAY FALLOS'} — ${pasos - fallos}/${pasos} comprobaciones pasaron\n`);
   process.exit(fallos === 0 ? 0 : 1);

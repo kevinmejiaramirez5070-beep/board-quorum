@@ -295,12 +295,15 @@ class AssemblyMembersService {
     const activeCond = isPG ? 'active = true' : 'active = 1';
     const falseVal = isPG ? 'false' : '0';
 
-    // Documentos presentes en el archivo cargado (incluye el segundo progenitor,
-    // porque una misma posición puede validarse con cualquiera de las dos cédulas).
+    // Documentos que la nueva base convierte en registro vigente.
+    //
+    // Se toma SOLO el documento principal de cada fila. El segundo progenitor no
+    // crea un registro propio: viaja en secondary_document de la fila que sí queda.
+    // Si se aceptara aquí, un registro viejo con la cédula del padre sobreviviría
+    // como Principal duplicado del mismo curso (MD-08 §3: PREJARDÍN A, OCTAVO E).
     const enArchivo = new Set();
     for (const r of rows) {
       if (r.numero_documento) enArchivo.add(String(r.numero_documento));
-      if (r.secondary_document) enArchivo.add(String(r.secondary_document));
     }
 
     const [activos] = await db.execute(

@@ -19,21 +19,56 @@ const db = require('../config/database');
 
 const VENTANA_MS = 60 * 60 * 1000; // 1 hora desde la hora oficial de convocatoria
 
+/**
+ * Desfase horario de la Asamblea. ASOCOLCI opera en Colombia (UTC-5, sin horario
+ * de verano). Configurable con ASSEMBLY_TZ_OFFSET_MINUTES por si cambia la sede.
+ *
+ * Por qué hace falta: el formulario de la reunión usa <input type="datetime-local">,
+ * que entrega la hora de pared sin zona ("2026-08-26T18:00"), y la columna
+ * meetings.date es TIMESTAMP sin zona horaria, así que se guarda tal cual. Al
+ * leerla, el driver la reconstruye usando la zona del servidor — UTC en Render —
+ * y la convocatoria de las 6:00 p. m. terminaba mostrándose como la 1:00 p. m.
+ * Se interpreta explícitamente como hora de pared de la Asamblea.
+ */
+const TZ_OFFSET_MIN = Number(process.env.ASSEMBLY_TZ_OFFSET_MINUTES ?? -300);
+
 class AssemblyMomentService {
   static get isPostgreSQL() {
     return !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
   }
 
   static async _getMeeting(meetingId) {
+    // Se pide la fecha también como texto plano para leer la hora de pared tal
+    // como se guardó, sin que el driver la reinterprete en la zona del servidor.
+    const wallExpr = this.isPostgreSQL
+      ? `TO_CHAR(date, 'YYYY-MM-DD"T"HH24:MI:SS')`
+      : `DATE_FORMAT(date, '%Y-%m-%dT%H:%i:%s')`;
     const [rows] = await db.execute(
-      `SELECT id, client_id, product_id, title, date, type, status FROM meetings WHERE id = ? LIMIT 1`,
+      `SELECT id, client_id, product_id, title, date, ${wallExpr} AS date_wall, type, status
+       FROM meetings WHERE id = ? LIMIT 1`,
       [meetingId]
     );
     return rows[0] || null;
   }
 
-  /** Hora oficial de inicio = fecha/hora de la convocatoria registrada en la reunión. */
+  /** Convierte "2026-08-26T18:00:00" (hora de pared de la Asamblea) al instante real. */
+  static _parseWallClock(wall) {
+    if (!wall) return null;
+    const m = String(wall).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return null;
+    const [, Y, Mo, D, H, Mi, S] = m;
+    const comoUTC = Date.UTC(+Y, +Mo - 1, +D, +H, +Mi, +(S || 0));
+    return new Date(comoUTC - TZ_OFFSET_MIN * 60000);
+  }
+
+  /**
+   * Hora oficial de inicio = fecha/hora de la convocatoria registrada en la reunión,
+   * entendida como hora de pared de la Asamblea (ver TZ_OFFSET_MIN).
+   */
   static getHoraOficial(meeting) {
+    const desdeWall = this._parseWallClock(meeting?.date_wall);
+    if (desdeWall) return desdeWall;
+    // Reuniones leídas por otra vía que no trae date_wall
     if (!meeting?.date) return null;
     const d = new Date(meeting.date);
     return isNaN(d.getTime()) ? null : d;
