@@ -16,6 +16,11 @@ const db = require('../config/database');
  * Para N impar, "la mitad más uno" se toma como el primer entero que supera
  * (N/2 + 1): 85/2 = 42,5; 42,5 + 1 = 43,5; se exige 44.
  *
+ * Confirmado por el cliente el 2026-08-25: con 85 Principales, el número para
+ * arrancar a las 6:00 p. m. es 44. Si no se alcanza, se aplica el Momento
+ * Siguiente y el número pasa a 17 hasta las 7:00 p. m. El universo no cambia.
+ * "Representación" = Principal presente, o Suplente actuando como Principal.
+ *
  * NO modifica quorumService.js (Junta Directiva intacta).
  */
 class AssemblyQuorumService {

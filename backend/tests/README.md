@@ -63,9 +63,25 @@ Si el archivo no está, la prueba se salta sin fallar.
   contingencia: no deja crear un segundo Principal del mismo curso.
 - Una solicitud no se puede decidir dos veces.
 
-## Nota sobre la fórmula del quórum inicial
+## Fórmula del quórum inicial — confirmada
 
 MD-01 §8 daba `FLOOR(N/2)+1` (N=83 → 42). MD-06 fija N=85 → **44**, que solo
-sale con `CEIL(N/2)+1`. Se aplica **MD-06** por ser el documento más reciente y
-traer la base real. Para N par ambas fórmulas coinciden; solo difieren cuando N
-es impar. Este punto está pendiente de confirmación con Javier.
+sale con `CEIL(N/2)+1`. Para N par ambas fórmulas coinciden; solo difieren
+cuando N es impar.
+
+**Confirmado por el cliente el 2026-08-25:** con la base de 85 Principales, el
+número para arrancar a las 6:00 p. m. es **44**. Se aplica `CEIL(N/2)+1`.
+
+La regla operativa completa:
+
+```
+6:00 p. m.  ¿hay 44 representaciones?
+              (Principales, o Suplentes actuando como Principal)
+   SI  -> hay quórum, se inicia la Asamblea
+   NO  -> se presiona MOMENTO SIGUIENTE, el número pasa a 17
+          y rige hasta las 7:00 p. m.
+
+Si a las 6:10 p. m. hay 17 representaciones, se puede iniciar.
+```
+
+El universo sigue siendo 85 en los dos casos. Lo único que cambia es el mínimo.
