@@ -10,6 +10,7 @@ node backend/tests/asamblea-md02-momento.test.js
 node backend/tests/asamblea-md06-md07-base-validada.test.js
 node backend/tests/asamblea-md09-contingencia.test.js
 node backend/tests/asamblea-md10-md11-md12.test.js
+node backend/tests/asamblea-md13-md14.test.js
 ```
 
 Cada archivo imprime una línea por comprobación y termina con código de salida 0
@@ -74,6 +75,26 @@ Si el archivo no está, la prueba se salta sin fallar.
   universo coinciden.
 - **MD-12**: una persona no representa dos cursos, y se cumple `0 ≤ Q ≤ U` aunque
   haya más asistentes que posiciones.
+
+**`asamblea-md13-md14.test.js`** — hallazgos de la prueba del 26 de agosto.
+
+Reproduce el corte real del reporte.
+
+- **MD-13**: un Suplente válido cuyo curso **no tiene Principal en el maestro**
+  ejerce la representación (el caso CUARTO F / Nancy Pilar). Se distingue si el
+  Principal faltó o si no existe, y no se inventa ninguno.
+- **MD-14**: `Q_RESUMEN = Q_DETALLE = Q_ESTADO`, porque el desglose se construye
+  desde el mismo estado por curso que alimenta el panel.
+
+## Universo con Suplentes sin Principal — decidido
+
+Con MD-13 hay **90 cursos representables** (85 con Principal + 5 que solo tienen
+Suplente) frente a un universo de **85**.
+
+**Decidido el 2026-08-26:** el universo sigue siendo las **85 posiciones
+Principales** de MD-06. No se tocan 44 ni 17. Los 5 Suplentes huérfanos cuentan
+si asisten. `Q` solo superaría 85 si asistieran más de 85 cursos; si llegara a
+pasar, queda avisado en el log en vez de publicarse un quórum imposible.
 
 ## Fórmula del quórum inicial — confirmada
 

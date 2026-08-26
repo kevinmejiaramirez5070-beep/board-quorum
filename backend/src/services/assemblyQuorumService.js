@@ -125,6 +125,13 @@ class AssemblyQuorumService {
     //
     // Board Quorum no inventa un Principal: el Suplente ejerce la representación
     // del curso conservando su rol.
+    //
+    // Decidido el 2026-08-26: el UNIVERSO sigue siendo las 85 posiciones
+    // Principales que fija MD-06, de donde salen 44 y 17. Los 5 cursos que solo
+    // tienen Suplente (CUARTO F, SEGUNDO D, SEGUNDO E, TERCERO A, SEXTO G) sí
+    // pueden representarse, así que hay 90 cursos representables contra un
+    // universo de 85. Q solo superaría 85 si asistieran más de 85 cursos; si
+    // llegara a pasar, getRepresentedCoursesCount lo deja avisado en el log.
     const [courseRows] = await db.execute(
       `SELECT DISTINCT rol_organico FROM members m
        WHERE m.product_id = ? AND m.member_type IN ('principal', 'suplente')
