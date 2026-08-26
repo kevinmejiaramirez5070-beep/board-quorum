@@ -103,6 +103,44 @@ exports.verifyDocumentForVoting = async (req, res) => {
       return res.status(403).json({ status: 'NOT_PRESENT', found: true });
     }
 
+    // ── MD-15 — Asamblea: el derecho a voto sale de la representación efectiva ──
+    // No del rol estático. El importador marca puede_votar = false en todo
+    // Suplente, así que la comprobación de más abajo bloqueaba incluso al
+    // Suplente que sí ejerce la representación de su curso.
+    const QuorumService = require('../services/quorumService');
+    if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+      const AssemblyVotingService = require('../services/assemblyVotingService');
+      const elegibilidad = await AssemblyVotingService.checkEligibility({
+        votingId: parseInt(votingId), meetingId: voting.meeting_id, member
+      });
+      const identidad = AssemblyVotingService.identidadExacta(member);
+
+      if (!elegibilidad.permitido) {
+        const httpStatus = elegibilidad.status === 'ALREADY_VOTED' ? 400 : 403;
+        return res.status(httpStatus).json({
+          status: elegibilidad.status,
+          found: true,
+          cargo: elegibilidad.curso || member.rol_organico || 'Su curso',
+          curso: elegibilidad.curso,
+          representante: elegibilidad.representante || null,
+          message: elegibilidad.mensaje,
+          member: { ...identidad, position: elegibilidad.curso, cargo: elegibilidad.curso }
+        });
+      }
+
+      return res.json({
+        status: elegibilidad.status,
+        found: true,
+        curso: elegibilidad.curso,
+        message: elegibilidad.mensaje,
+        member: {
+          ...identidad,
+          position: elegibilidad.curso || 'Delegado',
+          cargo: elegibilidad.curso || 'Delegado'
+        }
+      });
+    }
+
     // No tiene derecho a voto (Contadora, Revisor Fiscal, etc.)
     const canVote = member.puede_votar === true || member.puede_votar === 1;
     if (!canVote) {
@@ -245,13 +283,33 @@ exports.confirmVote = async (req, res) => {
       return res.status(400).json({ message: 'Ya has votado en esta votación' });
     }
 
-    // Validar elegibilidad para votar (INTERNO - validación crítica)
-    const canVote = member.puede_votar === true || member.puede_votar === 1;
-    if (!canVote) {
-      return res.status(403).json({
-        message: 'Tu cargo no tiene derecho a voto en esta reunión. Asistencia ya registrada.',
-        canVote: false
+    // ── MD-15 — Asamblea: misma regla que en la verificación ──────────────────
+    // Se repite aquí a propósito: la verificación es informativa y este es el
+    // punto donde el voto realmente se graba. Si solo se validara arriba, un
+    // Suplente podría emitir el voto de un curso ya representado.
+    const QuorumServiceConfirm = require('../services/quorumService');
+    if (QuorumServiceConfirm.normalizeMeetingType(meeting.type) === 'asamblea') {
+      const AssemblyVotingService = require('../services/assemblyVotingService');
+      const elegibilidad = await AssemblyVotingService.checkEligibility({
+        votingId: parseInt(votingId), meetingId: voting.meeting_id, member
       });
+      if (!elegibilidad.permitido) {
+        return res.status(elegibilidad.status === 'ALREADY_VOTED' ? 400 : 403).json({
+          message: elegibilidad.mensaje,
+          status: elegibilidad.status,
+          curso: elegibilidad.curso,
+          canVote: false
+        });
+      }
+    } else {
+      // Validar elegibilidad para votar (INTERNO - validación crítica)
+      const canVote = member.puede_votar === true || member.puede_votar === 1;
+      if (!canVote) {
+        return res.status(403).json({
+          message: 'Tu cargo no tiene derecho a voto en esta reunión. Asistencia ya registrada.',
+          canVote: false
+        });
+      }
     }
 
     // Verificar presencia aprobada en la reunión (eligible_voters_set)
@@ -267,13 +325,15 @@ exports.confirmVote = async (req, res) => {
       });
     }
 
-    // VOT-SUPLENCIAS: si es suplente, verificar que el principal no haya votado ya
+    // VOT-SUPLENCIAS (Junta Directiva): si es suplente, verificar que el principal
+    // no haya votado ya. En Asamblea esto ya lo resolvió checkEligibility por curso.
+    const esAsambleaConfirm = QuorumServiceConfirm.normalizeMeetingType(meeting.type) === 'asamblea';
     const memberType = String(member.member_type || '').toLowerCase().trim();
     const tipoParticipante = String(member.tipo_participante || '').toUpperCase().trim();
     const positionUpper = String(member.position || '').toUpperCase();
     const isSupplente = memberType === 'suplente' || tipoParticipante === 'SUPLENTE' || /\bSUPLENTE\b/.test(positionUpper);
 
-    if (isSupplente) {
+    if (isSupplente && !esAsambleaConfirm) {
       const principalAlreadyVoted = await Vote.hasPrincipalVoted(votingId, member);
       if (principalAlreadyVoted) {
         return res.status(403).json({
@@ -284,7 +344,7 @@ exports.confirmVote = async (req, res) => {
     }
 
     // VOT-CARGO: si es principal, verificar que su suplente no haya votado ya (1 cargo = 1 voto)
-    if (!isSupplente) {
+    if (!isSupplente && !esAsambleaConfirm) {
       const sustitutoVotedConfirm = await Vote.hasSustitutoVoted(parseInt(votingId), member.id);
       if (sustitutoVotedConfirm) {
         return res.status(403).json({

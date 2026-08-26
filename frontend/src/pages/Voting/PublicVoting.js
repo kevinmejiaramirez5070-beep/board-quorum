@@ -94,10 +94,10 @@ const PublicVoting = ({ meetingMode = false }) => {
       if (status === 'NOT_FOUND' || (error.response?.status === 404 && data.found === false)) {
         setStep('notFound');
       } else if (['NO_VOTE', 'SUPLENTE_SIN_VOTO', 'JV_VOTED', 'JV_VOZ', 'ALREADY_VOTED'].includes(status)) {
-        setBlockInfo({ status, cargo, message: getBlockMessage(status, cargo) });
+        setBlockInfo({ status, cargo, message: data.message || getBlockMessage(status, cargo) });
         setStep('blocked');
       } else if (['NOT_PRESENT', 'CARGO_YA_VOTADO'].includes(status)) {
-        setBlockInfo({ status, cargo, message: getBlockMessage(status, cargo) });
+        setBlockInfo({ status, cargo, message: data.message || getBlockMessage(status, cargo) });
         setStep('blocked');
       } else {
         setInlineError(data.message || (language === 'es' ? 'Error al verificar la cédula.' : 'Error verifying ID.'));
@@ -129,7 +129,7 @@ const PublicVoting = ({ meetingMode = false }) => {
       const status = data.status;
       // Si el backend detecta en confirmVote un bloqueo tardío, mostrarlo correctamente
       if (['NO_VOTE', 'SUPLENTE_SIN_VOTO', 'JV_VOTED', 'JV_VOZ'].includes(status)) {
-        setBlockInfo({ status, cargo: data.cargo, message: getBlockMessage(status, data.cargo) });
+        setBlockInfo({ status, cargo: data.cargo, message: data.message || getBlockMessage(status, data.cargo) });
         setStep('blocked');
       } else {
         setInlineError(data.message || (language === 'es' ? 'Error al confirmar el voto.' : 'Error confirming vote.'));
@@ -139,7 +139,11 @@ const PublicVoting = ({ meetingMode = false }) => {
     }
   };
 
-  // Mensajes por status code — tomados literalmente del BQ_ESPECIFICACION_v2
+  // Mensajes por status code — tomados literalmente del BQ_ESPECIFICACION_v2.
+  //
+  // MD-15: en Asamblea el backend envía el motivo real del bloqueo (qué curso,
+  // quién ejerce la representación) y ese texto tiene prioridad. Estos mensajes
+  // quedan como respaldo y para Junta Directiva, que sí razona por cargos.
   const getBlockMessage = (status, cargo) => {
     const c = cargo || 'Tu cargo';
     const msgs = {

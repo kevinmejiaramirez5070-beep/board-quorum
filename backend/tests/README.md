@@ -11,6 +11,7 @@ node backend/tests/asamblea-md06-md07-base-validada.test.js
 node backend/tests/asamblea-md09-contingencia.test.js
 node backend/tests/asamblea-md10-md11-md12.test.js
 node backend/tests/asamblea-md13-md14.test.js
+node backend/tests/asamblea-md15-votacion.test.js
 ```
 
 Cada archivo imprime una línea por comprobación y termina con código de salida 0
@@ -85,6 +86,21 @@ Reproduce el corte real del reporte.
   Principal faltó o si no existe, y no se inventa ninguno.
 - **MD-14**: `Q_RESUMEN = Q_DETALLE = Q_ESTADO`, porque el desglose se construye
   desde el mismo estado por curso que alimenta el panel.
+
+**`asamblea-md15-votacion.test.js`** — votación por representación efectiva.
+
+Reproduce los cuatro casos del reporte de votaciones del 26 de agosto.
+
+- El Principal presente vota.
+- El Suplente con Principal presente queda bloqueado **con la causa real**, no
+  con un mensaje de Junta Directiva ni tratando el curso como una sesión.
+- **CUARTO F**: la Suplente cuyo curso no tiene Principal en el maestro **sí
+  vota**, aunque el importador la haya marcado `puede_votar = false`.
+- Un curso emite un único voto, venga del Principal o del Suplente, y en
+  cualquier orden de llegada.
+- **MD-10**: la segunda cédula del núcleo muestra **su** identidad, no la de la
+  primera persona de la fila. La representación es única; la identidad no se
+  sustituye.
 
 ## Universo con Suplentes sin Principal — decidido
 
