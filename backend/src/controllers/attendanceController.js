@@ -124,6 +124,71 @@ exports.registerBulkAttendance = async (req, res) => {
   }
 };
 
+const QuorumServiceAtt = require('../services/quorumService');
+
+/**
+ * Efecto real de esta persona sobre el quórum de la Asamblea, en el estado
+ * actual del curso. No se juzga por el rol estático: un Suplente cuenta o no
+ * según si su Principal está presente, y el Principal puede llegar después.
+ *
+ * Reglas:
+ *   Principal                                   -> cuenta
+ *   Suplente + Principal presente               -> asiste, no cuenta para quórum
+ *   Suplente + Principal ausente o inexistente  -> cuenta, actúa como Principal
+ *                                                  (pero cede si el Principal llega)
+ *   Administración / Contabilidad / Revisoría   -> asiste, nunca cuenta
+ */
+async function evaluarEfectoQuorum(meetingId, member) {
+  try {
+    const AssemblyQuorumService = require('../services/assemblyQuorumService');
+
+    if (AssemblyQuorumService.isNonComputable(member.tipo_participante)) {
+      return {
+        cuenta: false,
+        mensaje: 'Su asistencia queda registrada en la Asamblea. Esta condición no ' +
+                 'genera representación de curso ni derecho a voto.'
+      };
+    }
+
+    const curso = String(member.rol_organico || '').toUpperCase().trim();
+    const esSuplente = String(member.member_type || '').toLowerCase().trim() === 'suplente';
+
+    if (!esSuplente) {
+      return {
+        cuenta: true,
+        mensaje: curso
+          ? `Usted ejerce la representación del curso ${curso} como Delegado Principal.`
+          : null
+      };
+    }
+
+    // Suplente: ¿su Principal ya está presente?
+    const status = await AssemblyQuorumService.getCourseRepresentationStatus(meetingId);
+    const estadoCurso = status.find(c => String(c.curso).toUpperCase().trim() === curso);
+    const principalPresente = !!(estadoCurso && estadoCurso.representado
+      && estadoCurso.tipo_votante === 'principal');
+
+    if (principalPresente) {
+      return {
+        cuenta: false,
+        mensaje: `El Delegado Principal del curso ${curso} ya está presente y ejerce la ` +
+                 'representación. Su asistencia queda registrada, pero el curso ya tiene ' +
+                 'su única representación.'
+      };
+    }
+
+    return {
+      cuenta: true,
+      mensaje: `El Delegado Principal del curso ${curso} no se encuentra presente, así que ` +
+               'usted ejerce la representación del curso. Si el Principal ingresa más ' +
+               'adelante, la representación pasa a él y su asistencia se conserva.'
+    };
+  } catch (e) {
+    console.warn('[assembly] no se pudo evaluar el efecto sobre el quórum:', e.message);
+    return { cuenta: true, mensaje: null };
+  }
+}
+
 // PASO 1: Verificar cédula (nuevo sistema seguro)
 exports.verifyDocument = async (req, res) => {
   try {
@@ -196,6 +261,18 @@ exports.verifyDocument = async (req, res) => {
       });
     }
 
+    // El efecto sobre el quórum depende del estado REAL del curso, no del campo
+    // estático cuenta_quorum, que el importador pone en false para todo Suplente.
+    // Con el campo estático, a un Suplente se le anunciaba "NO cuenta para
+    // quórum" aunque su Principal no fuera a llegar — o aunque su curso no
+    // tuviera Principal en el maestro, como CUARTO F.
+    let efectoQuorum = { cuenta: isEligibleForQuorum, mensaje: null };
+    if (QuorumServiceAtt.normalizeMeetingType(meeting.type) === 'asamblea') {
+      efectoQuorum = await evaluarEfectoQuorum(meetingId, member);
+    } else if (!isEligibleForQuorum) {
+      efectoQuorum.mensaje = 'Tu asistencia se registrará pero NO cuenta para quórum';
+    }
+
     // Retornar solo datos públicos para confirmación (NO mostrar campos sensibles)
     res.json({
       found: true,
@@ -203,11 +280,8 @@ exports.verifyDocument = async (req, res) => {
         ...identidad,
         position: member.position || member.rol_organico || 'Miembro'
       },
-      eligibleForQuorum: isEligibleForQuorum,
-      // Este mensaje se mostrará solo si NO es elegible
-      quorumMessage: isEligibleForQuorum 
-        ? null 
-        : 'Tu asistencia se registrará pero NO cuenta para quórum'
+      eligibleForQuorum: efectoQuorum.cuenta,
+      quorumMessage: efectoQuorum.mensaje
     });
   } catch (error) {
     console.error('Error in verifyDocument:', error);
