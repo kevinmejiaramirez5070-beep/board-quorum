@@ -82,8 +82,12 @@ exports.verifyDocumentForVoting = async (req, res) => {
     const Member = require('../models/Member');
     const Attendance = require('../models/Attendance');
 
-    // MD-05 §12 — resolver la identidad del órgano de ESTA reunión
-    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id, meeting.product_id ?? null);
+    // MD-05 §12 — En Asamblea solo vale el maestro de Delegados. Nadie vota
+    // heredando un cargo de Junta Directiva.
+    const soloDelOrganoVerify = QuorumService.normalizeMeetingType(meeting.type) === 'asamblea';
+    const member = await Member.findByDocumentNumber(
+      cedulaNorm, meeting.client_id, meeting.product_id ?? null, { strictProduct: soloDelOrganoVerify }
+    );
     if (!member) {
       return res.status(404).json({ status: 'NOT_FOUND', found: false, cedula: cedulaNorm });
     }
@@ -108,8 +112,7 @@ exports.verifyDocumentForVoting = async (req, res) => {
     // No del rol estático. El importador marca puede_votar = false en todo
     // Suplente, así que la comprobación de más abajo bloqueaba incluso al
     // Suplente que sí ejerce la representación de su curso.
-    const QuorumService = require('../services/quorumService');
-    if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+    if (soloDelOrganoVerify) {
       const AssemblyVotingService = require('../services/assemblyVotingService');
       const elegibilidad = await AssemblyVotingService.checkEligibility({
         votingId: parseInt(votingId), meetingId: voting.meeting_id, member
@@ -273,7 +276,11 @@ exports.confirmVote = async (req, res) => {
     const Attendance = require('../models/Attendance');
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null);
+    const esAsambleaConfirmDoc = QuorumService.normalizeMeetingType(meeting.type) === 'asamblea';
+    const member = await Member.findByDocumentNumber(
+      cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null,
+      { strictProduct: esAsambleaConfirmDoc }
+    );
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }
@@ -288,8 +295,7 @@ exports.confirmVote = async (req, res) => {
     // Se repite aquí a propósito: la verificación es informativa y este es el
     // punto donde el voto realmente se graba. Si solo se validara arriba, un
     // Suplente podría emitir el voto de un curso ya representado.
-    const QuorumServiceConfirm = require('../services/quorumService');
-    if (QuorumServiceConfirm.normalizeMeetingType(meeting.type) === 'asamblea') {
+    if (esAsambleaConfirmDoc) {
       const AssemblyVotingService = require('../services/assemblyVotingService');
       const elegibilidad = await AssemblyVotingService.checkEligibility({
         votingId: parseInt(votingId), meetingId: voting.meeting_id, member
@@ -328,7 +334,7 @@ exports.confirmVote = async (req, res) => {
 
     // VOT-SUPLENCIAS (Junta Directiva): si es suplente, verificar que el principal
     // no haya votado ya. En Asamblea esto ya lo resolvió checkEligibility por curso.
-    const esAsambleaConfirm = QuorumServiceConfirm.normalizeMeetingType(meeting.type) === 'asamblea';
+    const esAsambleaConfirm = esAsambleaConfirmDoc;
     const memberType = String(member.member_type || '').toLowerCase().trim();
     const tipoParticipante = String(member.tipo_participante || '').toUpperCase().trim();
     const positionUpper = String(member.position || '').toUpperCase();

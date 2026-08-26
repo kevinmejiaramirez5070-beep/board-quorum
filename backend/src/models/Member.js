@@ -259,7 +259,7 @@ class Member {
    * `productId` es opcional: cuando se pasa, los miembros de ese órgano tienen
    * prioridad sobre los de cualquier otro.
    */
-  static async findByDocumentNumber(documentNumber, clientId, productId = null) {
+  static async findByDocumentNumber(documentNumber, clientId, productId = null, { strictProduct = false } = {}) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     // Normalizar el parámetro de entrada: solo dígitos
@@ -283,10 +283,21 @@ class Member {
     // `? IS NOT NULL` deja a PostgreSQL sin tipo para ese parámetro y falla con
     // "could not determine data type".
     const usaProducto = productId != null && productId !== '';
-    const ordenPorProducto = usaProducto ? 'CASE WHEN product_id = ? THEN 0 ELSE 1 END,' : '';
-    const params = usaProducto
-      ? [docNorm, docNorm, documentNumber, docNorm, clientId, productId, docNorm]
-      : [docNorm, docNorm, documentNumber, docNorm, clientId, docNorm];
+
+    // strictProduct: la búsqueda se limita al órgano de la reunión.
+    //
+    // Sin esto, una cédula que solo existe en Junta Directiva se resolvía igual
+    // dentro de una Asamblea, y la persona entraba HEREDANDO su cargo de Junta
+    // ("JUNTA DE VIGILANCIA", "VOCALES", "SUPLENTE DE VOCAL"). La Asamblea debe
+    // basarse únicamente en el maestro de Delegados cargado (MD-05 §12).
+    const filtroProducto = usaProducto && strictProduct ? 'AND product_id = ?' : '';
+    const ordenPorProducto = usaProducto && !strictProduct
+      ? 'CASE WHEN product_id = ? THEN 0 ELSE 1 END,' : '';
+
+    const params = [docNorm, docNorm, documentNumber, docNorm, clientId];
+    if (usaProducto && strictProduct) params.push(productId);
+    if (usaProducto && !strictProduct) params.push(productId);
+    params.push(docNorm);
 
     const [rows] = await db.execute(
       `SELECT id, name, numero_documento, secondary_document, secondary_name,
@@ -297,7 +308,7 @@ class Member {
        FROM members
        WHERE (${dbNormExpr} = ? OR numero_documento = ?
               OR (${secNormExpr} <> '' AND ${secNormExpr} = ?))
-         AND client_id = ? AND ${activeCondition}
+         AND client_id = ? AND ${activeCondition} ${filtroProducto}
        ORDER BY ${ordenPorProducto}
          CASE WHEN ${dbNormExpr} = ? THEN 0 ELSE 1 END`,
       params

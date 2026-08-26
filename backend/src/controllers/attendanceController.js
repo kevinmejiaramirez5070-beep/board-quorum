@@ -211,8 +211,14 @@ exports.verifyDocument = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    // MD-05 §12 — resolver la identidad del órgano de ESTA reunión
-    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id, meeting.product_id ?? null);
+    // MD-05 §12 — La Asamblea se basa ÚNICAMENTE en el maestro de Delegados
+    // cargado. Una cédula que solo existe en Junta Directiva no puede entrar
+    // heredando su cargo de allá (Junta de Vigilancia, Vocales, Suplente de
+    // Vocal). Si no está en el maestro, sigue el flujo de no encontrada.
+    const soloDelOrgano = QuorumServiceAtt.normalizeMeetingType(meeting.type) === 'asamblea';
+    const member = await Member.findByDocumentNumber(
+      cedulaNorm, meeting.client_id, meeting.product_id ?? null, { strictProduct: soloDelOrgano }
+    );
 
     if (!member) {
       // No encontrado - permitir registro manual
@@ -311,7 +317,10 @@ exports.confirmAttendance = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null);
+    const member = await Member.findByDocumentNumber(
+      cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null,
+      { strictProduct: QuorumServiceAtt.normalizeMeetingType(meeting.type) === 'asamblea' }
+    );
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }
