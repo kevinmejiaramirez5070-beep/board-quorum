@@ -1,5 +1,18 @@
 const db = require('../config/database');
 
+// MD-14 — Motivos del desglose de Asamblea, en el mismo lenguaje del panel.
+const BREAKDOWN_LABELS = {
+  PRINCIPAL_CUENTA:                    'Cuenta — Principal presente',
+  SUPLENTE_ACTUANDO_PRINCIPAL_AUSENTE: 'Cuenta — Suplente actuando (Principal ausente)',
+  SUPLENTE_ACTUANDO_SIN_PRINCIPAL:     'Cuenta — Suplente actuando (el curso no tiene Principal en el maestro)',
+  APODERADO_CON_PODER:                 'Cuenta — apoderado con poder registrado',
+  SUPLENTE_PRINCIPAL_PRESENTE:         'No cuenta — el Principal de su curso está presente',
+  CURSO_YA_REPRESENTADO:               'No cuenta — el curso ya está representado',
+  PARTICIPANTE_NO_COMPUTABLE:          'No cuenta — Administración / Contabilidad / Revisoría Fiscal',
+  PENDIENTE_APROBACION:                'No cuenta — asistencia pendiente de validación',
+  MANUAL_NO_MIEMBRO:                   'No cuenta — registro manual sin Delegado asociado'
+};
+
 /**
  * Módulo 1 — Motor de Quórum de Asamblea.
  *
@@ -97,15 +110,42 @@ class AssemblyQuorumService {
       ? 'COALESCE(a.pending_approval, false) = false'
       : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
 
-    // Todos los cursos habilitados = cursos con al menos un principal activo en el maestro
+    // MD-13 — Cursos representables del maestro vigente.
+    //
+    // Antes solo entraban los cursos con Principal. Eso dejaba fuera al Suplente
+    // válido de un curso cuyo Principal no existe en el maestro (CUARTO F en la
+    // prueba del 26.08): su asistencia se registraba pero el curso quedaba sin
+    // representación, aunque la Suplente estaba presente y habilitada.
+    //
+    // Regla confirmada:
+    //   Principal presente                      -> cuenta el Principal
+    //   Principal ausente  + Suplente presente   -> cuenta el Suplente actuando
+    //   Principal INEXISTENTE + Suplente presente-> cuenta el Suplente actuando
+    //   Principal + Suplente presentes           -> máximo 1 representación
+    //
+    // Board Quorum no inventa un Principal: el Suplente ejerce la representación
+    // del curso conservando su rol.
     const [courseRows] = await db.execute(
       `SELECT DISTINCT rol_organico FROM members m
-       WHERE m.product_id = ? AND m.member_type = 'principal' AND ${isPG ? 'm.active = true' : 'm.active = 1'}
+       WHERE m.product_id = ? AND m.member_type IN ('principal', 'suplente')
+         AND ${isPG ? 'm.active = true' : 'm.active = 1'}
          AND m.rol_organico IS NOT NULL AND m.rol_organico <> ''
          AND ${this._nonComputableSQL('m')}`,
       [productId]
     );
     const cursos = courseRows.map(r => this._norm(r.rol_organico));
+
+    // Cursos que sí tienen Principal en el maestro. Sirve para explicar por qué
+    // actúa el Suplente: porque el Principal faltó, o porque no existe.
+    const [conPrincipalRows] = await db.execute(
+      `SELECT DISTINCT rol_organico FROM members m
+       WHERE m.product_id = ? AND m.member_type = 'principal'
+         AND ${isPG ? 'm.active = true' : 'm.active = 1'}
+         AND m.rol_organico IS NOT NULL AND m.rol_organico <> ''
+         AND ${this._nonComputableSQL('m')}`,
+      [productId]
+    );
+    const cursosConPrincipal = new Set(conPrincipalRows.map(r => this._norm(r.rol_organico)));
 
     // Presentes y aprobados (con member_id del producto)
     const [present] = await db.execute(
@@ -187,7 +227,10 @@ class AssemblyQuorumService {
         return {
           curso, representado: true,
           votante_id: suplente.member_id, votante_nombre: suplente.name,
-          tipo_votante: 'suplente', acting_as_principal: true, power_id: null, apoderado_id: null
+          tipo_votante: 'suplente', acting_as_principal: true,
+          // MD-13: distingue "el Principal no vino" de "el curso no tiene Principal"
+          principal_inexistente: !cursosConPrincipal.has(curso),
+          power_id: null, apoderado_id: null
         };
       }
       if (power) {
@@ -314,6 +357,86 @@ class AssemblyQuorumService {
       quorum_requerido: requerido,
       en_momento_siguiente: enMomentoSiguiente,
       momento_siguiente: momentoSiguiente
+    };
+  }
+
+  /**
+   * MD-14 — Desglose de quórum de Asamblea con UNA SOLA cifra oficial.
+   *
+   * El detalle y el PDF venían del contador por persona de Junta Directiva, que
+   * en la prueba del 26.08 reportó 17 mientras el panel mostraba 16. Dos cifras
+   * para el mismo instante, y una sola representación de diferencia puede
+   * cambiar la conclusión sobre si hay quórum.
+   *
+   * Aquí el desglose se construye desde el MISMO estado por curso que alimenta
+   * el panel, así que Q_RESUMEN = Q_DETALLE = Q_ESTADO = Q_REPORTE por
+   * construcción: `computable_votes` es exactamente el número de cursos
+   * representados.
+   */
+  static async getAssemblyBreakdown(meetingId) {
+    const ctx = await this._getMeetingContext(meetingId);
+    const status = await this.getCourseRepresentationStatus(meetingId);
+    const isPG = this.isPostgreSQL;
+    const pendingOk = isPG
+      ? 'COALESCE(a.pending_approval, false) = false'
+      : '(a.pending_approval IS NULL OR a.pending_approval = 0)';
+
+    // Todos los presentes de la reunión, incluidos los que no computan
+    const [presentes] = await db.execute(
+      `SELECT a.id AS attendance_id, a.member_id, a.pending_approval,
+              COALESCE(m.name, a.manual_name) AS name,
+              COALESCE(m.rol_organico, a.manual_curso, a.manual_position, '') AS display_role,
+              m.member_type, m.tipo_participante
+       FROM attendance a
+       LEFT JOIN members m ON m.id = a.member_id
+       WHERE a.meeting_id = ? AND a.status = 'present'`,
+      [meetingId]
+    );
+
+    const votantePorMiembro = new Map();
+    for (const c of status) {
+      if (c.representado && c.votante_id != null) votantePorMiembro.set(Number(c.votante_id), c);
+    }
+
+    const breakdown = presentes.map(p => {
+      const pendiente = p.pending_approval === true || p.pending_approval === 1;
+      const rep = p.member_id != null ? votantePorMiembro.get(Number(p.member_id)) : null;
+
+      let counts = false;
+      let reason;
+      if (pendiente) reason = 'PENDIENTE_APROBACION';
+      else if (p.member_id == null) reason = 'MANUAL_NO_MIEMBRO';
+      else if (rep) {
+        counts = true;
+        reason = rep.tipo_votante === 'suplente'
+          ? (rep.principal_inexistente ? 'SUPLENTE_ACTUANDO_SIN_PRINCIPAL' : 'SUPLENTE_ACTUANDO_PRINCIPAL_AUSENTE')
+          : rep.tipo_votante === 'apoderado' ? 'APODERADO_CON_PODER' : 'PRINCIPAL_CUENTA';
+      } else if (this.isNonComputable(p.tipo_participante)) reason = 'PARTICIPANTE_NO_COMPUTABLE';
+      else if (String(p.member_type || '').toLowerCase() === 'suplente') reason = 'SUPLENTE_PRINCIPAL_PRESENTE';
+      else reason = 'CURSO_YA_REPRESENTADO';
+
+      return {
+        name: p.name,
+        role: p.display_role,
+        member_type: p.member_type || p.tipo_participante || 'PRINCIPAL',
+        counts,
+        reason,
+        reason_label: BREAKDOWN_LABELS[reason] || reason
+      };
+    });
+
+    const computables = breakdown.filter(b => b.counts).length;
+
+    return {
+      total_present: presentes.length,
+      // Única cifra oficial de quórum: coincide con cursos_representados
+      computable_votes: computables,
+      cursos_representados: status.filter(c => c.representado).length,
+      cursos_habilitados: status.length,
+      universo_quorum: await this.getTotalPrincipals(ctx?.product_id),
+      jv_institutional_vote: 0,
+      jv_members: [],
+      breakdown
     };
   }
 

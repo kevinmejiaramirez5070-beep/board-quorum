@@ -18,6 +18,16 @@ exports.getMeeting = async (req, res) => {
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
+    // MD-14 §8 — La cabecera debe mostrar la MISMA hora convocada que usa el
+    // bloque de Momento Siguiente. Sin esto la reunión de las 5:15 a. m. se veía
+    // como 0:15 en el encabezado y en los reportes.
+    if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+      try {
+        const MomentService = require('../services/assemblyMomentService');
+        const iso = await MomentService.getMeetingInstant(meeting.id);
+        if (iso) meeting.date = iso;
+      } catch (e) { /* si falla, se conserva el valor original */ }
+    }
     res.json(meeting);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -335,9 +345,15 @@ exports.getQuorumDetail = async (req, res) => {
     const meeting = await Meeting.findById(req.params.id, req.user.client_id);
     if (!meeting) return res.status(404).json({ message: 'Reunión no encontrada' });
 
-    const breakdown = await Attendance.getQuorumBreakdown(req.params.id);
     const QuorumService = require('../services/quorumService');
     const quorumInfo = await QuorumService.getQuorumInfo(req.params.id, req.user.client_id);
+
+    // MD-14 — Una sola cifra oficial de quórum. En Asamblea el desglose se
+    // construye desde el mismo estado por curso que alimenta el panel, para que
+    // resumen, detalle, estado y reporte no puedan discrepar.
+    const breakdown = QuorumService.normalizeMeetingType(meeting.type) === 'asamblea'
+      ? await require('../services/assemblyQuorumService').getAssemblyBreakdown(req.params.id)
+      : await Attendance.getQuorumBreakdown(req.params.id);
 
     res.json({
       ...breakdown,

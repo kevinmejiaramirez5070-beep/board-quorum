@@ -74,6 +74,22 @@ class AssemblyMomentService {
     return isNaN(d.getTime()) ? null : d;
   }
 
+  /**
+   * Devuelve la fecha de una reunión de Asamblea como instante real.
+   *
+   * MD-14 §8 — La cabecera y los reportes mostraban 0:15 para una reunión
+   * configurada a las 5:15 a. m., mientras el bloque de Momento Siguiente sí
+   * mostraba 5:15. Es el mismo desfase de zona horaria: la columna guarda hora
+   * de pared y el driver la reconstruía en la zona del servidor (UTC en Render).
+   * Aquí se normaliza para que todos los módulos muestren la hora convocada.
+   */
+  static async getMeetingInstant(meetingId) {
+    const meeting = await this._getMeeting(meetingId);
+    if (!meeting) return null;
+    const d = this.getHoraOficial(meeting);
+    return d ? d.toISOString() : null;
+  }
+
   /** Hora límite del Momento Siguiente: hora oficial + 1 hora. NO depende del clic. */
   static getHoraLimite(meeting) {
     const oficial = this.getHoraOficial(meeting);
