@@ -1285,6 +1285,62 @@ const MeetingDetail = () => {
                   </p>
                 )}
               </div>
+              {/* En Asamblea se separan las tres cifras: el mínimo vigente no es
+                  la mayoría para aprobar, y las representaciones computables no
+                  son el total de asistentes registrados. */}
+              {quorum.typeNormalized === 'asamblea' ? (
+                <div className="quorum-projection-details">
+                  {quorum.momento_siguiente?.aplicado && (
+                    <div className="quorum-projection-banner">
+                      ⏱️ {language === 'es' ? 'MOMENTO SIGUIENTE ACTIVO' : 'MOMENTO SIGUIENTE ACTIVE'}
+                    </div>
+                  )}
+                  <div className="quorum-projection-row">
+                    <span className="quorum-projection-label">
+                      {language === 'es' ? 'Representaciones computables para quórum:' : 'Countable representations:'}
+                    </span>
+                    <span className="quorum-projection-value">{quorum.present}</span>
+                  </div>
+                  <div className="quorum-projection-row">
+                    <span className="quorum-projection-label">
+                      {quorum.momento_siguiente?.aplicado
+                        ? (language === 'es' ? 'Mínimo requerido en Momento Siguiente:' : 'Minimum in Momento Siguiente:')
+                        : (language === 'es' ? 'Quórum inicial requerido:' : 'Initial quorum required:')}
+                    </span>
+                    <span className="quorum-projection-value">{quorum.required ?? '-'}</span>
+                  </div>
+                  <div className="quorum-projection-row">
+                    <span className="quorum-projection-label">
+                      {language === 'es' ? 'Universo de Delegados habilitados:' : 'Eligible delegates:'}
+                    </span>
+                    <span className="quorum-projection-value">{quorum.total}</span>
+                  </div>
+                  {quorum.momento_siguiente?.aplicado && (
+                    <div className="quorum-projection-row">
+                      <span className="quorum-projection-label">
+                        {language === 'es' ? 'Quórum inicial requerido:' : 'Initial quorum required:'}
+                      </span>
+                      <span className="quorum-projection-value">{quorum.quorum_inicial ?? '-'}</span>
+                    </div>
+                  )}
+                  <div className="quorum-projection-row">
+                    <span className="quorum-projection-label">
+                      {language === 'es' ? 'Asistentes registrados en la reunión:' : 'Registered attendees:'}
+                    </span>
+                    <span className="quorum-projection-value">{attendance.length}</span>
+                  </div>
+                  <div className="quorum-projection-row">
+                    <span className="quorum-projection-label">
+                      {language === 'es' ? 'Resultado:' : 'Result:'}
+                    </span>
+                    <span className="quorum-projection-value">
+                      {quorum.met
+                        ? (language === 'es' ? 'QUÓRUM ALCANZADO' : 'QUORUM REACHED')
+                        : (language === 'es' ? 'QUÓRUM NO ALCANZADO' : 'QUORUM NOT REACHED')}
+                    </span>
+                  </div>
+                </div>
+              ) : (
               <div className="quorum-projection-details">
                 <div className="quorum-projection-row">
                   <span className="quorum-projection-label">{language === 'es' ? 'Quórum deliberatorio:' : 'Deliberative quorum:'}</span>
@@ -1307,6 +1363,7 @@ const MeetingDetail = () => {
                   <span className="quorum-projection-value">{quorum.present} / {quorum.total}</span>
                 </div>
               </div>
+              )}
             </div>
           </div>
         )}

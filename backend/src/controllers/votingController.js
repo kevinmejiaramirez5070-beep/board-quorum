@@ -128,10 +128,50 @@ exports.getResults = async (req, res) => {
 
     const results = await Voting.getResults(req.params.id);
     const votes = await Vote.findByVoting(req.params.id);
-    
-    // Calcular mayoría simple
+
     const totalVotesEmitted = votes.length;
-    const majority = QuorumService.calculateSimpleMajority(totalVotesEmitted);
+
+    // Tres cifras distintas que no deben confundirse:
+    //   Q_MS = quórum mínimo vigente        -> CEIL(universo * 20%)
+    //   V    = votantes habilitados presentes (representaciones computables)
+    //   M    = mayoría simple requerida     -> FLOOR(V / 2) + 1
+    //
+    // En Asamblea la mayoría se calcula sobre los HABILITADOS PRESENTES, no
+    // sobre los votos emitidos: si de 18 habilitados solo votan 12, la mayoría
+    // sigue siendo 10, no 7. Y el mínimo del Momento Siguiente (17) nunca es el
+    // número de votos a favor necesarios para aprobar.
+    let contexto = null;
+    let baseMayoria = totalVotesEmitted;
+
+    try {
+      const Meeting = require('../models/Meeting');
+      const meeting = await Meeting.findById(voting.meeting_id, null);
+      if (meeting && QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+        const quorumInfo = await QuorumService.getAssemblyQuorumInfo(voting.meeting_id, meeting);
+        const habilitados = Number(quorumInfo?.present || 0);
+        if (habilitados > 0) baseMayoria = habilitados;
+
+        const Attendance = require('../models/Attendance');
+        let asistentes = null;
+        try { asistentes = await Attendance.countByStatus(voting.meeting_id, 'present'); } catch (e) { /* opcional */ }
+
+        contexto = {
+          es_asamblea: true,
+          en_momento_siguiente: !!quorumInfo?.momento_siguiente?.aplicado,
+          universo_delegados: Number(quorumInfo?.total || 0),
+          quorum_minimo_vigente: Number(quorumInfo?.required || 0),
+          quorum_inicial: Number(quorumInfo?.quorum_inicial || 0),
+          quorum_momento_siguiente: Number(quorumInfo?.quorum_momento_siguiente || 0),
+          votantes_habilitados: habilitados,
+          asistentes_registrados: asistentes != null ? Number(asistentes) : null,
+          base_mayoria: 'votantes_habilitados'
+        };
+      }
+    } catch (e) {
+      console.warn('[voting] no se pudo resolver el contexto de Asamblea:', e.message);
+    }
+
+    const majority = QuorumService.calculateSimpleMajority(baseMayoria);
     
     // Contar votos afirmativos (opciones como "Sí", "A favor", etc.)
     // Esto depende de cómo se definan las opciones, por ahora asumimos que la primera opción es afirmativa
@@ -144,19 +184,21 @@ exports.getResults = async (req, res) => {
         .reduce((sum, r) => sum + parseInt(r.votes), 0);
     }
     
-    // Validar si alcanza mayoría simple
+    // Validar si alcanza mayoría simple, sobre la base que corresponda
     const majorityValidation = QuorumService.validateSimpleMajority(
       affirmativeVotes,
-      totalVotesEmitted
+      baseMayoria
     );
-    
+
     res.json({
       voting,
       results,
       votes,
       totalVotes: totalVotesEmitted,
+      votantes_habilitados: contexto ? contexto.votantes_habilitados : totalVotesEmitted,
       majority,
-      majorityValidation
+      majorityValidation,
+      contexto_quorum: contexto
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

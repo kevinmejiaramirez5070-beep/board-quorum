@@ -474,7 +474,15 @@ const VotingResults = () => {
     : null;
   const isTie = isMultiple && winnerOption && voteResults.filter(r => (parseInt(r.votes) || 0) === (parseInt(winnerOption.votes) || 0)).length > 1;
 
-  const ordinariaMajority = (!isMultiple && !noVotes) ? Math.floor(totalVotes / 2) + 1 : null;
+  // Tres cifras distintas. La mayoría simple se calcula sobre los VOTANTES
+  // HABILITADOS presentes, no sobre los votos emitidos: si de 18 habilitados
+  // solo votan 12, la mayoría sigue siendo 10. Y el mínimo del Momento
+  // Siguiente (17) nunca es el número de votos a favor para aprobar.
+  const ctx = results.contexto_quorum || null;
+  const votantesHabilitados = results.votantes_habilitados || totalVotes;
+  const ordinariaMajority = (!isMultiple && !noVotes)
+    ? Math.floor(votantesHabilitados / 2) + 1
+    : null;
   const affirmativeOptions = ['a favor', 'sí', 'si', 'yes', 'aprobado'];
   const affirmativeVotes = !isMultiple
     ? voteResults.filter(r => affirmativeOptions.includes((r.option || '').toLowerCase()))
@@ -500,11 +508,56 @@ const VotingResults = () => {
           </div>
         )}
 
+        {/* Las tres cifras, separadas y nombradas, para que nadie lea el mínimo
+            de quórum como si fuera la mayoría necesaria para aprobar. */}
+        {ctx?.es_asamblea && (
+          <div className="asamblea-cifras">
+            {ctx.en_momento_siguiente && (
+              <div className="asamblea-cifras-banner">
+                ⏱️ {language === 'es' ? 'MOMENTO SIGUIENTE ACTIVO' : 'MOMENTO SIGUIENTE ACTIVE'}
+              </div>
+            )}
+            <div className="asamblea-cifras-grid">
+              <div>
+                <span>{language === 'es' ? 'Universo de Delegados habilitados' : 'Eligible delegates'}</span>
+                <strong>{ctx.universo_delegados}</strong>
+              </div>
+              <div>
+                <span>
+                  {ctx.en_momento_siguiente
+                    ? (language === 'es' ? 'Quórum mínimo vigente (Momento Siguiente)' : 'Current minimum (Momento Siguiente)')
+                    : (language === 'es' ? 'Quórum mínimo vigente' : 'Current minimum quorum')}
+                </span>
+                <strong>{ctx.quorum_minimo_vigente}</strong>
+              </div>
+              <div>
+                <span>{language === 'es' ? 'Votantes habilitados presentes' : 'Eligible voters present'}</span>
+                <strong>{ctx.votantes_habilitados}</strong>
+              </div>
+              <div>
+                <span>{language === 'es' ? 'Mayoría simple requerida' : 'Simple majority required'}</span>
+                <strong className="asamblea-cifras-mayoria">{ordinariaMajority ?? '—'}</strong>
+              </div>
+            </div>
+            <p className="asamblea-cifras-nota">
+              {language === 'es'
+                ? `El mínimo de ${ctx.quorum_minimo_vigente} determina si hay quórum. La mayoría para aprobar se calcula sobre los ${ctx.votantes_habilitados} votantes habilitados presentes.`
+                : `The minimum of ${ctx.quorum_minimo_vigente} determines quorum. The majority to approve is computed over the ${ctx.votantes_habilitados} eligible voters present.`}
+            </p>
+          </div>
+        )}
+
         <div className="results-summary">
           <div className="summary-card">
             <div className="summary-value">{totalVotes}</div>
-            <div className="summary-label">{language === 'es' ? 'Total de Votos' : 'Total Votes'}</div>
+            <div className="summary-label">{language === 'es' ? 'Votos Emitidos' : 'Votes Cast'}</div>
           </div>
+          {ctx?.es_asamblea && (
+            <div className="summary-card">
+              <div className="summary-value">{ctx.votantes_habilitados}</div>
+              <div className="summary-label">{language === 'es' ? 'Votantes Habilitados' : 'Eligible Voters'}</div>
+            </div>
+          )}
           {isMultiple ? (
             winnerOption && (
               <div className={`summary-card ${isTie ? '' : 'approved'}`}>
