@@ -279,6 +279,15 @@ class Member {
       ? "regexp_replace(COALESCE(secondary_document, ''), '[^0-9]', '', 'g')"
       : "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(secondary_document, ''), '.', ''), '-', ''), ' ', ''), ',', '')";
 
+    // El orden por órgano se arma solo cuando hay productId. Incluir siempre un
+    // `? IS NOT NULL` deja a PostgreSQL sin tipo para ese parámetro y falla con
+    // "could not determine data type".
+    const usaProducto = productId != null && productId !== '';
+    const ordenPorProducto = usaProducto ? 'CASE WHEN product_id = ? THEN 0 ELSE 1 END,' : '';
+    const params = usaProducto
+      ? [docNorm, docNorm, documentNumber, docNorm, clientId, productId, docNorm]
+      : [docNorm, docNorm, documentNumber, docNorm, clientId, docNorm];
+
     const [rows] = await db.execute(
       `SELECT id, name, numero_documento, secondary_document, secondary_name,
               tipo_documento, position, rol_organico,
@@ -289,10 +298,9 @@ class Member {
        WHERE (${dbNormExpr} = ? OR numero_documento = ?
               OR (${secNormExpr} <> '' AND ${secNormExpr} = ?))
          AND client_id = ? AND ${activeCondition}
-       ORDER BY
-         CASE WHEN ? IS NOT NULL AND product_id = ? THEN 0 ELSE 1 END,
+       ORDER BY ${ordenPorProducto}
          CASE WHEN ${dbNormExpr} = ? THEN 0 ELSE 1 END`,
-      [docNorm, docNorm, documentNumber, docNorm, clientId, productId, productId, docNorm]
+      params
     );
     return rows[0] || null;
   }
