@@ -29,6 +29,8 @@ const PublicAttendanceRegister = () => {
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [quorumMessage, setQuorumMessage] = useState(null);
+  // MD-10 — datos del núcleo familiar cuando el otro progenitor ya registró
+  const [nucleoInfo, setNucleoInfo] = useState(null);
 
   useEffect(() => {
     loadMeeting();
@@ -87,12 +89,19 @@ const PublicAttendanceRegister = () => {
         setStep('notFound');
       }
     } catch (error) {
-      if (error.response?.status === 404 && error.response?.data?.found === false) {
+      const data = error.response?.data || {};
+      if (error.response?.status === 404 && data.found === false) {
         // No encontrado - mostrar opción de registro manual
         setStep('notFound');
+      } else if (data.status === 'NUCLEO_YA_REGISTRADO') {
+        // MD-10 — El otro progenitor del mismo núcleo ya registró. Se muestra
+        // quién fue, en vez de ofrecer un segundo registro que sería rechazado.
+        setMemberData(data.member);
+        setNucleoInfo({ ...(data.nucleo || {}), message: data.message });
+        setStep('nucleoRegistrado');
       } else {
         console.error('Error verifying document:', error);
-        const errorMessage = error.response?.data?.message || (language === 'es' ? 'Error al verificar la cédula' : 'Error verifying ID');
+        const errorMessage = data.message || (language === 'es' ? 'Error al verificar la cédula' : 'Error verifying ID');
         alert(errorMessage);
       }
     } finally {
@@ -338,6 +347,74 @@ const PublicAttendanceRegister = () => {
         )}
 
         {/* CASO: Cédula no encontrada */}
+        {/* MD-10 — El otro progenitor del mismo núcleo familiar ya registró.
+            Dos cédulas válidas, un núcleo, una sola representación. */}
+        {step === 'nucleoRegistrado' && (
+          <div className="manual-registration-section">
+            <div style={{
+              padding: '20px', backgroundColor: '#FEF3C7', borderRadius: '10px',
+              border: '2px solid #F59E0B', marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 28 }}>👨‍👩‍👧</span>
+                <strong style={{ fontSize: 17, color: '#92400E' }}>
+                  {language === 'es' ? 'Núcleo familiar ya registrado' : 'Family unit already registered'}
+                </strong>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, color: '#78350F', lineHeight: 1.65 }}>
+                {nucleoInfo?.message}
+              </p>
+            </div>
+
+            <div style={{
+              padding: '16px', backgroundColor: '#fff', borderRadius: '8px',
+              border: '1px solid #e5e7eb', marginBottom: '20px'
+            }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', color: '#6B7280', marginBottom: 8 }}>
+                {language === 'es' ? 'Usted ingresó' : 'You entered'}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                {displayNameWithAccents(memberData?.name)}
+              </div>
+              <div style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }}>
+                CC: {memberData?.numero_documento}
+                {nucleoInfo?.curso ? ` · ${nucleoInfo.curso}` : ''}
+              </div>
+
+              {nucleoInfo?.registrado_por_nombre && (
+                <>
+                  <div style={{ height: 1, background: '#e5e7eb', margin: '14px 0' }} />
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', color: '#6B7280', marginBottom: 8 }}>
+                    {language === 'es' ? 'Ya registró la asistencia' : 'Already registered'}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#047857' }}>
+                    ✓ {displayNameWithAccents(nucleoInfo.registrado_por_nombre)}
+                  </div>
+                  {nucleoInfo.registrado_por_documento && (
+                    <div style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }}>
+                      CC: {nucleoInfo.registrado_por_documento}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <p style={{ fontSize: 12.5, color: '#6B7280', lineHeight: 1.6, marginBottom: 18 }}>
+              {language === 'es'
+                ? 'No hace falta registrarse de nuevo. Si cree que se trata de un error, informe a la mesa de la Asamblea.'
+                : 'No second registration is needed. If you believe this is an error, please inform the assembly desk.'}
+            </p>
+
+            <button
+              onClick={handleRetry}
+              className="btn btn-secondary btn-large"
+              style={{ width: '100%' }}
+            >
+              {language === 'es' ? 'Volver' : 'Back'}
+            </button>
+          </div>
+        )}
+
         {step === 'notFound' && (
           <div className="not-found-section">
             <div className="alert alert-warning" style={{ 

@@ -159,14 +159,48 @@ exports.verifyDocument = async (req, res) => {
 
     // Miembro encontrado - validar elegibilidad (INTERNO, no mostrar al usuario)
     const isEligibleForQuorum = member.cuenta_quorum === true || member.cuenta_quorum === 1;
-    
+
+    // MD-10 — Identidad exacta. Una fila del maestro trae dos cédulas (madre y
+    // padre). Ambas resuelven el MISMO registro, pero en pantalla debe aparecer
+    // la persona del documento que se digitó, no la primera de la fila.
+    const AssemblyVotingService = require('../services/assemblyVotingService');
+    const identidad = AssemblyVotingService.identidadExacta(member);
+
+    // MD-10 — El núcleo familiar genera UNA sola representación. Si el otro
+    // progenitor ya registró asistencia, se avisa en vez de ofrecer un segundo
+    // registro que después quedaría rechazado o duplicado.
+    const yaRegistrado = await Attendance.findByMemberAndMeeting(meetingId, member.id);
+    if (yaRegistrado) {
+      const otroDocumento = identidad.documento_usado === 'secundario'
+        ? member.numero_documento
+        : (member.secondary_document || null);
+      const otroNombre = identidad.documento_usado === 'secundario'
+        ? member.name
+        : (member.secondary_name || null);
+
+      return res.status(409).json({
+        found: true,
+        status: 'NUCLEO_YA_REGISTRADO',
+        member: { ...identidad, position: member.rol_organico || member.position || 'Delegado' },
+        nucleo: {
+          registrado_por_nombre: otroNombre,
+          registrado_por_documento: otroDocumento,
+          curso: member.rol_organico || null
+        },
+        message: otroNombre
+          ? `La asistencia de este núcleo familiar ya fue registrada por ${otroNombre}` +
+            (otroDocumento ? ` (CC ${otroDocumento})` : '') +
+            `. El curso ${member.rol_organico || ''} dispone de una única representación, ` +
+            'así que no se requiere un segundo registro.'
+          : 'La asistencia de este Delegado ya fue registrada para esta reunión.'
+      });
+    }
+
     // Retornar solo datos públicos para confirmación (NO mostrar campos sensibles)
     res.json({
       found: true,
       member: {
-        id: member.id,
-        name: member.name,
-        numero_documento: member.numero_documento,
+        ...identidad,
         position: member.position || member.rol_organico || 'Miembro'
       },
       eligibleForQuorum: isEligibleForQuorum,
@@ -210,7 +244,20 @@ exports.confirmAttendance = async (req, res) => {
     // Verificar si ya está registrado (por member_id o por número de documento - BUG-03)
     const existingByMember = await Attendance.findByMemberAndMeeting(meetingId, member.id);
     if (existingByMember) {
-      return res.status(400).json({ message: 'Ya registraste tu asistencia para esta reunión' });
+      // MD-10 — Puede ser el otro progenitor del mismo núcleo. Decirle "ya
+      // registraste tu asistencia" lo confunde, porque él no registró nada:
+      // fue su pareja. Se nombra a quien sí lo hizo.
+      const usoSecundario = member.documento_usado === 'secundario';
+      const otroNombre = usoSecundario ? member.name : (member.secondary_name || null);
+      const otroDocumento = usoSecundario ? member.numero_documento : (member.secondary_document || null);
+      return res.status(400).json({
+        status: 'NUCLEO_YA_REGISTRADO',
+        message: otroNombre
+          ? `La asistencia de este núcleo familiar ya fue registrada por ${otroNombre}` +
+            (otroDocumento ? ` (CC ${otroDocumento})` : '') +
+            `. El curso ${member.rol_organico || ''} dispone de una única representación.`
+          : 'Ya registraste tu asistencia para esta reunión'
+      });
     }
     const existingByDoc = await Attendance.findByDocumentAndMeeting(meetingId, cedula);
     if (existingByDoc) {
