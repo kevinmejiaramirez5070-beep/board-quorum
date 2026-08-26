@@ -211,7 +211,8 @@ exports.verifyDocument = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id);
+    // MD-05 §12 — resolver la identidad del órgano de ESTA reunión
+    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id, meeting.product_id ?? null);
 
     if (!member) {
       // No encontrado - permitir registro manual
@@ -310,7 +311,7 @@ exports.confirmAttendance = async (req, res) => {
     }
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id);
+    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null);
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }

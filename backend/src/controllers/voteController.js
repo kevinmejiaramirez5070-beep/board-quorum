@@ -82,7 +82,8 @@ exports.verifyDocumentForVoting = async (req, res) => {
     const Member = require('../models/Member');
     const Attendance = require('../models/Attendance');
 
-    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id);
+    // MD-05 §12 — resolver la identidad del órgano de ESTA reunión
+    const member = await Member.findByDocumentNumber(cedulaNorm, meeting.client_id, meeting.product_id ?? null);
     if (!member) {
       return res.status(404).json({ status: 'NOT_FOUND', found: false, cedula: cedulaNorm });
     }
@@ -272,7 +273,7 @@ exports.confirmVote = async (req, res) => {
     const Attendance = require('../models/Attendance');
 
     // Buscar miembro por número de documento
-    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id);
+    const member = await Member.findByDocumentNumber(cedulaNormConfirm, meeting.client_id, meeting.product_id ?? null);
     if (!member) {
       return res.status(404).json({ message: 'Miembro no encontrado' });
     }

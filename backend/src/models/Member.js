@@ -249,7 +249,17 @@ class Member {
   /**
    * Busca un miembro por número de documento
    */
-  static async findByDocumentNumber(documentNumber, clientId) {
+  /**
+   * MD-05 §12 — Una misma persona puede pertenecer a Junta Directiva y a
+   * Asamblea con roles distintos. Para una reunión hay que resolver la identidad
+   * del ÓRGANO de esa reunión: si no, quien es Vicepresidente en Junta y padre
+   * delegado en Asamblea se resuelve con su rol de Junta y el núcleo familiar
+   * queda partido en dos registros.
+   *
+   * `productId` es opcional: cuando se pasa, los miembros de ese órgano tienen
+   * prioridad sobre los de cualquier otro.
+   */
+  static async findByDocumentNumber(documentNumber, clientId, productId = null) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
     // Normalizar el parámetro de entrada: solo dígitos
@@ -279,8 +289,10 @@ class Member {
        WHERE (${dbNormExpr} = ? OR numero_documento = ?
               OR (${secNormExpr} <> '' AND ${secNormExpr} = ?))
          AND client_id = ? AND ${activeCondition}
-       ORDER BY CASE WHEN ${dbNormExpr} = ? THEN 0 ELSE 1 END`,
-      [docNorm, docNorm, documentNumber, docNorm, clientId, docNorm]
+       ORDER BY
+         CASE WHEN ? IS NOT NULL AND product_id = ? THEN 0 ELSE 1 END,
+         CASE WHEN ${dbNormExpr} = ? THEN 0 ELSE 1 END`,
+      [docNorm, docNorm, documentNumber, docNorm, clientId, productId, productId, docNorm]
     );
     return rows[0] || null;
   }
