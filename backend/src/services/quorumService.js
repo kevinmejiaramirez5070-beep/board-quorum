@@ -203,11 +203,33 @@ class QuorumService {
    */
   static async getAssemblyQuorumInfo(meetingId, meeting) {
     const AssemblyQuorumService = require('./assemblyQuorumService');
-    const productId = meeting.product_id ?? null;
-    if (productId == null) return null;
 
-    const total = await AssemblyQuorumService.getTotalPrincipals(productId);
-    if (!total || total <= 0) return null;
+    // MD-11 — Resolver el maestro vigente aunque la reunión se haya creado sin
+    // órgano. Devuelve siempre un objeto: nunca null, para que ninguna pantalla
+    // caiga a otro universo.
+    let productId = meeting.product_id ?? null;
+    if (productId == null) {
+      const Resolver = require('./assemblyProductResolver');
+      productId = await Resolver.ensureMeetingProduct(meeting);
+    }
+
+    const total = productId != null ? await AssemblyQuorumService.getTotalPrincipals(productId) : 0;
+
+    if (!total || total <= 0) {
+      const diag = await AssemblyQuorumService.getUniverseDiagnostic(meetingId);
+      return {
+        present: 0, required: 0, total: 0, percentage: 0,
+        valid: false, met: false,
+        type: meeting.type, typeNormalized: 'asamblea',
+        organLabel: 'Asamblea General',
+        quorumRule: 'assembly_sin_maestro',
+        total_principales: 0, quorum_inicial: 0, quorum_momento_siguiente: 0,
+        momento_siguiente: null,
+        unidad_computo: 'posicion_representacion',
+        diagnostico_universo: diag,
+        message: diag?.mensaje || 'La Asamblea aún no tiene un maestro de Delegados del cual calcular el universo.'
+      };
+    }
 
     const present = await AssemblyQuorumService.getRepresentedCoursesCount(meetingId);
     const quorumInicial = Math.ceil(total / 2) + 1;
@@ -270,15 +292,13 @@ class QuorumService {
       // MD-01: el universo es la POSICIÓN de representación (Delegado Principal habilitado),
       // no la cantidad de personas cargadas. Suplentes, Administración, Contabilidad y
       // Revisoría Fiscal NO aumentan el universo. Presentes = cursos representados.
-      const asm = await this.getAssemblyQuorumInfo(meetingId, meeting);
-      if (asm) return asm;
-      // Maestro sin principales marcados: se conserva el comportamiento anterior
-      total = await Member.countEligibleForQuorum(clientId, meeting.product_id ?? null);
-      if (total === 0) total = await Member.countEligibleForQuorum(clientId, null);
-      required = this.calculateRequiredQuorum('asamblea', total);
-      valid = total > 0 && present >= required;
-      percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-      organLabel = 'Asamblea General';
+      // MD-11 §6 — Universo único. Una reunión de Asamblea SIEMPRE se resuelve
+      // por el motor de posiciones. Nunca cae al conteo antiguo por persona:
+      // ese contaba miembros de todos los órganos del cliente y devolvía cifras
+      // ajenas al maestro (105 elegibles / 53 mínimo en la prueba del 25.08).
+      // Si el maestro no está resuelto, se responde 0 con el diagnóstico, para
+      // que quede claro qué falta en vez de mostrar un universo inventado.
+      return await this.getAssemblyQuorumInfo(meetingId, meeting);
     } else if (mt === 'junta_directiva') {
       total = JD_VOTING_SLOTS;
       required = JD_QUORUM_MIN;

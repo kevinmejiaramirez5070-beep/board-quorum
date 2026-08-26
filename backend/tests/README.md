@@ -9,6 +9,7 @@ node backend/tests/asamblea-md01-quorum.test.js
 node backend/tests/asamblea-md02-momento.test.js
 node backend/tests/asamblea-md06-md07-base-validada.test.js
 node backend/tests/asamblea-md09-contingencia.test.js
+node backend/tests/asamblea-md10-md11-md12.test.js
 ```
 
 Cada archivo imprime una línea por comprobación y termina con código de salida 0
@@ -62,6 +63,17 @@ Si el archivo no está, la prueba se salta sin fallar.
 - Un curso nunca genera más de una representación, ni siquiera aprobando por
   contingencia: no deja crear un segundo Principal del mismo curso.
 - Una solicitud no se puede decidir dos veces.
+
+**`asamblea-md10-md11-md12.test.js`** — núcleo familiar, universo único y cómputo.
+
+- **MD-10**: las dos cédulas de una fila (madre y padre) resuelven el **mismo**
+  registro, y el núcleo genera una sola representación. Un documento que de
+  verdad no existe sigue sin encontrarse.
+- **MD-11**: una reunión de Asamblea creada sin órgano se vincula sola al maestro
+  vigente; el universo no incluye a los miembros de Junta Directiva, y panel y
+  universo coinciden.
+- **MD-12**: una persona no representa dos cursos, y se cumple `0 ≤ Q ≤ U` aunque
+  haya más asistentes que posiciones.
 
 ## Fórmula del quórum inicial — confirmada
 

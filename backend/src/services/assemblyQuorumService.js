@@ -59,13 +59,28 @@ class AssemblyQuorumService {
     return this.NON_COMPUTABLE_TIPOS.includes(this._norm(tipoParticipante));
   }
 
-  /** Obtiene product_id y client_id de la reunión. */
+  /**
+   * Obtiene product_id y client_id de la reunión.
+   *
+   * MD-11: si la reunión es de Asamblea y quedó sin órgano asignado, se resuelve
+   * el maestro vigente del cliente y se graba. Así toda la reunión — quórum,
+   * asistencia, votación, Momento Siguiente y reportes — usa un único universo.
+   */
   static async _getMeetingContext(meetingId) {
     const [rows] = await db.execute(
       `SELECT id, product_id, client_id, type, status FROM meetings WHERE id = ? LIMIT 1`,
       [meetingId]
     );
-    return rows[0] || null;
+    const meeting = rows[0] || null;
+    if (meeting && meeting.product_id == null) {
+      try {
+        const Resolver = require('./assemblyProductResolver');
+        await Resolver.ensureMeetingProduct(meeting);
+      } catch (e) {
+        console.warn('[assembly] no se pudo resolver el órgano de la reunión:', e.message);
+      }
+    }
+    return meeting;
   }
 
   /**
@@ -95,7 +110,7 @@ class AssemblyQuorumService {
     // Presentes y aprobados (con member_id del producto)
     const [present] = await db.execute(
       `SELECT a.member_id, a.acting_as_principal,
-              m.name, m.member_type, m.rol_organico
+              m.name, m.member_type, m.rol_organico, m.numero_documento
        FROM attendance a
        JOIN members m ON m.id = a.member_id
        WHERE a.meeting_id = ? AND a.status = 'present'
@@ -132,10 +147,34 @@ class AssemblyQuorumService {
       }
     } catch (e) { /* tabla de poderes aún no existe */ }
 
+    // MD-12 — Cómputo único: 0 <= Q <= U.
+    // Una misma persona no puede aportar dos representaciones aunque figure en
+    // dos cursos. Se lleva el registro de quién ya representa; el segundo curso
+    // que intente usarla queda sin representar y se anota el motivo.
+    const personasQueYaRepresentan = new Set();
+    const identidad = (p) => {
+      const doc = this._norm(p?.numero_documento);
+      return doc || `ID:${p?.member_id}`;
+    };
+    const tomar = (p) => {
+      const id = identidad(p);
+      if (personasQueYaRepresentan.has(id)) return false;
+      personasQueYaRepresentan.add(id);
+      return true;
+    };
+
     return cursos.map(curso => {
       const principal = principalByCurso.get(curso);
       const suplente = suplenteByCurso.get(curso);
       const power = powerByCurso.get(curso);
+
+      const sinRepresentar = (motivo) => ({
+        curso, representado: false, votante_id: null, votante_nombre: null,
+        tipo_votante: null, acting_as_principal: false, power_id: null, apoderado_id: null,
+        motivo_no_representado: motivo || null
+      });
+
+      if (principal && !tomar(principal)) return sinRepresentar('PERSONA_YA_REPRESENTA_OTRO_CURSO');
       if (principal) {
         return {
           curso, representado: true,
@@ -143,6 +182,7 @@ class AssemblyQuorumService {
           tipo_votante: 'principal', acting_as_principal: false, power_id: null, apoderado_id: null
         };
       }
+      if (suplente && !tomar(suplente)) return sinRepresentar('PERSONA_YA_REPRESENTA_OTRO_CURSO');
       if (suplente) {
         return {
           curso, representado: true,
@@ -157,14 +197,28 @@ class AssemblyQuorumService {
           tipo_votante: 'apoderado', acting_as_principal: false, power_id: power.power_id, apoderado_id: power.apoderado_id
         };
       }
-      return { curso, representado: false, votante_id: null, votante_nombre: null, tipo_votante: null, acting_as_principal: false, power_id: null, apoderado_id: null };
+      return sinRepresentar(null);
     });
   }
 
-  /** Número de cursos representados. */
+  /**
+   * Número de representaciones computables (Q).
+   *
+   * MD-12 — Invariante: 0 <= Q <= U, donde U es el total de posiciones elegibles.
+   * Q se calcula sobre la lista de cursos habilitados, que sale del maestro, así
+   * que la cota se cumple por construcción. La comprobación queda como red de
+   * seguridad: si alguna vez se rompe, se avisa en el log en vez de publicar un
+   * quórum imposible.
+   */
   static async getRepresentedCoursesCount(meetingId) {
     const status = await this.getCourseRepresentationStatus(meetingId);
-    return status.filter(c => c.representado).length;
+    const q = status.filter(c => c.representado).length;
+    const u = status.length;
+    if (q > u) {
+      console.error(`[assembly] INVARIANTE ROTA en reunión ${meetingId}: Q=${q} > U=${u}. Se acota a U.`);
+      return u;
+    }
+    return q;
   }
 
   /**

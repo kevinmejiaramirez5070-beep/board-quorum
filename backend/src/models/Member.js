@@ -259,14 +259,28 @@ class Member {
     const dbNormExpr = isPostgreSQL
       ? "regexp_replace(numero_documento, '[^0-9]', '', 'g')"
       : "REPLACE(REPLACE(REPLACE(REPLACE(numero_documento, '.', ''), '-', ''), ' ', ''), ',', '')";
+    // MD-10 — El maestro de ASOCOLCI trae madre y padre en la MISMA fila: una
+    // fila es un núcleo familiar con dos cédulas válidas. La segunda se guarda en
+    // secondary_document. Si solo se busca en numero_documento, la cédula del
+    // segundo progenitor devuelve "CÉDULA NO ENCONTRADA" aunque sí esté cargada.
+    // Ambas resuelven el MISMO registro, así que el núcleo sigue generando una
+    // sola representación: no se crean dos miembros ni dos posiciones.
+    const secNormExpr = isPostgreSQL
+      ? "regexp_replace(COALESCE(secondary_document, ''), '[^0-9]', '', 'g')"
+      : "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(secondary_document, ''), '.', ''), '-', ''), ' ', ''), ',', '')";
+
     const [rows] = await db.execute(
-      `SELECT id, name, numero_documento, tipo_documento, position, rol_organico,
+      `SELECT id, name, numero_documento, secondary_document, secondary_name,
+              tipo_documento, position, rol_organico,
               cuenta_quorum, puede_votar, rol_en_votacion, tipo_participante,
-              member_type, principal_id
+              member_type, principal_id,
+              CASE WHEN ${dbNormExpr} = ? THEN 'primario' ELSE 'secundario' END AS documento_usado
        FROM members
-       WHERE (${dbNormExpr} = ? OR numero_documento = ?)
-         AND client_id = ? AND ${activeCondition}`,
-      [docNorm, documentNumber, clientId]
+       WHERE (${dbNormExpr} = ? OR numero_documento = ?
+              OR (${secNormExpr} <> '' AND ${secNormExpr} = ?))
+         AND client_id = ? AND ${activeCondition}
+       ORDER BY CASE WHEN ${dbNormExpr} = ? THEN 0 ELSE 1 END`,
+      [docNorm, docNorm, documentNumber, docNorm, clientId, docNorm]
     );
     return rows[0] || null;
   }

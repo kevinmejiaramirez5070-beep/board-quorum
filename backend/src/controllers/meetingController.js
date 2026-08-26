@@ -52,6 +52,24 @@ exports.createMeeting = async (req, res) => {
       ...req.body,
       client_id: req.user.client_id
     };
+
+    // MD-11 §8 — Una reunión de Asamblea no puede quedar operativa sin órgano:
+    // sin él no hay maestro y el universo de elegibles queda sin resolver.
+    // Si el órgano de Asamblea del cliente es inequívoco, se asigna solo
+    // (estado válido A). Si no lo es, no se crea y se pide elegirlo (estado B).
+    if (QuorumService.normalizeMeetingType(data.type) === 'asamblea' && data.product_id == null) {
+      const Resolver = require('../services/assemblyProductResolver');
+      const r = await Resolver.resolve(data.client_id);
+      if (r.product_id == null) {
+        return res.status(400).json({
+          message: r.mensaje,
+          code: r.motivo,
+          candidatos: r.candidatos
+        });
+      }
+      data.product_id = r.product_id;
+      console.log(`[assembly] Nueva reunión de Asamblea vinculada al órgano ${r.product_id} (${r.name}).`);
+    }
     
     console.log('Creating meeting with data:', {
       ...data,

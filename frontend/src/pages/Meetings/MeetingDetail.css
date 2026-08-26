@@ -704,3 +704,57 @@
 
 .momento-siguiente-box .btn-warning:hover:not(:disabled) { background: #D97706; color: #fff; }
 .momento-siguiente-box .btn-warning:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* MD-11 · El Momento Siguiente es la accion operativa de las 6:00 p. m.:
+   tiene que verse, no esconderse en una esquina. */
+.momento-siguiente-transicion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 14px 10px 16px;
+}
+
+.momento-siguiente-transicion > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.momento-siguiente-transicion .ms-num {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.momento-siguiente-transicion .ms-actual { color: #B45309; }
+.momento-siguiente-transicion .ms-nuevo  { color: #047857; }
+
+.momento-siguiente-transicion .ms-lbl {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-secondary);
+}
+
+.momento-siguiente-transicion .ms-sep,
+.momento-siguiente-transicion .ms-flecha {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  align-self: center;
+}
+
+.momento-siguiente-transicion .ms-flecha { color: #F59E0B; font-size: 26px; }
+
+.momento-siguiente-btn {
+  display: block;
+  width: 100%;
+  font-size: 15px;
+  padding: 14px 18px;
+  letter-spacing: .06em;
+}
