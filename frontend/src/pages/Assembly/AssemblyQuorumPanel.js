@@ -82,11 +82,15 @@ const AssemblyQuorumPanel = ({ meetingId }) => {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
+          {/* El denominador es el universo de la Asamblea: las posiciones
+              Principales habilitadas del maestro. Mostrar aqui los cursos
+              representables incluia los 5 que solo tienen Suplente y sacaba
+              un 90 que no corresponde al universo (16/90 en vez de 16/85). */}
           <div style={{ fontSize: 22, fontWeight: 800, color: estadoInfo.color }}>
-            {panel.cursos_representados} / {panel.cursos_habilitados}
+            {panel.cursos_representados} / {panel.total_principales}
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary,#94a3b8)' }}>
-            {language === 'es' ? 'cursos representados' : 'courses represented'}
+            {language === 'es' ? 'representaciones computables' : 'countable representations'}
           </div>
         </div>
       </div>
@@ -101,8 +105,8 @@ const AssemblyQuorumPanel = ({ meetingId }) => {
       </div>
       <div style={{ fontSize: 11, color: 'var(--text-secondary,#94a3b8)', marginTop: 4 }}>
         {language === 'es'
-          ? `Requerido: Momento 1 = ${panel.quorum_m1} cursos · Momento 2 = ${panel.quorum_m2} cursos · Total principales = ${panel.total_principales}`
-          : `Required: Moment 1 = ${panel.quorum_m1} · Moment 2 = ${panel.quorum_m2} · Total principals = ${panel.total_principales}`}
+          ? `Universo habilitado = ${panel.total_principales} · Quórum inicial = ${panel.quorum_m1} · Momento Siguiente = ${panel.quorum_m2}`
+          : `Eligible universe = ${panel.total_principales} · Initial quorum = ${panel.quorum_m1} · Momento Siguiente = ${panel.quorum_m2}`}
       </div>
 
       <div style={grid}>

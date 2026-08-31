@@ -40,7 +40,13 @@ exports.getPublic = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const clients = await Client.findAllForAdmin();
+    const todos = await Client.findAllForAdmin();
+
+    // Un usuario operativo pertenece a UNA organización y no debe ver los
+    // nombres de las demás. Solo el Admin Master conserva el alcance global.
+    const clients = req.user?.role === 'admin_master'
+      ? todos
+      : todos.filter(c => Number(c.id) === Number(req.user?.client_id));
     
     // Si es admin master, agregar información de última actividad
     if (req.user?.role === 'admin_master') {

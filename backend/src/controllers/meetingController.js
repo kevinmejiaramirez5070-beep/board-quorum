@@ -41,11 +41,24 @@ exports.getPublicMeeting = async (req, res) => {
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
+    // La hora debe ser la MISMA en administración, registro público, votación,
+    // proyección y reportes. La columna guarda hora de pared y el driver la
+    // reconstruía en la zona del servidor (UTC en Render), así que la vista
+    // pública mostraba 8:50 para una reunión configurada a la 1:50 p. m.
+    let fechaPublica = meeting.date;
+    if (QuorumService.normalizeMeetingType(meeting.type) === 'asamblea') {
+      try {
+        const MomentService = require('../services/assemblyMomentService');
+        const iso = await MomentService.getMeetingInstant(meeting.id);
+        if (iso) fechaPublica = iso;
+      } catch (e) { /* si falla, se conserva el valor original */ }
+    }
+
     // Solo devolver información básica, sin datos sensibles
     res.json({
       id: meeting.id,
       title: meeting.title,
-      date: meeting.date,
+      date: fechaPublica,
       location: meeting.location,
       google_meet_link: meeting.google_meet_link,
       type: meeting.type,

@@ -177,11 +177,17 @@ async function evaluarEfectoQuorum(meetingId, member) {
       };
     }
 
+    // Se distingue la causal: el Principal existe pero faltó, o el curso no tiene
+    // Principal en el maestro. El efecto es el mismo; la explicación no.
+    const sinPrincipalEnMaestro = !!(estadoCurso && estadoCurso.principal_inexistente);
     return {
       cuenta: true,
-      mensaje: `El Delegado Principal del curso ${curso} no se encuentra presente, así que ` +
-               'usted ejerce la representación del curso. Si el Principal ingresa más ' +
-               'adelante, la representación pasa a él y su asistencia se conserva.'
+      mensaje: sinPrincipalEnMaestro
+        ? `El curso ${curso} no tiene Delegado Principal asociado en el maestro vigente. ` +
+          'Usted ejerce la representación válida del curso.'
+        : `El Delegado Principal del curso ${curso} no se encuentra presente. ` +
+          'Usted ejerce actualmente la representación del curso. Si el Principal ingresa ' +
+          'más adelante, la representación pasa a él y su asistencia se conserva.'
     };
   } catch (e) {
     console.warn('[assembly] no se pudo evaluar el efecto sobre el quórum:', e.message);

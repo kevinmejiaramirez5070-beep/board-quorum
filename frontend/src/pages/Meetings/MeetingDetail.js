@@ -470,7 +470,9 @@ const MeetingDetail = () => {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text(language === 'es'
-        ? `Votos computables: ${pdfQuorumDetail.computable_votes}  |  Total presentes: ${pdfQuorumDetail.total_present}  |  Voto institucional JV: ${pdfQuorumDetail.jv_institutional_vote}`
+        ? (meeting?.type === 'asamblea'
+            ? `Representaciones computables para quorum: ${pdfQuorumDetail.computable_votes}  |  Asistentes registrados: ${pdfQuorumDetail.total_present}  |  Universo habilitado: ${pdfQuorumDetail.universo_quorum ?? quorum?.total ?? '-'}`
+            : `Votos computables: ${pdfQuorumDetail.computable_votes}  |  Total presentes: ${pdfQuorumDetail.total_present}  |  Voto institucional JV: ${pdfQuorumDetail.jv_institutional_vote}`)
         : `Computable votes: ${pdfQuorumDetail.computable_votes}  |  Total present: ${pdfQuorumDetail.total_present}  |  JV institutional vote: ${pdfQuorumDetail.jv_institutional_vote}`,
         margin, yPos);
       yPos += lineHeight;
@@ -486,7 +488,7 @@ const MeetingDetail = () => {
       doc.line(margin, yPos, pageWidth - margin, yPos);
       yPos += 3;
       doc.text(language === 'es' ? 'Nombre'  : 'Name',   colName,   yPos);
-      doc.text(language === 'es' ? 'Cargo'   : 'Role',   colRole,   yPos);
+      doc.text(language === 'es' ? (meeting?.type === 'asamblea' ? 'Curso' : 'Cargo') : 'Role', colRole, yPos);
       doc.text(language === 'es' ? 'Cuenta'  : 'Counts', colCounts, yPos);
       doc.text(language === 'es' ? 'Motivo'  : 'Reason', colReason, yPos);
       yPos += 3;
@@ -1068,7 +1070,9 @@ const MeetingDetail = () => {
                 <span className="stat-label">
                   {quorum.quorumRule === 'jd_fixed_min_7_of_12_slots'
                     ? (language === 'es' ? 'Votos computables' : 'Countable votes')
-                    : (language === 'es' ? 'Presentes' : 'Present')}
+                    : quorum.typeNormalized === 'asamblea'
+                      ? (language === 'es' ? 'Representaciones computables' : 'Countable representations')
+                      : (language === 'es' ? 'Presentes' : 'Present')}
                 </span>
               </div>
               <div className="stat">
@@ -1192,7 +1196,9 @@ const MeetingDetail = () => {
                     🔍 {language === 'es' ? 'Detalle de quórum' : 'Quorum breakdown'}
                     <span style={{ marginLeft: '10px', color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>
                       {language === 'es'
-                        ? `${quorumDetail.computable_votes} computables de ${quorumDetail.total_present} presentes`
+                        ? (quorum?.typeNormalized === 'asamblea'
+                            ? `${quorumDetail.computable_votes} representaciones computables · ${quorumDetail.total_present} asistentes registrados`
+                            : `${quorumDetail.computable_votes} computables de ${quorumDetail.total_present} presentes`)
                         : `${quorumDetail.computable_votes} countable of ${quorumDetail.total_present} present`}
                     </span>
                   </strong>
@@ -1212,7 +1218,9 @@ const MeetingDetail = () => {
                           {language === 'es' ? 'Nombre' : 'Name'}
                         </th>
                         <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)' }}>
-                          {language === 'es' ? 'Cargo' : 'Role'}
+                          {language === 'es'
+                            ? (quorum?.typeNormalized === 'asamblea' ? 'Curso' : 'Cargo')
+                            : 'Role'}
                         </th>
                         <th style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
                           {language === 'es' ? 'Cuenta' : 'Counts'}

@@ -159,15 +159,30 @@ const VotingResults = () => {
 
     const jvVotePdf = votes.find(isJvVoteRow);
 
-    const isMultiple = voting?.type === 'multiple';
-    const affirmativeOptions = ['a favor', 'sí', 'si', 'yes', 'aprobado'];
-    const affirmativeVotes = !isMultiple
-      ? voteResults.filter(r => affirmativeOptions.includes((r.option || '').toLowerCase()))
+    const esAsamblea = meeting?.type === 'asamblea';
+
+    // Una votacion cuyas opciones son A FAVOR / EN CONTRA / ABSTENCION es una
+    // aprobacion ordinaria, aunque se haya creado con tipo "multiple". No debe
+    // concluirse "la opcion mas votada": debe decir APROBADA o NO APROBADA
+    // contra la mayoria requerida.
+    const opcionesOrdinarias = ['a favor', 'afavor', 'sí', 'si', 'yes', 'en contra', 'encontra',
+                                'no', 'abstención', 'abstencion', 'abstain'];
+    const todasOrdinarias = voteResults.length > 0 &&
+      voteResults.every(r => opcionesOrdinarias.includes((r.option || '').toLowerCase().trim()));
+    const esAprobacionOrdinaria = voting?.type !== 'multiple' || todasOrdinarias;
+    const isMultiple = !esAprobacionOrdinaria;
+
+    const affirmativeOptions = ['a favor', 'afavor', 'sí', 'si', 'yes', 'aprobado'];
+    const affirmativeVotes = esAprobacionOrdinaria
+      ? voteResults.filter(r => affirmativeOptions.includes((r.option || '').toLowerCase().trim()))
           .reduce((s, r) => s + (parseInt(r.votes) || 0), 0)
       : 0;
-    const baseVotes = quorumDetail?.computable_votes || totalVotes;
+
+    // La mayoria se calcula sobre los votantes habilitados presentes, no sobre
+    // los votos emitidos.
+    const baseVotes = results.votantes_habilitados || quorumDetail?.computable_votes || totalVotes;
     const requiredMajority = Math.floor(baseVotes / 2) + 1;
-    const approved = !isMultiple ? affirmativeVotes >= requiredMajority : false;
+    const approved = esAprobacionOrdinaria ? affirmativeVotes >= requiredMajority : false;
 
     const meetingTypeLabel = {
       junta_directiva: language === 'es' ? 'Junta Directiva' : 'Board of Directors',
@@ -221,7 +236,7 @@ const VotingResults = () => {
     y = sectionTitle(doc, language === 'es' ? '4.3 Votantes habilitados' : '4.3 Eligible Voters', y, pageWidth);
     if (quorumDetail?.breakdown?.length) {
       const bCols = language === 'es'
-        ? ['Nombre', 'Rol', 'Tipo', 'Puede votar', 'Justificación']
+        ? ['Nombre', esAsamblea ? 'Curso' : 'Rol', 'Tipo', 'Puede votar', 'Justificación']
         : ['Name', 'Role', 'Type', 'Can vote', 'Justification'];
       const bW = [52, 38, 22, 22, 48];
       y = tableHeader(doc, bCols, y, margin, bW, pageWidth);
@@ -258,9 +273,10 @@ const VotingResults = () => {
     y = checkPage(doc, y, 40);
     y = sectionTitle(doc, language === 'es' ? '4.4 Reglas de votación' : '4.4 Voting Rules', y, pageWidth);
     y = kv(doc, language === 'es' ? 'Tipo de votación' : 'Voting type',
-      isMultiple ? (language === 'es' ? 'Selección múltiple' : 'Multiple choice') : (language === 'es' ? 'Ordinaria (A favor / En contra / Abstención)' : 'Ordinary (In favor / Against / Abstention)'),
+      isMultiple ? (language === 'es' ? 'Selección múltiple' : 'Multiple choice') : (language === 'es' ? 'Aprobación ordinaria (A favor / En contra / Abstención)' : 'Ordinary approval (In favor / Against / Abstention)'),
       y, margin);
-    y = kv(doc, language === 'es' ? 'Base de votos válidos' : 'Valid vote base', `${baseVotes} ${language === 'es' ? 'votantes computables' : 'computable voters'}`, y, margin);
+    y = kv(doc, language === 'es' ? 'Votantes habilitados presentes' : 'Eligible voters present',
+      `${baseVotes} ${esAsamblea ? (language === 'es' ? 'representaciones computables' : 'countable representations') : (language === 'es' ? 'votantes computables' : 'computable voters')}`, y, margin);
     if (!isMultiple) {
       y = kv(doc, language === 'es' ? 'Mayoría requerida' : 'Required majority', `${requiredMajority} ${language === 'es' ? 'votos (mayoría simple)' : 'votes (simple majority)'}`, y, margin);
       y = kv(doc, language === 'es' ? 'Fórmula' : 'Formula', `floor(${baseVotes}/2) + 1 = ${requiredMajority}`, y, margin);
@@ -316,7 +332,7 @@ const VotingResults = () => {
     y = checkPage(doc, y, 40);
     y = sectionTitle(doc, language === 'es' ? '4.7 Detalle de votación' : '4.7 Voting Detail', y, pageWidth);
     const dCols = language === 'es'
-      ? ['Nombre', 'Rol', 'Tipo de voto', 'Sentido', 'Voto valido']
+      ? ['Nombre', esAsamblea ? 'Curso' : 'Rol', 'Tipo de voto', 'Sentido', 'Voto valido']
       : ['Name', 'Role', 'Vote type', 'Direction', 'Valid vote'];
     const dW = [50, 36, 34, 38, 24];
     y = tableHeader(doc, dCols, y, margin, dW, pageWidth);
@@ -337,7 +353,9 @@ const VotingResults = () => {
     y += 4;
 
     // ── 4.8 JUNTA DE VIGILANCIA ────────────────────────────────────────────
-    if (jvVotePdf || (quorumDetail?.jv_institutional_vote)) {
+    // La Junta de Vigilancia es un organo de Junta Directiva. En Asamblea no
+    // existe voto institucional: la unidad es la representacion del curso.
+    if (!esAsamblea && (jvVotePdf || (quorumDetail?.jv_institutional_vote))) {
       y = checkPage(doc, y, 35);
       y = sectionTitle(doc, language === 'es' ? '4.8 Junta de vigilancia' : '4.8 Oversight Board', y, pageWidth);
       const jvCount = quorumDetail?.jv_members?.length || (jvVotePdf ? 1 : 0);
@@ -354,7 +372,17 @@ const VotingResults = () => {
     // ── 4.9 CONTROLES DE INTEGRIDAD ───────────────────────────────────────
     y = checkPage(doc, y, 60);
     y = sectionTitle(doc, language === 'es' ? '4.9 Controles de integridad de la votacion' : '4.9 Voting Integrity Controls', y, pageWidth);
-    const validations = language === 'es' ? [
+    // En Asamblea la unidad de decision es la representacion del curso, no el
+    // cargo, y no existe voto institucional de Junta de Vigilancia.
+    const validations = esAsamblea ? [
+      '[OK] Solo votaron participantes presentes y validados.',
+      '[OK] No se registraron votos de participantes ausentes.',
+      '[OK] No se registraron votos duplicados.',
+      '[OK] Los suplentes con Principal presente no pudieron votar.',
+      '[OK] No se registraron votos duplicados por curso o representacion.',
+      '[OK] Cada curso emitio como maximo un voto efectivo.',
+      '[OK] Los participantes sin derecho a voto no pudieron votar.',
+    ] : language === 'es' ? [
       '[OK] Solo votaron participantes presentes y validados.',
       '[OK] No se registraron votos de participantes ausentes.',
       '[OK] No se registraron votos duplicados.',
@@ -460,7 +488,9 @@ const VotingResults = () => {
     const role = String(v.role || '').toUpperCase();
     return mt === 'junta_vigilancia' || tp === 'JUNTA_DE_VIGILANCIA' || role.includes('VIGILANCIA');
   };
-  const jvVote = votes.find(isJvVote);
+  const esAsambleaVista = meeting?.type === 'asamblea';
+  // En Asamblea no hay voto institucional de Junta de Vigilancia
+  const jvVote = esAsambleaVista ? null : votes.find(isJvVote);
   const clientName = client?.name || 'ASOCOLCI';
 
   const canGenerateReports = user?.role === 'authorized' || user?.role === 'admin_master';
@@ -468,7 +498,14 @@ const VotingResults = () => {
 
   const noVotes = !totalVotes || totalVotes === 0;
 
-  const isMultiple = voting?.type === 'multiple';
+  // Una votacion con opciones A FAVOR / EN CONTRA / ABSTENCION es una aprobacion
+  // ordinaria aunque se haya creado como "multiple": concluye APROBADA o NO
+  // APROBADA contra la mayoria requerida, no "la opcion mas votada".
+  const opcionesOrd = ['a favor', 'afavor', 'sí', 'si', 'yes', 'en contra', 'encontra',
+                       'no', 'abstención', 'abstencion', 'abstain'];
+  const todasOrd = voteResults.length > 0 &&
+    voteResults.every(r => opcionesOrd.includes((r.option || '').toLowerCase().trim()));
+  const isMultiple = voting?.type === 'multiple' && !todasOrd;
   const winnerOption = isMultiple && !noVotes && voteResults.length > 0
     ? voteResults.reduce((best, cur) => (parseInt(cur.votes) || 0) > (parseInt(best.votes) || 0) ? cur : best, voteResults[0])
     : null;
