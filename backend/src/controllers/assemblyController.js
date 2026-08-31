@@ -128,6 +128,55 @@ exports.getSummary = async (req, res) => {
 };
 
 /**
+ * PUT /api/assembly/:productId/members/:id
+ * Edición individual de un Delegado del maestro (nombre, documento, curso,
+ * rol o vínculo). Reutiliza las mismas validaciones de la carga masiva.
+ */
+exports.updateMember = async (req, res) => {
+  try {
+    const productId = parseInt(req.params.productId, 10);
+    const memberId = parseInt(req.params.id, 10);
+    if (isNaN(productId) || isNaN(memberId)) return res.status(400).json({ message: 'IDs inválidos' });
+
+    if (await hasActiveMeeting(productId)) {
+      return res.status(423).json({
+        error: 'Sesión activa — maestro bloqueado.',
+        detail: 'No es posible modificar el maestro de delegados durante una sesión en curso.'
+      });
+    }
+
+    const resultado = await AssemblyMembersService.updateMember(
+      productId, memberId, req.body || {},
+      { id: req.user.id, name: req.user.name, email: req.user.email }
+    );
+    res.json({ message: 'Delegado actualizado', ...resultado });
+  } catch (error) {
+    const codigosCliente = [
+      'NO_ENCONTRADO', 'NOMBRE_VACIO', 'DOCUMENTO_INVALIDO', 'CURSO_VACIO',
+      'ROL_INVALIDO', 'DOCUMENTO_DUPLICADO', 'CURSO_YA_OCUPADO'
+    ];
+    if (codigosCliente.includes(error.code)) {
+      return res.status(error.code === 'NO_ENCONTRADO' ? 404 : 400)
+        .json({ message: error.message, code: error.code });
+    }
+    console.error('[assembly.updateMember] error:', error);
+    res.status(500).json({ message: 'No fue posible actualizar el Delegado.' });
+  }
+};
+
+/** GET /api/assembly/:productId/members/:id/edits — historial de cambios */
+exports.getMemberEdits = async (req, res) => {
+  try {
+    const productId = parseInt(req.params.productId, 10);
+    const memberId = parseInt(req.params.id, 10);
+    const edits = await AssemblyMembersService.getMemberEdits(productId, memberId);
+    res.json(edits);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
  * PATCH /api/assembly/:productId/members/:id/deactivate
  * Desactivación lógica (active = false). Bloqueada si hay sesión activa.
  */

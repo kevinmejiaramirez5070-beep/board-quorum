@@ -418,6 +418,20 @@ async function ensureAssemblyM2Tables() {
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.
+    // Auditoría de la edición individual del Maestro de Delegados:
+    // quién cambió qué dato, desde qué valor y cuándo.
+    await db.execute(
+      `CREATE TABLE IF NOT EXISTS assembly_member_edits (
+        id ${idType},
+        product_id INT NOT NULL,
+        member_id INT NOT NULL,
+        operator_id INT,
+        operator_name VARCHAR(255),
+        cambios ${jsonType},
+        created_at ${tsDefault}
+      )`
+    );
+
     // MD-05 §11 y MD-09 — trazabilidad de la contingencia de Delegado no
     // encontrado: qué declaró la persona, quién decidió, cuándo y por qué.
     const colsAttendance = [
@@ -459,7 +473,7 @@ async function ensureAssemblyM2Tables() {
         await db.execute(`ALTER TABLE members ADD COLUMN secondary_name VARCHAR(255) NULL`);
       }
     }
-    console.log('✅ [migration] Tablas Asamblea verificadas (assembly_import_log, assembly_master_snapshot, quorum_log, assembly_moment_events, secondary_*)');
+    console.log('✅ [migration] Tablas Asamblea verificadas (assembly_import_log, assembly_master_snapshot, quorum_log, assembly_moment_events, assembly_member_edits, secondary_*)');
   } catch (err) {
     console.error('⚠️  [migration] ensureAssemblyM2Tables falló (no crítico):', err.message);
   }

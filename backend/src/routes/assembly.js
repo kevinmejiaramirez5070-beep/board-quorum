@@ -19,6 +19,11 @@ router.post('/:productId/members/import', auth, isAdmin, upload.single('file'), 
 router.get('/:productId/members', auth, isAuthorized, assemblyController.listMembers);
 router.get('/:productId/members/summary', auth, isAuthorized, assemblyController.getSummary);
 
+// Edición individual del maestro (solo admin / admin_master).
+// Coexiste con la carga masiva: esta es para correcciones puntuales.
+router.put('/:productId/members/:id', auth, isAdmin, assemblyController.updateMember);
+router.get('/:productId/members/:id/edits', auth, isAuthorized, assemblyController.getMemberEdits);
+
 // Desactivación lógica (solo admin / admin_master). No existe DELETE físico.
 router.patch('/:productId/members/:id/deactivate', auth, isAdmin, assemblyController.deactivateMember);
 

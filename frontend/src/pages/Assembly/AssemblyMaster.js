@@ -81,6 +81,44 @@ const AssemblyMaster = () => {
     }
   };
 
+  // Edición individual: corregir un dato puntual sin recargar todo el maestro.
+  const [editando, setEditando] = useState(null);   // { id, name, numero_documento, rol_organico, member_type }
+  const [guardando, setGuardando] = useState(false);
+  const [errorEdicion, setErrorEdicion] = useState(null);
+
+  const abrirEdicion = (m) => {
+    setErrorEdicion(null);
+    setEditando({
+      id: m.id,
+      name: m.name || '',
+      numero_documento: m.numero_documento || '',
+      rol_organico: m.rol_organico || '',
+      member_type: m.member_type === 'suplente' ? 'suplente' : 'principal'
+    });
+  };
+
+  const guardarEdicion = async () => {
+    if (!editando) return;
+    setGuardando(true);
+    setErrorEdicion(null);
+    try {
+      const res = await assemblyService.updateMember(productId, editando.id, {
+        name: editando.name,
+        numero_documento: editando.numero_documento,
+        rol_organico: editando.rol_organico,
+        member_type: editando.member_type
+      });
+      setSummary(res.data.summary);
+      setEditando(null);
+      loadMembersList();
+    } catch (e) {
+      setErrorEdicion(e.response?.data?.message ||
+        (language === 'es' ? 'No fue posible guardar el cambio.' : 'Could not save the change.'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const handleDeactivate = async (memberId) => {
     if (!window.confirm(language === 'es' ? '¿Desactivar este delegado?' : 'Deactivate this delegate?')) return;
     try {
@@ -225,10 +263,16 @@ const AssemblyMaster = () => {
                       {canEdit && (
                         <td style={{ padding: '6px 8px' }}>
                           {m.active && (
-                            <button onClick={() => handleDeactivate(m.id)} title={language === 'es' ? 'Desactivar' : 'Deactivate'}
-                              style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontSize: 12 }}>
-                              {language === 'es' ? 'Desactivar' : 'Deactivate'}
-                            </button>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              <button onClick={() => abrirEdicion(m)} title={language === 'es' ? 'Editar' : 'Edit'}
+                                style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontSize: 12 }}>
+                                ✏️ {language === 'es' ? 'Editar' : 'Edit'}
+                              </button>
+                              <button onClick={() => handleDeactivate(m.id)} title={language === 'es' ? 'Desactivar' : 'Deactivate'}
+                                style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontSize: 12 }}>
+                                {language === 'es' ? 'Desactivar' : 'Deactivate'}
+                              </button>
+                            </div>
                           )}
                         </td>
                       )}
@@ -240,6 +284,91 @@ const AssemblyMaster = () => {
           </div>
         )}
       </div>
+      {/* Edición individual del Maestro. Guarda con las mismas validaciones de
+          la carga masiva: documento único, un Principal y un Suplente por curso,
+          y recálculo de vínculos e indicadores. */}
+      {editando && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16, zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #fff)', borderRadius: 12, padding: 22,
+            width: '100%', maxWidth: 460, border: '1px solid var(--border)'
+          }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--text-primary)' }}>
+              ✏️ {language === 'es' ? 'Editar Delegado' : 'Edit delegate'}
+            </h3>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              {language === 'es'
+                ? 'Corrección puntual. No hace falta volver a cargar el Excel completo.'
+                : 'Single-record fix. No need to reload the whole spreadsheet.'}
+            </p>
+
+            {[
+              ['name', language === 'es' ? 'Nombre' : 'Name', 'text'],
+              ['numero_documento', language === 'es' ? 'Número de identificación' : 'ID number', 'text'],
+              ['rol_organico', language === 'es' ? 'Curso' : 'Course', 'text']
+            ].map(([campo, etiqueta, tipo]) => (
+              <div key={campo} style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-secondary)', marginBottom: 5 }}>
+                  {etiqueta}
+                </label>
+                <input
+                  type={tipo}
+                  value={editando[campo]}
+                  onChange={e => setEditando(v => ({ ...v, [campo]: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 10px', borderRadius: 7, fontSize: 13,
+                    border: '1.5px solid var(--border)', background: 'var(--bg-input)',
+                    color: 'var(--text-primary)', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ))}
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-secondary)', marginBottom: 5 }}>
+                {language === 'es' ? 'Rol' : 'Role'}
+              </label>
+              <select
+                value={editando.member_type}
+                onChange={e => setEditando(v => ({ ...v, member_type: e.target.value }))}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 7, fontSize: 13,
+                  border: '1.5px solid var(--border)', background: 'var(--bg-input)',
+                  color: 'var(--text-primary)', boxSizing: 'border-box'
+                }}
+              >
+                <option value="principal">PRINCIPAL</option>
+                <option value="suplente">SUPLENTE</option>
+              </select>
+            </div>
+
+            {errorEdicion && (
+              <div style={{
+                fontSize: 12.5, color: '#B91C1C', background: 'rgba(239,68,68,0.10)',
+                padding: '9px 11px', borderRadius: 7, marginBottom: 12, lineHeight: 1.5
+              }}>
+                {errorEdicion}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setEditando(null); setErrorEdicion(null); }} disabled={guardando}
+                className="btn btn-secondary btn-sm">
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button onClick={guardarEdicion} disabled={guardando} className="btn btn-primary btn-sm">
+                {guardando
+                  ? (language === 'es' ? 'Guardando…' : 'Saving…')
+                  : (language === 'es' ? 'Guardar cambios' : 'Save changes')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -13,5 +13,10 @@ export const assemblyService = {
   getSummary: (productId) => api.get(`/assembly/${productId}/members/summary`),
   getMembers: (productId) => api.get(`/assembly/${productId}/members`),
   deactivateMember: (productId, memberId) =>
-    api.patch(`/assembly/${productId}/members/${memberId}/deactivate`)
+    api.patch(`/assembly/${productId}/members/${memberId}/deactivate`),
+  // Corrección puntual de un Delegado, sin recargar todo el maestro
+  updateMember: (productId, memberId, cambios) =>
+    api.put(`/assembly/${productId}/members/${memberId}`, cambios),
+  getMemberEdits: (productId, memberId) =>
+    api.get(`/assembly/${productId}/members/${memberId}/edits`)
 };

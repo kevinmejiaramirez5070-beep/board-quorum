@@ -452,6 +452,180 @@ class AssemblyMembersService {
     };
   }
 
+  /**
+   * Edición individual de un Delegado del maestro.
+   *
+   * Corregir un dato puntual — nombre, identificación, curso, rol o vínculo —
+   * sin tener que rehacer el Excel y recargar todo el maestro. La carga masiva
+   * sigue existiendo para actualizaciones generales; esto es para correcciones.
+   *
+   * No se salta las validaciones de la carga: documento único, un solo Principal
+   * y un solo Suplente por curso, y vínculo coherente. Tras guardar se recalcula
+   * el estado del maestro para que los indicadores no queden desactualizados.
+   */
+  static async updateMember(productId, memberId, cambios, operator) {
+    const isPG = this.isPostgreSQL;
+    const activeCond = isPG ? 'active = true' : 'active = 1';
+
+    const [rows] = await db.execute(
+      `SELECT * FROM members WHERE id = ? AND product_id = ? LIMIT 1`,
+      [memberId, productId]
+    );
+    const actual = rows[0];
+    if (!actual) {
+      const e = new Error('El Delegado no pertenece al maestro de este órgano.');
+      e.code = 'NO_ENCONTRADO'; throw e;
+    }
+
+    // Campos admitidos. Lo demás se ignora a propósito.
+    const nombre = cambios.name !== undefined ? this._norm(cambios.name) : actual.name;
+    const documento = cambios.numero_documento !== undefined
+      ? this.normalizeDocument(cambios.numero_documento) : actual.numero_documento;
+    const curso = cambios.rol_organico !== undefined
+      ? this._norm(cambios.rol_organico).toUpperCase() : this._norm(actual.rol_organico).toUpperCase();
+    const rol = cambios.member_type !== undefined
+      ? String(cambios.member_type).toLowerCase().trim() : actual.member_type;
+    const docSecundario = cambios.secondary_document !== undefined
+      ? (this.normalizeDocument(cambios.secondary_document) || null) : actual.secondary_document;
+    const nombreSecundario = cambios.secondary_name !== undefined
+      ? (this._norm(cambios.secondary_name) || null) : actual.secondary_name;
+
+    // ── Validaciones ────────────────────────────────────────────────────────
+    if (!nombre) { const e = new Error('El nombre no puede quedar vacío.'); e.code = 'NOMBRE_VACIO'; throw e; }
+    if (!documento || !/^[0-9]+$/.test(documento)) {
+      const e = new Error('El número de identificación debe contener solo dígitos.');
+      e.code = 'DOCUMENTO_INVALIDO'; throw e;
+    }
+    if (!curso) { const e = new Error('El curso no puede quedar vacío.'); e.code = 'CURSO_VACIO'; throw e; }
+    if (!['principal', 'suplente'].includes(rol)) {
+      const e = new Error('El rol debe ser PRINCIPAL o SUPLENTE.'); e.code = 'ROL_INVALIDO'; throw e;
+    }
+
+    // Documento duplicado dentro del mismo órgano
+    if (documento !== actual.numero_documento) {
+      const [dup] = await db.execute(
+        `SELECT id, name FROM members
+         WHERE product_id = ? AND numero_documento = ? AND id <> ? AND ${activeCond} LIMIT 1`,
+        [productId, documento, memberId]
+      );
+      if (dup.length) {
+        const e = new Error(`El documento ${documento} ya pertenece a ${dup[0].name} en este maestro.`);
+        e.code = 'DOCUMENTO_DUPLICADO'; throw e;
+      }
+    }
+
+    // Un curso admite un solo Principal y un solo Suplente
+    const cambioEstructura = curso !== this._norm(actual.rol_organico).toUpperCase() || rol !== actual.member_type;
+    if (cambioEstructura) {
+      const [ocupado] = await db.execute(
+        `SELECT id, name FROM members
+         WHERE product_id = ? AND member_type = ? AND UPPER(TRIM(rol_organico)) = ?
+           AND id <> ? AND ${activeCond} LIMIT 1`,
+        [productId, rol, curso, memberId]
+      );
+      if (ocupado.length) {
+        const e = new Error(
+          `El curso ${curso} ya tiene un ${rol.toUpperCase()} activo (${ocupado[0].name}). ` +
+          'Corrija ese registro o cambie el rol antes de guardar.'
+        );
+        e.code = 'CURSO_YA_OCUPADO'; throw e;
+      }
+    }
+
+    // ── Detalle de auditoría: qué cambió, de qué valor a cuál ────────────────
+    const campos = [
+      ['name', actual.name, nombre],
+      ['numero_documento', actual.numero_documento, documento],
+      ['rol_organico', actual.rol_organico, curso],
+      ['member_type', actual.member_type, rol],
+      ['secondary_document', actual.secondary_document, docSecundario],
+      ['secondary_name', actual.secondary_name, nombreSecundario]
+    ];
+    const detalleCambios = campos
+      .filter(([, antes, despues]) => String(antes ?? '') !== String(despues ?? ''))
+      .map(([campo, antes, despues]) => ({ campo, antes: antes ?? null, despues: despues ?? null }));
+
+    if (detalleCambios.length === 0) {
+      return { member: actual, cambios: [], summary: await this.getMasterSummary(productId) };
+    }
+
+    const cuentaQuorum = rol === 'principal';
+    const cq = isPG ? (cuentaQuorum ? 'true' : 'false') : (cuentaQuorum ? 1 : 0);
+    const tipoParticipante = rol === 'suplente' ? 'SUPLENTE' : 'PRINCIPAL';
+
+    let hasSecondary = true;
+    try { await db.execute(`SELECT secondary_document FROM members LIMIT 1`); }
+    catch (e) { hasSecondary = false; }
+
+    const secSet = hasSecondary ? ', secondary_document = ?, secondary_name = ?' : '';
+    const params = hasSecondary
+      ? [nombre, documento, curso, rol, tipoParticipante, docSecundario, nombreSecundario, memberId, productId]
+      : [nombre, documento, curso, rol, tipoParticipante, memberId, productId];
+
+    await db.execute(
+      `UPDATE members SET
+         name = ?, numero_documento = ?, rol_organico = ?,
+         member_type = ?, tipo_participante = ?${secSet},
+         cuenta_quorum = ${cq}, puede_votar = ${cq}, updated_at = NOW()
+       WHERE id = ? AND product_id = ?`,
+      params
+    );
+
+    // Los vínculos Principal/Suplente se recalculan para todo el órgano: un
+    // cambio de curso o de rol puede dejar huérfano a otro registro.
+    if (cambioEstructura) await this.linkSuplentesPrincipales(productId);
+
+    await this._logEdicion(productId, memberId, detalleCambios, operator);
+
+    const [actualizado] = await db.execute(
+      `SELECT * FROM members WHERE id = ? LIMIT 1`, [memberId]
+    );
+
+    return {
+      member: actualizado[0],
+      cambios: detalleCambios,
+      summary: await this.getMasterSummary(productId)
+    };
+  }
+
+  /** Auditoría de la edición individual. No interrumpe si la tabla no existe. */
+  static async _logEdicion(productId, memberId, cambios, operator) {
+    try {
+      await db.execute(
+        `INSERT INTO assembly_member_edits
+           (product_id, member_id, operator_id, operator_name, cambios, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [
+          productId, memberId,
+          operator?.id ?? null,
+          operator?.name || operator?.email || null,
+          JSON.stringify(cambios)
+        ]
+      );
+    } catch (e) {
+      console.warn('[assembly] no se pudo registrar la edición del maestro:', e.message);
+    }
+  }
+
+  /** Historial de ediciones individuales de un Delegado. */
+  static async getMemberEdits(productId, memberId) {
+    try {
+      const [rows] = await db.execute(
+        `SELECT id, member_id, operator_id, operator_name, cambios, created_at
+         FROM assembly_member_edits
+         WHERE product_id = ? AND member_id = ?
+         ORDER BY id DESC LIMIT 50`,
+        [productId, memberId]
+      );
+      return rows.map(r => ({
+        ...r,
+        cambios: typeof r.cambios === 'string' ? JSON.parse(r.cambios) : r.cambios
+      }));
+    } catch (e) {
+      return [];
+    }
+  }
+
   /** Lista completa de delegados del producto con estado de vínculo. */
   static async getMembersList(productId) {
     const [rows] = await db.execute(
