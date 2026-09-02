@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import api from '../../services/api';
 import Logo from '../../components/Logo/Logo';
 import './Login.css';
 
@@ -17,45 +16,12 @@ const Login = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
   const { t, language } = useLanguage();
-  const [organizations, setOrganizations] = useState([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(true);
-  const [errorOrgs, setErrorOrgs] = useState('');
   const [formData, setFormData] = useState({
-    organization_id: '',
     email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    loadOrganizations();
-  }, []);
-
-  const loadOrganizations = async () => {
-    setErrorOrgs('');
-    setLoadingOrgs(true);
-    try {
-      const response = await api.get(`/clients/public?t=${Date.now()}`);
-      const list = Array.isArray(response.data) ? response.data : [];
-      setOrganizations(list);
-      if (list.length === 0) {
-        setErrorOrgs(language === 'es' ? 'No hay organizaciones registradas. Contacte al administrador.' : 'No organizations registered. Contact the administrator.');
-      }
-    } catch (err) {
-      console.error('Error loading organizations:', err);
-      setOrganizations([]);
-      const msg = err.response?.data?.message || err.message;
-      const isNetwork = err.code === 'ERR_NETWORK' || err.message?.includes('Network');
-      setErrorOrgs(
-        isNetwork
-          ? (language === 'es' ? 'No se pudo conectar al servidor. Verifique su conexión o que la aplicación esté desplegada.' : 'Could not connect to server. Check your connection or that the app is deployed.')
-          : (language === 'es' ? `Error al cargar organizaciones: ${msg}` : `Error loading organizations: ${msg}`)
-      );
-    } finally {
-      setLoadingOrgs(false);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,14 +29,6 @@ const Login = () => {
       ...formData,
       [name]: value
     });
-    // Si cambia el email a admin@boardquorum.com, limpiar organization_id
-    if (name === 'email' && value === 'admin@boardquorum.com') {
-      setFormData(prev => ({
-        ...prev,
-        email: value,
-        organization_id: ''
-      }));
-    }
     setError('');
   };
 
@@ -79,16 +37,7 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    // Si es super admin, no requiere organización
-    const isSuperAdmin = formData.email === 'admin@boardquorum.com';
-    
-    // Si no es super admin y no hay organización seleccionada, mostrar error
-    if (!isSuperAdmin && !formData.organization_id) {
-      setError(t('selectOrganizationError'));
-      setLoading(false);
-      return;
-    }
-
+    // La organización no se pide: sale del propio usuario en el servidor.
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
@@ -115,41 +64,11 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          {formData.email !== 'admin@boardquorum.com' && (
-            <div className="form-group">
-              <label className="label">{t('selectOrganization')}</label>
-              <select
-                name="organization_id"
-                value={formData.organization_id}
-                onChange={handleChange}
-                className="input"
-                required
-                disabled={loadingOrgs}
-              >
-                <option value="">
-                  {loadingOrgs 
-                    ? t('loading') + '...' 
-                    : organizations.length === 0 
-                      ? (language === 'es' ? 'No hay organizaciones disponibles' : 'No organizations available')
-                      : t('selectOrganization')
-                  }
-                </option>
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
-              {errorOrgs && (
-                <div className="error-message error-orgs" style={{ marginTop: '8px' }}>
-                  {errorOrgs}
-                  <button type="button" className="retry-link" onClick={loadOrganizations}>
-                    {language === 'es' ? ' Reintentar' : ' Retry'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          {/* El selector de organización se retiró a propósito.
+              Listaba públicamente los nombres de TODOS los clientes, y no servía
+              para nada: login() solo envía correo y contraseña, y la organización
+              sale del propio usuario en el servidor. Un cliente no debe ver los
+              nombres de los demás. */}
 
           <div className="form-group">
             <label className="label">{t('emailLabel')}</label>

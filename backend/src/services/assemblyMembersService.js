@@ -421,7 +421,37 @@ class AssemblyMembersService {
     const cursos_con_principal = Number(cpRows[0]?.n || 0);
     const cursos_con_suplente = Number(csRows[0]?.n || 0);
     const suplentes_sin_principal = Number(vrRows[0]?.n || 0);
-    const sin_suplente = Math.max(0, cursos_con_principal - cursos_con_suplente);
+
+    // "Sin suplente" = cursos CON Principal que no tienen Suplente.
+    //
+    // Antes se calculaba como cursos_con_principal - cursos_con_suplente, pero
+    // cursos_con_suplente cuenta también los cursos que solo tienen Suplente.
+    // Con la base de ASOCOLCI daba 85 - 55 = 30 en vez de 35: los 5 cursos sin
+    // Principal se estaban restando como si tuvieran uno.
+    const [ssRows] = await db.execute(
+      `SELECT COUNT(*) AS n FROM (
+         SELECT p.rol_organico
+         FROM members p
+         WHERE p.product_id = ? AND p.member_type = 'principal' AND ${activeCond}
+           AND p.rol_organico IS NOT NULL AND p.rol_organico <> ''
+         GROUP BY p.rol_organico
+         HAVING NOT EXISTS (
+           SELECT 1 FROM members su
+           WHERE su.product_id = p.product_id AND su.member_type = 'suplente'
+             AND su.${activeCond}
+             AND UPPER(TRIM(su.rol_organico)) = UPPER(TRIM(p.rol_organico))
+         )
+       ) AS cursos_sin_suplente`,
+      [productId]
+    );
+    const sin_suplente = Number(ssRows[0]?.n || 0);
+
+    // Registros históricos: se conservan, pero no son maestro vigente.
+    const [inactRows] = await db.execute(
+      `SELECT COUNT(*) AS n FROM members WHERE product_id = ? AND NOT (${activeCond})`,
+      [productId]
+    );
+    const inactivos = Number(inactRows[0]?.n || 0);
 
     // Última carga
     let ultima_carga = null;
@@ -447,6 +477,11 @@ class AssemblyMembersService {
       // Se mantiene el nombre anterior por compatibilidad con la UI ya desplegada
       vinculos_rotos: suplentes_sin_principal,
       sin_suplente,
+      // El listado muestra activos e históricos juntos; se separan para que no
+      // se lea el total como si fueran Delegados vigentes.
+      registros_activos: total_principals + total_suplentes,
+      registros_inactivos: inactivos,
+      registros_totales: total_principals + total_suplentes + inactivos,
       maestro_listo: total_principals > 0,
       ultima_carga
     };

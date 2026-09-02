@@ -186,8 +186,8 @@ const AssemblyMaster = () => {
           <div style={stat}><div style={statNum}>{summary?.total_principals ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Principales' : 'Principals'}</div></div>
           <div style={stat}><div style={statNum}>{summary?.total_suplentes ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Suplentes' : 'Substitutes'}</div></div>
           <div style={stat}><div style={statNum}>{summary?.cursos_con_principal ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Cursos c/ principal' : 'Courses w/ principal'}</div></div>
-          <div style={stat}><div style={{ ...statNum, color: (summary?.vinculos_rotos ?? 0) > 0 ? '#f87171' : statNum.color }}>{summary?.vinculos_rotos ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Vínculos rotos' : 'Broken links'}</div></div>
-          <div style={stat}><div style={statNum}>{summary?.sin_suplente ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Sin suplente' : 'No substitute'}</div></div>
+          <div style={stat}><div style={{ ...statNum, color: '#f59e0b' }}>{summary?.suplentes_sin_principal ?? summary?.vinculos_rotos ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Suplentes sin Principal asociado' : 'Substitutes without principal'}</div></div>
+          <div style={stat}><div style={statNum}>{summary?.sin_suplente ?? 0}</div><div style={statLbl}>{language === 'es' ? 'Cursos con Principal sin Suplente' : 'Courses with principal, no substitute'}</div></div>
         </div>
 
         {summary?.ultima_carga && (
@@ -233,7 +233,16 @@ const AssemblyMaster = () => {
         ) : (
           <div style={{ ...card }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>{language === 'es' ? `Delegados (${members.length})` : `Delegates (${members.length})`}</h3>
+              {/* El listado muestra vigentes e historicos juntos. Se separan para
+                  que el total no se lea como si fueran Delegados vigentes. */}
+              <h3 style={{ margin: 0, fontSize: 16 }}>
+                {language === 'es' ? 'Delegados' : 'Delegates'}
+                <span style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 400, color: 'var(--text-secondary)' }}>
+                  {language === 'es'
+                    ? `${members.length} registros · ${members.filter(m => m.active).length} activos · ${members.filter(m => !m.active).length} inactivos`
+                    : `${members.length} records · ${members.filter(m => m.active).length} active · ${members.filter(m => !m.active).length} inactive`}
+                </span>
+              </h3>
               <button className="btn btn-secondary btn-sm" onClick={() => setShowList(false)}>{language === 'es' ? 'Ocultar' : 'Hide'}</button>
             </div>
             <div style={{ overflowX: 'auto' }}>
