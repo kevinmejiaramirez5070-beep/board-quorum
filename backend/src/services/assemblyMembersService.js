@@ -428,30 +428,45 @@ class AssemblyMembersService {
     // cursos_con_suplente cuenta también los cursos que solo tienen Suplente.
     // Con la base de ASOCOLCI daba 85 - 55 = 30 en vez de 35: los 5 cursos sin
     // Principal se estaban restando como si tuvieran uno.
-    const [ssRows] = await db.execute(
-      `SELECT COUNT(*) AS n FROM (
-         SELECT p.rol_organico
-         FROM members p
-         WHERE p.product_id = ? AND p.member_type = 'principal' AND ${activeCond}
-           AND p.rol_organico IS NOT NULL AND p.rol_organico <> ''
-         GROUP BY p.rol_organico
-         HAVING NOT EXISTS (
-           SELECT 1 FROM members su
-           WHERE su.product_id = p.product_id AND su.member_type = 'suplente'
-             AND su.${activeCond}
-             AND UPPER(TRIM(su.rol_organico)) = UPPER(TRIM(p.rol_organico))
-         )
-       ) AS cursos_sin_suplente`,
-      [productId]
-    );
-    const sin_suplente = Number(ssRows[0]?.n || 0);
+    //
+    // Se comparan dos conjuntos de cursos, sin GROUP BY ni subconsulta
+    // correlacionada: la versión anterior referenciaba p.product_id dentro de un
+    // HAVING NOT EXISTS y PostgreSQL la rechazaba con "subquery uses ungrouped
+    // column", lo que tumbaba el resumen completo del maestro.
+    let sin_suplente = 0;
+    try {
+      const [ssRows] = await db.execute(
+        `SELECT COUNT(*) AS n FROM (
+           SELECT DISTINCT UPPER(TRIM(rol_organico)) AS curso
+           FROM members
+           WHERE product_id = ? AND member_type = 'principal' AND ${activeCond}
+             AND rol_organico IS NOT NULL AND rol_organico <> ''
+         ) cp
+         WHERE cp.curso NOT IN (
+           SELECT UPPER(TRIM(rol_organico))
+           FROM members
+           WHERE product_id = ? AND member_type = 'suplente' AND ${activeCond}
+             AND rol_organico IS NOT NULL AND rol_organico <> ''
+         )`,
+        [productId, productId]
+      );
+      sin_suplente = Number(ssRows[0]?.n || 0);
+    } catch (e) {
+      console.warn('[assembly] no se pudo calcular "sin suplente":', e.message);
+      sin_suplente = Math.max(0, cursos_con_principal - cursos_con_suplente);
+    }
 
     // Registros históricos: se conservan, pero no son maestro vigente.
-    const [inactRows] = await db.execute(
-      `SELECT COUNT(*) AS n FROM members WHERE product_id = ? AND NOT (${activeCond})`,
-      [productId]
-    );
-    const inactivos = Number(inactRows[0]?.n || 0);
+    let inactivos = 0;
+    try {
+      const [inactRows] = await db.execute(
+        `SELECT COUNT(*) AS n FROM members WHERE product_id = ? AND NOT (${activeCond})`,
+        [productId]
+      );
+      inactivos = Number(inactRows[0]?.n || 0);
+    } catch (e) {
+      console.warn('[assembly] no se pudo contar los inactivos:', e.message);
+    }
 
     // Última carga
     let ultima_carga = null;

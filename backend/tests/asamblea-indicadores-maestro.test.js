@@ -39,7 +39,8 @@ const fakeDb = {
     const q = sql.replace(/\s+/g, ' ').trim();
     const act = members.filter(m => m.product_id === Number(params[0]) && m.active);
 
-    if (q.includes('cursos_sin_suplente')) {
+    // Cursos con Principal que NO tienen Suplente: dos conjuntos, sin GROUP BY
+    if (q.includes('cp.curso NOT IN')) {
       const cursosPrincipal = new Set(act.filter(m => m.member_type === 'principal').map(m => norm(m.rol_organico)));
       const cursosSuplente = new Set(act.filter(m => m.member_type === 'suplente').map(m => norm(m.rol_organico)));
       return [[{ n: [...cursosPrincipal].filter(c => !cursosSuplente.has(c)).length }]];
@@ -98,6 +99,25 @@ function check(n, real, esp) {
   check('Quorum inicial', s.quorum_inicial, 44);
   check('Momento Siguiente', s.quorum_momento_siguiente, 17);
   check('Los 5 sin Principal no bloquean el maestro', s.maestro_listo, true);
+
+  console.log('\n=== Si una consulta de indicador falla, el maestro NO queda vacio ===');
+  // Esto paso en produccion: la consulta de "sin suplente" referenciaba una
+  // columna sin agrupar, PostgreSQL la rechazo y el resumen entero se cayo,
+  // dejando el maestro en VACIO con todo en cero aunque los 140 registros
+  // estuvieran intactos. Ahora cada indicador nuevo falla por separado.
+  const originalExecute = fakeDb.execute;
+  fakeDb.execute = async (sql, params) => {
+    if (sql.includes('cp.curso NOT IN')) throw new Error('subquery uses ungrouped column');
+    return originalExecute(sql, params);
+  };
+  const degradado = await AMS.getMasterSummary(PROD);
+  fakeDb.execute = originalExecute;
+
+  check('Los Principales siguen ahi', degradado.total_principals, 85);
+  check('Los Suplentes siguen ahi', degradado.total_suplentes, 55);
+  check('El maestro NO queda vacio', degradado.maestro_listo, true);
+  check('El quorum se conserva', [degradado.quorum_inicial, degradado.quorum_momento_siguiente], [44, 17]);
+  console.log(`  solo ese indicador cae al calculo aproximado: ${degradado.sin_suplente}`);
 
   console.log('\n=== Conciliacion ===');
   console.log(`  85 cursos con Principal = 50 con Suplente + ${s.sin_suplente} sin Suplente`);
