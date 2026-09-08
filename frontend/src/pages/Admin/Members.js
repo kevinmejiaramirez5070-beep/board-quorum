@@ -6,6 +6,11 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './Members.css';
 
+// Roles que NUNCA cuentan para quórum ni pueden votar en JD.
+// Va fuera del componente porque se consulta al derivar el estado, antes de
+// donde estaba declarado.
+const NON_VOTING_ROLES = ['CONTABILIDAD', 'REVISORIA'];
+
 const Members = () => {
   const { t, language } = useLanguage();
   const { user, client } = useAuth();
@@ -34,6 +39,27 @@ const Members = () => {
     puede_votar: true
   });
   const [editingId, setEditingId] = useState(null);
+
+  // El formulario se adapta al organo seleccionado: Asamblea maneja Delegados
+  // por curso; Junta Directiva maneja cargos. Mezclar los campos de los dos
+  // confunde y deja datos que no aplican.
+  const organoSeleccionado = products.find(pr => String(pr.id) === String(formData.product_id));
+  const esAsamblea = /ASAMBLEA/i.test(organoSeleccionado?.name || '');
+
+  // "Cuenta para quorum" y "Puede votar" son CONSECUENCIA del rol, no una
+  // casilla que se marque a mano. Y "Suplente actuando" ni siquiera es del
+  // miembro: depende de cada reunion, de la asistencia y de si el Principal
+  // llego. El motor los resuelve en vivo; aqui solo se muestra el valor
+  // estructural que se va a guardar.
+  const derivarEstado = (datos) => {
+    const rol = String(datos.rol_organico || '').toUpperCase().trim();
+    const tipo = String(datos.tipo_participante || '').toUpperCase().trim();
+    if (NON_VOTING_ROLES.includes(rol)) return { cuenta_quorum: false, puede_votar: false };
+    if (tipo === 'NO_APLICA') return { cuenta_quorum: false, puede_votar: false };
+    if (tipo === 'SUPLENTE') return { cuenta_quorum: false, puede_votar: false };
+    return { cuenta_quorum: true, puede_votar: true };
+  };
+  const estadoDerivado = derivarEstado(formData);
   const [productFilter, setProductFilter] = useState('all');
 
   useEffect(() => {
@@ -77,9 +103,6 @@ const Members = () => {
     }
   };
 
-  // Roles que NUNCA cuentan para quórum ni pueden votar en JD
-  const NON_VOTING_ROLES = ['CONTABILIDAD', 'REVISORIA'];
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     // Normalizar numero_documento: solo dígitos
@@ -87,13 +110,15 @@ const Members = () => {
     const updated = { ...formData, [name]: type === 'checkbox' ? checked : cleanedValue };
     if (saveError) setSaveError(null);
 
-    // Auto-ajuste: CONTABILIDAD y REVISORIA no cuentan para quórum ni votan
-    if (name === 'rol_organico') {
-      const isNonVoting = NON_VOTING_ROLES.includes(value?.toUpperCase()?.trim());
-      if (isNonVoting) {
-        updated.cuenta_quorum = false;
-        updated.puede_votar = false;
-      }
+    // El estado de quorum y voto se deriva del rol: no se marca a mano.
+    const rolAct = String(updated.rol_organico || '').toUpperCase().trim();
+    const tipoAct = String(updated.tipo_participante || '').toUpperCase().trim();
+    if (NON_VOTING_ROLES.includes(rolAct) || tipoAct === 'NO_APLICA' || tipoAct === 'SUPLENTE') {
+      updated.cuenta_quorum = false;
+      updated.puede_votar = false;
+    } else {
+      updated.cuenta_quorum = true;
+      updated.puede_votar = true;
     }
 
     setFormData(updated);
@@ -144,9 +169,12 @@ const Members = () => {
         member_type: member_type,
         principal_id: formData.tipo_participante === 'SUPLENTE' && formData.principal_id ? parseInt(formData.principal_id, 10) : null,
         tipo_participante: formData.tipo_participante || null,
-        rol_en_votacion: formData.rol_en_votacion || null,
-        cuenta_quorum: formData.cuenta_quorum !== undefined ? formData.cuenta_quorum : true,
-        puede_votar: formData.puede_votar !== undefined ? formData.puede_votar : true
+        // Derivados del rol, nunca de una casilla marcada a mano.
+        cuenta_quorum: estadoDerivado.cuenta_quorum,
+        puede_votar: estadoDerivado.puede_votar,
+        // "Suplente actuando" depende de cada reunión: lo resuelve el motor
+        // según la asistencia y la presencia del Principal, no el formulario.
+        rol_en_votacion: null
       };
       
       // Validar que el nombre no esté vacío
@@ -306,6 +334,27 @@ const Members = () => {
                     />
                   </div>
 
+                  {/* En Asamblea este campo es el CURSO que representa el
+                      Delegado, texto libre del maestro. En Junta Directiva es un
+                      cargo del organo. No son la misma lista. */}
+                  {esAsamblea ? (
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Curso' : 'Course'}</label>
+                      <input
+                        type="text"
+                        name="rol_organico"
+                        value={formData.rol_organico}
+                        onChange={handleChange}
+                        className="input"
+                        placeholder={language === 'es' ? 'Ej: QUINTO B' : 'e.g. QUINTO B'}
+                      />
+                      <small style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                        {language === 'es'
+                          ? 'Curso que representa el Delegado. Cada curso tiene un Principal y hasta un Suplente.'
+                          : 'Course represented by the delegate.'}
+                      </small>
+                    </div>
+                  ) : (
                   <div className="form-group">
                     <label className="label">{t('organicRole')}</label>
                     <select
@@ -333,7 +382,10 @@ const Members = () => {
                       </small>
                     )}
                   </div>
+                  )}
 
+                  {/* El cargo funcional es propio de Junta Directiva */}
+                  {!esAsamblea && (
                   <div className="form-group">
                     <label className="label">{language === 'es' ? 'Cargo Funcional' : 'Functional Position'}</label>
                     <select
@@ -358,6 +410,7 @@ const Members = () => {
                       <option value="REVISOR FISCAL">{language === 'es' ? 'Revisor Fiscal' : 'Fiscal Auditor'}</option>
                     </select>
                   </div>
+                  )}
                 </div>
 
                 <div className="form-column">
@@ -427,46 +480,39 @@ const Members = () => {
                     </div>
                   )}
 
+                  {/* Rol en Votacion, Cuenta para Quorum y Puede Votar dejaron de
+                      ser casillas manuales.
+                      "Suplente actuando" no es un dato del miembro: depende de cada
+                      reunion, de la asistencia y de si el Principal llego. Y quorum y
+                      voto son consecuencia del rol. Marcarlos a mano permitia
+                      contradecir al motor que ya resuelve todo eso en vivo.
+                      Aqui se muestra el valor estructural que se va a guardar. */}
                   <div className="form-group">
-                    <label className="label">{t('votingRole')}</label>
-                    <select
-                      name="rol_en_votacion"
-                      value={formData.rol_en_votacion}
-                      onChange={handleChange}
-                      className="input"
-                    >
-                      <option value="">{t('selectVotingRole')}</option>
-                      <option value="PRINCIPAL">{language === 'es' ? 'Principal' : 'Principal'}</option>
-                      <option value="SUPLENTE_ACTUANDO">{language === 'es' ? 'Suplente Actuando' : 'Acting Alternate'}</option>
-                      <option value="VIGILANCIA">{language === 'es' ? 'Vigilancia' : 'Oversight'}</option>
-                      <option value="NO_APLICA">{language === 'es' ? 'No Aplica' : 'Not Applicable'}</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        name="cuenta_quorum"
-                        checked={formData.cuenta_quorum}
-                        onChange={handleChange}
-                        className="checkbox-input"
-                      />
-                      <span>{t('countsForQuorum')}</span>
+                    <label className="label">
+                      {language === 'es' ? 'Condición estructural' : 'Structural status'}
                     </label>
-                  </div>
-
-                  <div className="form-group checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        name="puede_votar"
-                        checked={formData.puede_votar}
-                        onChange={handleChange}
-                        className="checkbox-input"
-                      />
-                      <span>{t('canVote')}</span>
-                    </label>
+                    <div style={{
+                      border: '1px solid var(--border)', borderRadius: 8,
+                      padding: '12px 14px', background: 'var(--bg-card-alt, transparent)'
+                    }}>
+                      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13 }}>
+                        <span>
+                          {estadoDerivado.cuenta_quorum ? '✔' : '—'}{' '}
+                          {language === 'es' ? 'Cuenta para quórum' : 'Counts for quorum'}
+                        </span>
+                        <span>
+                          {estadoDerivado.puede_votar ? '✔' : '—'}{' '}
+                          {language === 'es' ? 'Puede votar' : 'Can vote'}
+                        </span>
+                      </div>
+                      <p style={{ margin: '10px 0 0', fontSize: 11.5, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+                        {language === 'es'
+                          ? (esAsamblea
+                              ? 'Se deriva del rol Principal / Suplente. En cada reunión Board Quorum resuelve quién ejerce la representación, quién cuenta para quórum y quién vota, según la asistencia y la presencia del Principal.'
+                              : 'Se deriva del rol y del cargo. Durante la reunión Board Quorum resuelve quién cuenta para quórum y quién vota, según la asistencia y la presencia del Principal.')
+                          : 'Derived from the role. Board Quorum resolves quorum and voting per meeting, based on attendance and the principal presence.'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -553,7 +599,6 @@ const Members = () => {
                       <th>{t('organicRole')}</th>
                       <th>{t('position')}</th>
                       <th>{t('participantType')}</th>
-                      <th>{t('votingRole')}</th>
                       <th>{t('countsForQuorum')}</th>
                       <th>{t('canVote')}</th>
                       <th>{language === 'es' ? 'Acciones' : 'Actions'}</th>
@@ -569,7 +614,6 @@ const Members = () => {
                         <td>{member.rol_organico || '-'}</td>
                         <td>{member.position || '-'}</td>
                         <td>{member.tipo_participante || '-'}</td>
-                        <td>{member.rol_en_votacion || '-'}</td>
                         <td className="text-center">
                           {member.cuenta_quorum ? (language === 'es' ? 'Sí' : 'Yes') : (language === 'es' ? 'No' : 'No')}
                         </td>

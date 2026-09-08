@@ -143,7 +143,7 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     // Solo el super admin puede crear organizaciones
-    if (req.user.email !== 'admin@boardquorum.com') {
+    if (req.user?.role !== 'admin_master' && req.user?.email !== 'admin@boardquorum.com') {
       return res.status(403).json({ message: 'No tienes permisos para crear organizaciones' });
     }
 
@@ -191,7 +191,24 @@ exports.create = async (req, res) => {
         logo: logo || null,
         primary_color: primary_color || '#0072FF',
         secondary_color: secondary_color || '#00C6FF',
-        language: language || 'es'
+        language: language || 'es',
+        // Ficha de onboarding: identificación, naturaleza, ubicación, contacto
+        // y órganos que el cliente necesita gestionar.
+        nit: req.body.nit || null,
+        razon_social: req.body.razon_social || null,
+        nombre_corto: req.body.nombre_corto || null,
+        naturaleza_juridica: req.body.naturaleza_juridica || null,
+        tipo_organizacion: req.body.tipo_organizacion || null,
+        tipo_organizacion_otro: req.body.tipo_organizacion_otro || null,
+        ciudad: req.body.ciudad || null,
+        pais: req.body.pais || null,
+        organos_requeridos: Array.isArray(req.body.organos_requeridos) && req.body.organos_requeridos.length
+          ? req.body.organos_requeridos : null,
+        organos_requeridos_otro: req.body.organos_requeridos_otro || null,
+        contacto_nombre: req.body.contacto_nombre || null,
+        contacto_cargo: req.body.contacto_cargo || null,
+        contacto_email: req.body.contacto_email || null,
+        contacto_telefono: req.body.contacto_telefono || null
       });
       console.log('Client created successfully with ID:', clientId);
       
@@ -272,7 +289,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     // Solo el super admin puede actualizar organizaciones
-    if (req.user.email !== 'admin@boardquorum.com') {
+    if (req.user?.role !== 'admin_master' && req.user?.email !== 'admin@boardquorum.com') {
       return res.status(403).json({ message: 'No tienes permisos para actualizar organizaciones' });
     }
 
@@ -287,7 +304,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     // Solo el super admin puede eliminar organizaciones
-    if (req.user.email !== 'admin@boardquorum.com') {
+    if (req.user?.role !== 'admin_master' && req.user?.email !== 'admin@boardquorum.com') {
       return res.status(403).json({ message: 'No tienes permisos para eliminar organizaciones' });
     }
 

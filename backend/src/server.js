@@ -418,6 +418,38 @@ async function ensureAssemblyM2Tables() {
     // Columnas para el segundo progenitor (maestro ASOCOLCI trae madre y padre por fila).
     // El delegado primario va en numero_documento/name; el otro se guarda aquí para que
     // en asistencia se pueda validar con cualquiera de las dos cédulas.
+    // Ficha de onboarding del cliente: identificación, naturaleza jurídica,
+    // ubicación, contacto y qué órganos necesita gestionar. Los órganos son
+    // información de onboarding: no crean módulos ni reglas por sí solos.
+    const colsClients = [
+      ['nit', 'VARCHAR(60) NULL'],
+      ['razon_social', 'VARCHAR(255) NULL'],
+      ['nombre_corto', 'VARCHAR(120) NULL'],
+      ['naturaleza_juridica', 'VARCHAR(120) NULL'],
+      ['tipo_organizacion', 'VARCHAR(120) NULL'],
+      ['tipo_organizacion_otro', 'VARCHAR(255) NULL'],
+      ['ciudad', 'VARCHAR(120) NULL'],
+      ['pais', 'VARCHAR(120) NULL'],
+      ['organos_requeridos', jsonType],
+      ['organos_requeridos_otro', 'VARCHAR(255) NULL'],
+      ['contacto_nombre', 'VARCHAR(255) NULL'],
+      ['contacto_cargo', 'VARCHAR(120) NULL'],
+      ['contacto_email', 'VARCHAR(255) NULL'],
+      ['contacto_telefono', 'VARCHAR(60) NULL']
+    ];
+    for (const [col, tipo] of colsClients) {
+      if (isPostgreSQL) {
+        await db.execute(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ${col} ${tipo}`);
+      } else {
+        const [existe] = await db.execute(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'clients' AND COLUMN_NAME = ?`,
+          [col]
+        );
+        if (existe.length === 0) await db.execute(`ALTER TABLE clients ADD COLUMN ${col} ${tipo}`);
+      }
+    }
+
     // Auditoría de la edición individual del Maestro de Delegados:
     // quién cambió qué dato, desde qué valor y cuándo.
     await db.execute(

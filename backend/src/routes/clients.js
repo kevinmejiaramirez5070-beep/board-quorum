@@ -10,7 +10,8 @@ router.get('/', auth, clientController.getAll);
 router.get('/stats/platform', auth, isAdminMaster, clientController.getPlatformStats);
 router.get('/meetings/active', auth, isAdminMaster, clientController.getActiveMeetings);
 router.get('/:id', clientController.getById);
-router.post('/', auth, clientController.create);
+// Crear organizaciones es exclusivo del Admin Master (onboarding global)
+router.post('/', auth, isAdminMaster, clientController.create);
 router.put('/:id', auth, clientController.update);
 router.patch('/:id/active', auth, clientController.setActive);
 router.delete('/:id', auth, clientController.delete);

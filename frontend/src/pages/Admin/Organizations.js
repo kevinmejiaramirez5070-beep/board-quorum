@@ -22,6 +22,21 @@ const Organizations = () => {
     primary_color: '#0072FF',
     secondary_color: '#00C6FF',
     language: 'es',
+    // Ficha de onboarding del cliente
+    nit: '',
+    razon_social: '',
+    nombre_corto: '',
+    naturaleza_juridica: '',
+    tipo_organizacion: '',
+    tipo_organizacion_otro: '',
+    ciudad: '',
+    pais: 'Colombia',
+    organos_requeridos: [],
+    organos_requeridos_otro: '',
+    contacto_nombre: '',
+    contacto_cargo: '',
+    contacto_email: '',
+    contacto_telefono: '',
     pilotClient: {
       name: '',
       email: '',
@@ -212,6 +227,26 @@ const Organizations = () => {
       primary_color: org.primary_color || '#0072FF',
       secondary_color: org.secondary_color || '#00C6FF',
       language: org.language || 'es',
+      // Ficha de onboarding: se carga la que ya tenga la organización para no
+      // borrarla al guardar una edición.
+      nit: org.nit || '',
+      razon_social: org.razon_social || '',
+      nombre_corto: org.nombre_corto || '',
+      naturaleza_juridica: org.naturaleza_juridica || '',
+      tipo_organizacion: org.tipo_organizacion || '',
+      tipo_organizacion_otro: org.tipo_organizacion_otro || '',
+      ciudad: org.ciudad || '',
+      pais: org.pais || 'Colombia',
+      organos_requeridos: Array.isArray(org.organos_requeridos)
+        ? org.organos_requeridos
+        : (typeof org.organos_requeridos === 'string' && org.organos_requeridos
+            ? (() => { try { return JSON.parse(org.organos_requeridos); } catch (e) { return []; } })()
+            : []),
+      organos_requeridos_otro: org.organos_requeridos_otro || '',
+      contacto_nombre: org.contacto_nombre || '',
+      contacto_cargo: org.contacto_cargo || '',
+      contacto_email: org.contacto_email || '',
+      contacto_telefono: org.contacto_telefono || '',
       pilotClient: {
         name: '',
         email: '',
@@ -297,6 +332,40 @@ const Organizations = () => {
     }
   };
 
+  // Listas de la ficha de onboarding. Son catalogos, no reglas: elegir un tipo
+  // de organizacion o marcar un organo NO crea modulos ni parametriza nada.
+  const NATURALEZAS = [
+    'Sociedad comercial / con ánimo de lucro',
+    'Entidad sin ánimo de lucro – ESAL',
+    'Entidad pública',
+    'Propiedad horizontal',
+    'Otra'
+  ];
+  const TIPOS_ORGANIZACION = [
+    'Asociación de Padres de Familia', 'Asociación', 'Fundación', 'Corporación',
+    'Cooperativa', 'Fondo de Empleados', 'Propiedad Horizontal / Copropiedad',
+    'Gremio / Federación', 'Institución Educativa', 'Empresa / Sociedad Comercial',
+    'Entidad Pública', 'Otra'
+  ];
+  const ORGANOS = [
+    'Junta Directiva', 'Asamblea General', 'Asamblea General de Delegados',
+    'Asamblea de Accionistas', 'Consejo de Administración', 'Consejo Directivo',
+    'Junta de Vigilancia', 'Comité', 'Otro'
+  ];
+
+  const toggleOrgano = (organo) => {
+    setFormData(prev => {
+      const actuales = prev.organos_requeridos || [];
+      const marcado = actuales.includes(organo);
+      return {
+        ...prev,
+        organos_requeridos: marcado ? actuales.filter(o => o !== organo) : [...actuales, organo],
+        // Si se desmarca "Otro", se limpia lo que se hubiera escrito
+        organos_requeridos_otro: (organo === 'Otro' && marcado) ? '' : prev.organos_requeridos_otro
+      };
+    });
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -305,6 +374,20 @@ const Organizations = () => {
       primary_color: '#0072FF',
       secondary_color: '#00C6FF',
       language: 'es',
+      nit: '',
+      razon_social: '',
+      nombre_corto: '',
+      naturaleza_juridica: '',
+      tipo_organizacion: '',
+      tipo_organizacion_otro: '',
+      ciudad: '',
+      pais: 'Colombia',
+      organos_requeridos: [],
+      organos_requeridos_otro: '',
+      contacto_nombre: '',
+      contacto_cargo: '',
+      contacto_email: '',
+      contacto_telefono: '',
       pilotClient: {
         name: '',
         email: '',
@@ -374,6 +457,69 @@ const Organizations = () => {
                     </div>
                   </div>
 
+                  {/* ── 1. DATOS DE LA ORGANIZACIÓN ─────────────────────── */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'NIT / Identificación' : 'Tax ID'}</label>
+                      <input type="text" name="nit" value={formData.nit} onChange={handleChange}
+                        className="input input-sm" placeholder={language === 'es' ? 'Ej: 900.123.456-7' : 'e.g. 900123456-7'} />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Razón Social' : 'Legal name'}</label>
+                      <input type="text" name="razon_social" value={formData.razon_social} onChange={handleChange}
+                        className="input input-sm" />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Nombre corto / visible' : 'Short name'}</label>
+                      <input type="text" name="nombre_corto" value={formData.nombre_corto} onChange={handleChange}
+                        className="input input-sm" />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Naturaleza jurídica' : 'Legal nature'}</label>
+                      <select name="naturaleza_juridica" value={formData.naturaleza_juridica}
+                        onChange={handleChange} className="input input-sm">
+                        <option value="">{language === 'es' ? 'Seleccionar…' : 'Select…'}</option>
+                        {NATURALEZAS.map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Tipo de organización' : 'Organization type'}</label>
+                      <select name="tipo_organizacion" value={formData.tipo_organizacion}
+                        onChange={handleChange} className="input input-sm">
+                        <option value="">{language === 'es' ? 'Seleccionar…' : 'Select…'}</option>
+                        {TIPOS_ORGANIZACION.map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    {formData.tipo_organizacion === 'Otra' && (
+                      <div className="form-group">
+                        <label className="label">{language === 'es' ? 'Especifique' : 'Specify'}</label>
+                        <input type="text" name="tipo_organizacion_otro" value={formData.tipo_organizacion_otro}
+                          onChange={handleChange} className="input input-sm" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Ciudad' : 'City'}</label>
+                      <input type="text" name="ciudad" value={formData.ciudad} onChange={handleChange}
+                        className="input input-sm" />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'País' : 'Country'}</label>
+                      <input type="text" name="pais" value={formData.pais} onChange={handleChange}
+                        className="input input-sm" />
+                    </div>
+                  </div>
+
+                  {/* ── 2. IDENTIDAD VISUAL ──────────────────────────────── */}
+                  <div className="form-divider">
+                    <h3>{language === 'es' ? 'Identidad visual' : 'Visual identity'}</h3>
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group">
                       <label className="label">{t('logo')}</label>
@@ -413,11 +559,89 @@ const Organizations = () => {
                     </div>
                   </div>
 
+                  {/* ── 3. ÓRGANOS / REUNIONES REQUERIDOS ────────────────── */}
+                  <div className="form-divider">
+                    <h3>{language === 'es' ? 'Órganos o reuniones que requiere gestionar' : 'Governing bodies required'}</h3>
+                    <p className="form-hint">
+                      {language === 'es'
+                        ? 'Información de onboarding: deja registrada la necesidad del cliente. Por ahora no crea módulos ni parametriza reglas.'
+                        : 'Onboarding information only: it does not create modules or rules yet.'}
+                    </p>
+                  </div>
+
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '6px 16px', marginBottom: 12
+                  }}>
+                    {ORGANOS.map(organo => (
+                      <label key={organo} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={(formData.organos_requeridos || []).includes(organo)}
+                          onChange={() => toggleOrgano(organo)}
+                        />
+                        {organo}
+                      </label>
+                    ))}
+                  </div>
+
+                  {(formData.organos_requeridos || []).includes('Otro') && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="label">{language === 'es' ? 'Especifique el órgano' : 'Specify'}</label>
+                        <input type="text" name="organos_requeridos_otro" value={formData.organos_requeridos_otro}
+                          onChange={handleChange} className="input input-sm" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── 4. CONTACTO PRINCIPAL ────────────────────────────── */}
+                  <div className="form-divider">
+                    <h3>{language === 'es' ? 'Contacto principal' : 'Main contact'}</h3>
+                    <p className="form-hint">
+                      {language === 'es'
+                        ? 'Puede coincidir o no con el administrador inicial.'
+                        : 'May or may not be the initial administrator.'}
+                    </p>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Nombre' : 'Name'}</label>
+                      <input type="text" name="contacto_nombre" value={formData.contacto_nombre}
+                        onChange={handleChange} className="input input-sm" />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Cargo' : 'Position'}</label>
+                      <input type="text" name="contacto_cargo" value={formData.contacto_cargo}
+                        onChange={handleChange} className="input input-sm" />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Correo electrónico' : 'Email'}</label>
+                      <input type="email" name="contacto_email" value={formData.contacto_email}
+                        onChange={handleChange} className="input input-sm" />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{language === 'es' ? 'Teléfono' : 'Phone'}</label>
+                      <input type="text" name="contacto_telefono" value={formData.contacto_telefono}
+                        onChange={handleChange} className="input input-sm" />
+                    </div>
+                  </div>
+
                   {!editingId && (
                     <>
                       <div className="form-divider">
-                        <h3>{t('pilotClientData')}</h3>
-                        <p className="form-hint">{t('pilotClientDescription')}</p>
+                        <h3>
+                          {language === 'es' ? 'Administrador inicial de la organización' : 'Initial administrator'}
+                        </h3>
+                        <p className="form-hint">
+                          {language === 'es'
+                            ? 'Primera cuenta con la que la organización entrará a Board Quorum.'
+                            : 'First account the organization will use to sign in.'}
+                        </p>
                       </div>
 
                       <div className="form-row">

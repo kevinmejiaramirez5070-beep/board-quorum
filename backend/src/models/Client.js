@@ -47,6 +47,15 @@ class Client {
 
   static async create(data) {
     const { name, subdomain, logo, primary_color, secondary_color, language, client_id, secret, paypal_client_id, paypal_secret } = data;
+
+    // Ficha de onboarding. Todos opcionales: una organización creada solo con
+    // nombre y subdominio sigue siendo válida.
+    const FICHA = [
+      'nit', 'razon_social', 'nombre_corto', 'naturaleza_juridica',
+      'tipo_organizacion', 'tipo_organizacion_otro', 'ciudad', 'pais',
+      'organos_requeridos', 'organos_requeridos_otro',
+      'contacto_nombre', 'contacto_cargo', 'contacto_email', 'contacto_telefono'
+    ];
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'true' : '1';
     const returningClause = isPostgreSQL ? ' RETURNING id' : '';
@@ -62,10 +71,22 @@ class Client {
     
     try {
       // Asegurar que no especificamos el ID (dejamos que PostgreSQL lo genere automáticamente)
+      // Solo se incluyen las columnas de la ficha que traigan valor, para no
+      // fallar si alguna todavía no existe en una base sin migrar.
+      const fichaCols = [];
+      const fichaVals = [];
+      for (const col of FICHA) {
+        if (data[col] === undefined || data[col] === null || data[col] === '') continue;
+        fichaCols.push(col);
+        fichaVals.push(col === 'organos_requeridos' ? JSON.stringify(data[col]) : data[col]);
+      }
+      const extraCols = fichaCols.length ? ', ' + fichaCols.join(', ') : '';
+      const extraPlaceholders = fichaCols.length ? ', ' + fichaCols.map(() => '?').join(', ') : '';
+
       const [rows, fields] = await db.execute(
-        `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, ${paypalIdColumn}, ${paypalSecretColumn}, active, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${activeValue}, NOW())${returningClause}`,
-        [name, subdomain, logo, primary_color, secondary_color, language || 'es', paypalIdValue, paypalSecretValue]
+        `INSERT INTO clients (name, subdomain, logo, primary_color, secondary_color, language, ${paypalIdColumn}, ${paypalSecretColumn}${extraCols}, active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?${extraPlaceholders}, ${activeValue}, NOW())${returningClause}`,
+        [name, subdomain, logo, primary_color, secondary_color, language || 'es', paypalIdValue, paypalSecretValue, ...fichaVals]
       );
       
       console.log('Client.create - rows:', rows);
@@ -103,10 +124,27 @@ class Client {
     const paypalIdValue = isPostgreSQL ? (paypal_client_id || null) : (client_id || null);
     const paypalSecretValue = isPostgreSQL ? (paypal_secret || null) : (secret || null);
     
+    // Ficha de onboarding: solo se tocan los campos que vengan en la petición,
+    // para que una edición parcial no borre lo ya diligenciado.
+    const FICHA = [
+      'nit', 'razon_social', 'nombre_corto', 'naturaleza_juridica',
+      'tipo_organizacion', 'tipo_organizacion_otro', 'ciudad', 'pais',
+      'organos_requeridos', 'organos_requeridos_otro',
+      'contacto_nombre', 'contacto_cargo', 'contacto_email', 'contacto_telefono'
+    ];
+    const fichaSets = [];
+    const fichaVals = [];
+    for (const col of FICHA) {
+      if (data[col] === undefined) continue;
+      fichaSets.push(`${col} = ?`);
+      fichaVals.push(col === 'organos_requeridos' ? JSON.stringify(data[col] || []) : (data[col] || null));
+    }
+    const extraSet = fichaSets.length ? ', ' + fichaSets.join(', ') : '';
+
     await db.execute(
-      `UPDATE clients SET name = ?, logo = ?, primary_color = ?, secondary_color = ?, language = ?, ${paypalIdColumn} = ?, ${paypalSecretColumn} = ?, updated_at = NOW()
+      `UPDATE clients SET name = ?, logo = ?, primary_color = ?, secondary_color = ?, language = ?, ${paypalIdColumn} = ?, ${paypalSecretColumn} = ?${extraSet}, updated_at = NOW()
        WHERE id = ?`,
-      [name, logo, primary_color, secondary_color, language, paypalIdValue, paypalSecretValue, id]
+      [name, logo, primary_color, secondary_color, language, paypalIdValue, paypalSecretValue, ...fichaVals, id]
     );
   }
 
