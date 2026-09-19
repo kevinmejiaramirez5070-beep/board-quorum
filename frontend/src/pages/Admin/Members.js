@@ -124,24 +124,51 @@ const Members = () => {
     setFormData(updated);
   };
 
-  // Detección de documento duplicado en tiempo real
-  const duplicateDoc = formData.numero_documento && formData.numero_documento.length >= 4
-    ? members.find(m =>
+  // La identidad de una persona es unica, pero su pertenencia a un organo NO:
+  // la misma persona puede ser Delegada en Asamblea y Vocal en Junta Directiva.
+  // Antes cualquier coincidencia de cedula bloqueaba el registro, aunque fuera
+  // en otro organo, y no habia forma de vincularla al segundo.
+  const docNormalizado = String(formData.numero_documento || '').replace(/\D/g, '');
+  const coincidencias = docNormalizado.length >= 4
+    ? members.filter(m =>
         m.id !== editingId &&
         m.numero_documento &&
-        String(m.numero_documento).replace(/\D/g, '') === String(formData.numero_documento).replace(/\D/g, '')
+        String(m.numero_documento).replace(/\D/g, '') === docNormalizado
       )
+    : [];
+
+  // Mismo documento en el MISMO organo: eso si es un duplicado real.
+  const duplicateDoc = formData.product_id
+    ? coincidencias.find(m => String(m.product_id) === String(formData.product_id))
+    : coincidencias[0];
+
+  // Mismo documento en OTRO organo: es la misma persona, se le crea la
+  // pertenencia al organo nuevo sin tocar la que ya tenia.
+  const personaEnOtroOrgano = !duplicateDoc ? coincidencias[0] : null;
+  const organoDeEsaPersona = personaEnOtroOrgano
+    ? products.find(pr => String(pr.id) === String(personaEnOtroOrgano.product_id))
     : null;
+
+  // Trae los datos de identidad ya registrados para no re-escribirlos.
+  const usarIdentidadExistente = () => {
+    if (!personaEnOtroOrgano) return;
+    setFormData(prev => ({
+      ...prev,
+      name: personaEnOtroOrgano.name || prev.name,
+      tipo_documento: personaEnOtroOrgano.tipo_documento || prev.tipo_documento
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Bloquear si hay documento duplicado
     if (duplicateDoc) {
+      const organoDup = products.find(pr => String(pr.id) === String(duplicateDoc.product_id));
       setSaveError(
         language === 'es'
-          ? `Ya existe el miembro "${duplicateDoc.name}" con ese número de documento.`
-          : `Member "${duplicateDoc.name}" already has that document number.`
+          ? `"${duplicateDoc.name}" ya pertenece a ${organoDup?.name || 'este órgano'} con ese número de documento.`
+          : `"${duplicateDoc.name}" already belongs to ${organoDup?.name || 'this body'} with that document number.`
       );
       return;
     }
@@ -434,8 +461,44 @@ const Members = () => {
                         color: '#f59e0b', fontSize: '12.5px', lineHeight: 1.4
                       }}>
                         {language === 'es'
-                          ? `Ya existe: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'sin cargo'})`
-                          : `Already exists: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'no position'})`}
+                          ? `Ya pertenece a este órgano: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'sin cargo'})`
+                          : `Already in this body: ${duplicateDoc.name} (${duplicateDoc.rol_organico || duplicateDoc.position || 'no position'})`}
+                      </div>
+                    )}
+
+                    {/* La persona ya existe, pero en otro organo. No es un
+                        duplicado: se le crea la pertenencia al organo nuevo y la
+                        anterior queda intacta. */}
+                    {personaEnOtroOrgano && (
+                      <div style={{
+                        marginTop: '5px', padding: '9px 12px', borderRadius: '6px',
+                        background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.35)',
+                        fontSize: '12.5px', lineHeight: 1.5, color: 'var(--text-primary)'
+                      }}>
+                        <strong style={{ color: '#047857' }}>
+                          {language === 'es' ? 'Esta persona ya está registrada' : 'This person already exists'}
+                        </strong>
+                        <div style={{ marginTop: 4 }}>
+                          {personaEnOtroOrgano.name}
+                          {organoDeEsaPersona ? ` — ${organoDeEsaPersona.name}` : ''}
+                          {personaEnOtroOrgano.rol_organico ? ` (${personaEnOtroOrgano.rol_organico})` : ''}
+                        </div>
+                        <div style={{ marginTop: 6, color: 'var(--text-secondary)', fontSize: '11.5px' }}>
+                          {language === 'es'
+                            ? 'Se creará su pertenencia a este órgano. Su registro en el otro órgano no se modifica.'
+                            : 'A membership will be created for this body. The existing one is not modified.'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={usarIdentidadExistente}
+                          style={{
+                            marginTop: 8, background: 'transparent', cursor: 'pointer',
+                            border: '1px solid rgba(16,185,129,0.45)', color: '#047857',
+                            borderRadius: 6, padding: '3px 10px', fontSize: 12
+                          }}
+                        >
+                          {language === 'es' ? 'Traer nombre y tipo de documento' : 'Copy name and ID type'}
+                        </button>
                       </div>
                     )}
                   </div>

@@ -43,6 +43,20 @@ exports.createMember = async (req, res) => {
       return res.status(400).json({ message: 'client_id es requerido' });
     }
 
+    // La identidad es única; la pertenencia a un órgano no. Una misma persona
+    // puede ser Delegada en Asamblea y Vocal en Junta Directiva. Solo se
+    // rechaza cuando ya pertenece al MISMO órgano: eso sí es un duplicado.
+    if (numero_documento && product_id) {
+      const yaEnOrgano = await Member.findInProductByDocument(client_id, product_id, numero_documento);
+      if (yaEnOrgano) {
+        return res.status(400).json({
+          message: `"${yaEnOrgano.name}" ya pertenece a este órgano con ese número de documento.`,
+          code: 'YA_EN_ESTE_ORGANO',
+          member_id: yaEnOrgano.id
+        });
+      }
+    }
+
     // Si se solicita crear cuenta de usuario y hay email
     let userId = null;
     let temporaryPassword = null;

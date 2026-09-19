@@ -237,6 +237,32 @@ class Member {
     return typeof count === 'string' ? parseInt(count, 10) : count;
   }
 
+  /**
+   * ¿Esta persona ya pertenece a ESTE órgano?
+   *
+   * La identidad es única, pero la pertenencia no: la misma persona puede ser
+   * Delegada en Asamblea y Vocal en Junta Directiva. Solo hay duplicado cuando
+   * ya está en el mismo órgano.
+   */
+  static async findInProductByDocument(clientId, productId, documentNumber) {
+    const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
+    const activeCondition = isPostgreSQL ? 'active = true' : 'active = 1';
+    const docNorm = String(documentNumber || '').replace(/\D/g, '');
+    if (!docNorm || productId == null) return null;
+
+    const dbNormExpr = isPostgreSQL
+      ? "regexp_replace(numero_documento, '[^0-9]', '', 'g')"
+      : "REPLACE(REPLACE(REPLACE(REPLACE(numero_documento, '.', ''), '-', ''), ' ', ''), ',', '')";
+
+    const [rows] = await db.execute(
+      `SELECT id, name, rol_organico FROM members
+       WHERE client_id = ? AND product_id = ? AND ${dbNormExpr} = ? AND ${activeCondition}
+       LIMIT 1`,
+      [clientId, productId, docNorm]
+    );
+    return rows[0] || null;
+  }
+
   static async delete(id) {
     const isPostgreSQL = !!process.env.DATABASE_URL || process.env.DB_TYPE === 'postgresql';
     const activeValue = isPostgreSQL ? 'false' : '0';
