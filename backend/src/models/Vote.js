@@ -1,5 +1,23 @@
 const db = require('../config/database');
 
+// votes.option es VARCHAR(100). Si llega algo más largo, PostgreSQL responde
+// "value too long for type character varying(100)", que el votante no entiende
+// y aparece justo al confirmar el voto. Se detiene antes, con un mensaje claro.
+const MAX_OPCION = 100;
+
+function validarOpcion(option) {
+  const texto = String(option ?? '').trim();
+  if (texto.length > MAX_OPCION) {
+    const e = new Error(
+      `La opción de votación supera los ${MAX_OPCION} caracteres permitidos ` +
+      `(tiene ${texto.length}). Esta votación debe recrearse con opciones más cortas.`
+    );
+    e.code = 'OPCION_DEMASIADO_LARGA';
+    throw e;
+  }
+  return texto;
+}
+
 class Vote {
   static async findByVoting(votingId) {
     // BUG-PDF-CARGO fix: usar SOLO rol_organico (cargo orgánico real del miembro).
@@ -26,6 +44,7 @@ class Vote {
 
   static async create(data) {
     const { voting_id, member_id, option, comment } = data;
+    validarOpcion(option);
     const [result] = await db.execute(
       `INSERT INTO votes (voting_id, member_id, option, comment, created_at)
        VALUES (?, ?, ?, ?, NOW())`,
@@ -36,6 +55,7 @@ class Vote {
 
   static async createPublic(data) {
     const { voting_id, name, email, option, comment } = data;
+    validarOpcion(option);
     // Para votos públicos, member_id puede ser NULL y guardamos name y email
     const [result] = await db.execute(
       `INSERT INTO votes (voting_id, member_id, option, comment, voter_name, voter_email, created_at)

@@ -4,6 +4,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { votingService } from '../../services/votingService';
 import './CreateVoting.css';
 
+// Tope de una opción de votación. Debe coincidir con votes.option VARCHAR(100).
+const MAX_OPCION = 100;
+
 const CreateVoting = () => {
   const { meetingId } = useParams();
   const navigate = useNavigate();
@@ -34,10 +37,15 @@ const CreateVoting = () => {
   };
 
   const handleAddOption = () => {
-    if (newOption.trim() && formData.options.length < 10) {
+    const texto = newOption.trim();
+    // La columna votes.option es VARCHAR(100). Una opción más larga se dejaba
+    // crear sin problema y el error solo aparecía al registrar el voto, con la
+    // votación ya abierta: "value too long for type character varying(100)".
+    if (texto.length > MAX_OPCION) return;
+    if (texto && formData.options.length < 10) {
       setFormData({
         ...formData,
-        options: [...formData.options, newOption.trim()]
+        options: [...formData.options, texto]
       });
       setNewOption('');
     }
@@ -190,7 +198,8 @@ const CreateVoting = () => {
                   <input
                     type="text"
                     value={newOption}
-                    onChange={(e) => setNewOption(e.target.value)}
+                    maxLength={MAX_OPCION}
+                    onChange={(e) => setNewOption(e.target.value.slice(0, MAX_OPCION))}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -208,6 +217,26 @@ const CreateVoting = () => {
                   >
                     +
                   </button>
+                </div>
+
+                {/* Contador visible: el tope se ve mientras se escribe, no
+                    después, cuando alguien intenta votar. */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', gap: 10,
+                  marginTop: 4, fontSize: 11.5, color: 'var(--text-secondary)'
+                }}>
+                  <span>
+                    {language === 'es'
+                      ? `Máximo ${MAX_OPCION} caracteres por opción.`
+                      : `Maximum ${MAX_OPCION} characters per option.`}
+                  </span>
+                  <span style={{
+                    fontVariantNumeric: 'tabular-nums',
+                    color: newOption.length >= MAX_OPCION ? '#B45309' : undefined,
+                    fontWeight: newOption.length >= MAX_OPCION ? 700 : 400
+                  }}>
+                    {newOption.length} / {MAX_OPCION}
+                  </span>
                 </div>
                 {formData.options.length > 0 && (
                   <div className="options-list">

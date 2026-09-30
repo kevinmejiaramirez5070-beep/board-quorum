@@ -390,6 +390,11 @@ exports.confirmVote = async (req, res) => {
       }
     });
   } catch (error) {
+    // Una opción demasiado larga es un problema de la votación, no del votante:
+    // se responde 400 con el motivo, no un 500 con el error crudo de la base.
+    if (error.code === 'OPCION_DEMASIADO_LARGA') {
+      return res.status(400).json({ message: error.message, code: error.code });
+    }
     console.error('Error in confirmVote:', error);
     res.status(500).json({ message: error.message || 'Error al confirmar el voto' });
   }

@@ -25,13 +25,31 @@ exports.getVoting = async (req, res) => {
   }
 };
 
+// Tope de una opción de votación. Debe coincidir con votes.option VARCHAR(100).
+const MAX_OPCION = 100;
+
 exports.createVoting = async (req, res) => {
   try {
     const data = {
       meeting_id: req.params.meetingId,
       ...req.body
     };
-    
+
+    // votes.option es VARCHAR(100). Una opción más larga se creaba sin
+    // problema y el error aparecía recién al registrar el voto, con la
+    // votación ya abierta ante la Asamblea. Se corta aquí, no allá.
+    if (Array.isArray(data.options)) {
+      const larga = data.options.find(o => String(o ?? '').trim().length > MAX_OPCION);
+      if (larga) {
+        return res.status(400).json({
+          message: `Cada opción de votación admite máximo ${MAX_OPCION} caracteres. ` +
+                   `"${String(larga).slice(0, 40)}…" tiene ${String(larga).trim().length}.`,
+          code: 'OPCION_DEMASIADO_LARGA'
+        });
+      }
+      data.options = data.options.map(o => String(o ?? '').trim()).filter(Boolean);
+    }
+
     console.log('Creating voting with data:', data);
     
     const votingId = await Voting.create(data);
